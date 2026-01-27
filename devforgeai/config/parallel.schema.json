@@ -1,0 +1,124 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Parallel Development Configuration",
+  "description": "Configuration for Git worktree parallel development management (STORY-091)",
+  "type": "object",
+  "properties": {
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Master enable/disable switch for worktree management"
+    },
+    "worktree": {
+      "type": "object",
+      "description": "Git worktree configuration",
+      "properties": {
+        "cleanup_threshold_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 365,
+          "default": 7,
+          "description": "Days of inactivity before worktree flagged as idle for cleanup"
+        },
+        "max_worktrees": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "default": 5,
+          "description": "Maximum number of concurrent active worktrees allowed"
+        },
+        "location_pattern": {
+          "type": "string",
+          "pattern": ".*\\{id\\}.*",
+          "default": "../devforgeai-story-{id}/",
+          "description": "Path pattern for worktree directories (must contain {id} placeholder)"
+        }
+      },
+      "required": ["cleanup_threshold_days", "max_worktrees", "location_pattern"],
+      "additionalProperties": false
+    },
+    "performance": {
+      "type": "object",
+      "description": "Performance timeout settings",
+      "properties": {
+        "creation_timeout_seconds": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 60,
+          "default": 15,
+          "description": "Timeout for worktree creation in seconds"
+        },
+        "idle_scan_timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30,
+          "default": 5,
+          "description": "Timeout for idle worktree scanning in seconds"
+        }
+      },
+      "additionalProperties": false
+    },
+    "platform": {
+      "type": "object",
+      "description": "Platform-specific configuration",
+      "properties": {
+        "auto_detect": {
+          "type": "boolean",
+          "default": true,
+          "description": "Auto-detect platform (linux, macos, windows, wsl)"
+        },
+        "windows_path_check": {
+          "type": "boolean",
+          "default": true,
+          "description": "Check Windows path length limits (260 chars)"
+        },
+        "wsl_path_handling": {
+          "type": "boolean",
+          "default": true,
+          "description": "Handle WSL /mnt/c/ path patterns"
+        }
+      },
+      "additionalProperties": false
+    },
+    "logging": {
+      "type": "object",
+      "description": "Logging configuration",
+      "properties": {
+        "log_file": {
+          "type": "string",
+          "default": "devforgeai/logs/worktree.log",
+          "description": "Path to worktree operation log file"
+        },
+        "level": {
+          "type": "string",
+          "enum": ["debug", "info", "warning", "error"],
+          "default": "info",
+          "description": "Logging level"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "default": {
+    "enabled": true,
+    "worktree": {
+      "cleanup_threshold_days": 7,
+      "max_worktrees": 5,
+      "location_pattern": "../devforgeai-story-{id}/"
+    },
+    "performance": {
+      "creation_timeout_seconds": 15,
+      "idle_scan_timeout_seconds": 5
+    },
+    "platform": {
+      "auto_detect": true,
+      "windows_path_check": true,
+      "wsl_path_handling": true
+    },
+    "logging": {
+      "log_file": "devforgeai/logs/worktree.log",
+      "level": "info"
+    }
+  }
+}

@@ -1,0 +1,67 @@
+# QA Remediation Configuration
+# Used by: devforgeai-qa-remediation skill
+# Invoked by: /review-qa-reports command
+# Version: 1.0
+# Last Updated: 2026-01-15
+
+# Gap file source paths
+sources:
+  local: "devforgeai/qa/reports"
+  imports: "devforgeai/qa/imports"
+
+# Severity scoring weights for prioritization
+# Higher score = processed first
+severity_weights:
+  CRITICAL: 100
+  HIGH: 75
+  MEDIUM: 50
+  LOW: 25
+
+# Default values when not specified via command arguments
+defaults:
+  min_severity: MEDIUM    # Filter gaps below this severity
+  epic: null              # No default epic (user can specify --epic)
+  sprint: "Backlog"       # Default sprint for created stories
+  story_type: "refactor"  # Most gaps are refactoring work
+
+# Story points estimation by gap type and size
+# Used in Phase 05 gap-to-story mapping
+points_estimation:
+  coverage_gap:
+    small: 2    # Gap < 5%
+    medium: 3   # Gap 5-15%
+    large: 5    # Gap > 15%
+  anti_pattern:
+    CRITICAL: 5
+    HIGH: 3
+    MEDIUM: 2
+    LOW: 1
+  code_quality:
+    HIGH: 3
+    MEDIUM: 2
+    LOW: 1
+  deferral_issue: 3  # Fixed points for deferral compliance
+
+# Gap types to process (can disable specific types)
+gap_types_enabled:
+  - coverage_gaps
+  - anti_pattern_violations
+  - code_quality_violations
+  - deferral_issues
+
+# Output paths for generated files
+output:
+  enhancement_reports: "devforgeai/qa/enhancement-reports"
+
+# Technical debt register integration
+# Phase 07 uses this to track skipped/deferred gaps
+technical_debt:
+  register_path: "devforgeai/technical-debt-register.md"
+  auto_add_skipped: true    # Add skipped gaps to register automatically
+  invoke_analyzer: false    # Set true to invoke technical-debt-analyzer subagent
+
+# Batch story creation settings
+batch_mode:
+  continue_on_failure: true  # Continue processing if individual story fails
+  max_stories_per_run: 20    # Safety limit to prevent runaway creation
+  dry_run_default: false     # Default to actual creation (not preview)

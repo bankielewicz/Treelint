@@ -1,0 +1,57 @@
+# DevForgeAI Parallel Orchestration Configuration
+# Version: 1.0
+# Documentation: .claude/skills/devforgeai-orchestration/references/parallel-config.md
+#
+# This configuration controls parallel task execution matching Anthropic subscription tiers.
+# Profile presets are locked to prevent API rate limit violations.
+
+version: "1.0"
+
+# Default profile to use when none specified
+# Options: pro, max, api, custom
+default_profile: "pro"
+
+# Profile definitions
+# Each profile maps to an Anthropic subscription tier
+profiles:
+  # Pro tier: 4 concurrent tasks, 2-minute timeout
+  # Recommended for: Claude Pro subscribers
+  pro:
+    max_concurrent_tasks: 4
+    timeout_ms: 120000
+    retry:
+      max_attempts: 3
+      backoff_ms: 1000
+
+  # Max tier: 6 concurrent tasks, 3-minute timeout
+  # Recommended for: Power users with higher rate limits
+  max:
+    max_concurrent_tasks: 6
+    timeout_ms: 180000
+    retry:
+      max_attempts: 3
+      backoff_ms: 1000
+
+  # API tier: 8 concurrent tasks, 5-minute timeout
+  # Recommended for: API users with enterprise limits
+  api:
+    max_concurrent_tasks: 8
+    timeout_ms: 300000
+    retry:
+      max_attempts: 3
+      backoff_ms: 1000
+
+  # Custom profile: User-defined settings
+  # Modify values as needed, respect API limits
+  custom:
+    max_concurrent_tasks: 4
+    timeout_ms: 120000
+    retry:
+      max_attempts: 3
+      backoff_ms: 1000
+
+# Business Rules:
+# - BR-001: max_concurrent_tasks must be 1-10
+# - BR-002: timeout_ms must be 1000-600000 (1s to 10 minutes)
+# - BR-003: Preset profiles (pro/max/api) should not be modified
+#           Use 'custom' profile for non-standard configurations

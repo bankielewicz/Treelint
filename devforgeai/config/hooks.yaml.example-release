@@ -1,0 +1,267 @@
+# DevForgeAI Hooks Configuration - Release Command Integration
+# Part of: STORY-025 - Wire hooks into /release command
+#
+# This file provides example configuration for release-staging and release-production hooks
+# Copy to devforgeai/config/hooks.yaml and customize for your needs
+
+# Global hook system configuration
+enabled: true           # Master switch: true = hooks active, false = all hooks disabled
+trigger_on: "all"       # Global default: "all", "failures-only", or "custom"
+
+# Operation-specific configurations
+operations:
+
+  # ============================================================================
+  # Release Staging Hooks
+  # ============================================================================
+
+  release-staging:
+    enabled: true
+    trigger_on: "all"              # Trigger on both SUCCESS and FAILURE
+    on_success: true               # Explicit: Collect feedback on staging success
+    on_failure: true               # Explicit: Collect feedback on staging failure
+
+    # Staging-specific questions
+    questions:
+      - question: "How did the staging deployment go?"
+        type: "open"
+        required: true
+
+      - question: "Any issues or surprises during deployment?"
+        type: "open"
+        required: false
+        skip_if_empty: true
+
+      - question: "Performance observations?"
+        type: "open"
+        hint: "Deployment speed, service startup time, resource usage"
+        required: false
+
+      - question: "Would you deploy this to production right now?"
+        type: "choice"
+        options:
+          - "Yes, ready for production"
+          - "No, issues need fixing first"
+          - "Maybe, needs more testing"
+        required: true
+
+      - question: "Smoke test results?"
+        type: "choice"
+        options:
+          - "All tests passed"
+          - "Some tests failed"
+          - "Tests not run"
+        required: false
+
+    # Metadata for feedback categorization
+    metadata:
+      environment: "staging"
+      severity: "medium"
+      category: "deployment"
+
+    # Timing and performance
+    timeout_seconds: 300           # 5 minutes max for user to respond
+    skip_tracking: true            # Track which questions users skip
+
+    # Feedback persistence
+    save_to: "devforgeai/feedback/releases/{story_id}-staging-{timestamp}.json"
+
+  # ============================================================================
+  # Release Production Hooks
+  # ============================================================================
+
+  release-production:
+    enabled: true
+    trigger_on: "failures-only"    # Default: Only trigger on production FAILURES
+    on_success: false              # Explicit: Skip feedback on production success
+    on_failure: true               # Explicit: Always collect feedback on production failure
+
+    # Production failure questions (critical incident response)
+    questions:
+      - question: "What caused the production deployment failure?"
+        type: "open"
+        required: true
+        severity: "critical"
+
+      - question: "Was rollback smooth? Any issues during rollback?"
+        type: "open"
+        required: true
+        show_if: "rollback_triggered == true"
+
+      - question: "Customer impact assessment"
+        type: "choice"
+        options:
+          - "No customer impact (caught before traffic)"
+          - "Minor impact (< 1% users affected)"
+          - "Moderate impact (1-10% users affected)"
+          - "Major impact (> 10% users affected)"
+          - "Complete outage"
+        required: true
+
+      - question: "Incident severity classification"
+        type: "choice"
+        options:
+          - "SEV1: Critical (complete outage, data loss, security breach)"
+          - "SEV2: High (major feature broken, significant user impact)"
+          - "SEV3: Medium (minor feature broken, limited impact)"
+          - "SEV4: Low (cosmetic issue, no functional impact)"
+        required: true
+
+      - question: "What would prevent this failure in the future?"
+        type: "open"
+        required: true
+        hint: "Process changes, testing improvements, architecture fixes"
+
+      - question: "Additional post-mortem notes"
+        type: "open"
+        required: false
+        multiline: true
+
+    # Metadata for incident tracking
+    metadata:
+      environment: "production"
+      severity: "critical"
+      category: "incident"
+
+    # Timing and performance (production failures = high priority)
+    timeout_seconds: 600           # 10 minutes for incident response
+    skip_tracking: true
+
+    # Feedback persistence
+    save_to: "devforgeai/feedback/releases/{story_id}-production-{timestamp}.json"
+
+  # ============================================================================
+  # Optional: Production Success Hooks (Opt-In)
+  # ============================================================================
+  #
+  # Uncomment this section if you want feedback on successful production deployments
+  # NOTE: This is less common - most teams only want feedback on production failures
+  #
+  # release-production-success:
+  #   enabled: false               # Disabled by default (opt-in)
+  #   trigger_on: "custom"
+  #   on_success: true             # Only trigger on production SUCCESS
+  #   on_failure: false
+  #
+  #   questions:
+  #     - question: "Production deployment complete. Any observations?"
+  #       type: "open"
+  #       required: false
+  #
+  #     - question: "Performance after deployment?"
+  #       type: "choice"
+  #       options:
+  #         - "Better than before"
+  #         - "Same as before"
+  #         - "Worse than before"
+  #       required: false
+  #
+  #     - question: "Monitoring alerts?"
+  #       type: "choice"
+  #       options:
+  #         - "No alerts"
+  #         - "Minor warnings (expected)"
+  #         - "Unexpected warnings"
+  #         - "Errors detected"
+  #       required: false
+  #
+  #   metadata:
+  #     environment: "production"
+  #     severity: "low"
+  #     category: "deployment"
+  #
+  #   timeout_seconds: 180
+  #   save_to: "devforgeai/feedback/releases/{story_id}-production-{timestamp}.json"
+
+# ============================================================================
+# Configuration Notes
+# ============================================================================
+
+# Trigger Modes:
+# - "all": Trigger on both success and failure
+# - "failures-only": Only trigger on failures (recommended for production)
+# - "custom": Use on_success and on_failure flags explicitly
+
+# Question Types:
+# - "open": Free-text response (short answer)
+# - "choice": Multiple choice (radio buttons)
+# - "multiline": Free-text response (long answer)
+
+# Conditional Display:
+# - show_if: "condition" - Only show question if condition met
+#   Examples:
+#     - "rollback_triggered == true"
+#     - "deployment_status == FAILURE"
+#     - "failed_services.length > 0"
+
+# Skip Tracking:
+# - skip_tracking: true - Track which questions users skip (useful for improving questions)
+# - Skipped questions saved in feedback JSON with "skipped": true
+
+# Timeout Behavior:
+# - If user doesn't respond within timeout_seconds, feedback session aborts
+# - Partial answers (questions completed before timeout) are still saved
+# - Deployment workflow continues regardless of timeout
+
+# Severity Levels:
+# - "critical": Production failures, security incidents, data loss
+# - "high": Major bugs, significant user impact
+# - "medium": Minor bugs, limited impact
+# - "low": Informational, no impact
+
+# ============================================================================
+# Best Practices
+# ============================================================================
+
+# 1. Keep staging questions lightweight (3-5 questions)
+# 2. Keep production failure questions focused on incident response (5-7 questions)
+# 3. Use failures-only mode for production (less intrusive)
+# 4. Set appropriate timeouts (staging: 5 min, production: 10 min for incidents)
+# 5. Use skip_tracking to identify questions users consistently skip
+# 6. Review feedback regularly to improve deployment processes
+# 7. Use severity classification to prioritize post-mortems
+# 8. Include conditional questions (show_if) for context-specific probing
+
+# ============================================================================
+# Troubleshooting
+# ============================================================================
+
+# Hook not triggering?
+# 1. Check: hooks.yaml exists in devforgeai/config/
+# 2. Check: enabled: true (both global and operation-specific)
+# 3. Check: trigger_on mode matches deployment status
+# 4. Check: devforgeai CLI installed (pip install --break-system-packages -e .claude/scripts/)
+# 5. Check: Logs in devforgeai/logs/release-hooks-{STORY-ID}.log
+
+# Hook errors breaking deployment?
+# - This should NEVER happen (hooks are non-blocking by design)
+# - If deployment fails, it's deployment issue, not hook issue
+# - Check: deployment logs separate from hook logs
+# - Verify: deployment status accurate regardless of hook status
+
+# Timeout issues?
+# - Increase timeout_seconds if users need more time
+# - Consider: Different timeouts for staging (5 min) vs production (10 min)
+# - Users can Ctrl+C to abort feedback and continue deployment
+
+# ============================================================================
+# Migration from Dev/QA Hooks
+# ============================================================================
+
+# If you have existing /dev or /qa hooks configured, release hooks follow same pattern:
+#
+# /dev hooks:     operation: "dev", trigger after TDD implementation
+# /qa hooks:      operation: "qa", trigger after validation passes/fails
+# /release hooks: operation: "release-staging" or "release-production", trigger after deployment
+#
+# All use same devforgeai CLI (check-hooks, invoke-hooks)
+# All save to devforgeai/feedback/ directory structure
+# All support same question types and metadata
+
+# ============================================================================
+# Version
+# ============================================================================
+version: "1.0"
+schema_version: "2.0"  # DevForgeAI hook system v2.0
+last_updated: "2025-11-14"
+story: "STORY-025"

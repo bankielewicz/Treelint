@@ -1,0 +1,43 @@
+# Rust
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test artifacts
+*.log
+coverage/
+*.profraw
+*.profdata
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# DevForgeAI checkpoints (temporary)
+devforgeai/specs/brainstorms/*.checkpoint.json
+
+# Debug output
+debug/
+tmp/
+
+# Backup files
+Backup/

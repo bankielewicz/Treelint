@@ -1,0 +1,45 @@
+# devforgeai/config/ci/github-actions.yaml
+# GitHub Actions Configuration for DevForgeAI CI/CD
+#
+# Copy this file to github-actions.yaml and customize settings
+
+# Maximum parallel jobs for matrix strategy
+# Prevents rate limit exhaustion (Tier 1 = 50 RPM)
+# Recommended: 5 for free tier, adjust based on API rate limits
+max_parallel_jobs: 5
+
+# Cost optimization settings
+cost_optimization:
+  # Cache framework context for 5 minutes (90% cost savings)
+  enable_prompt_caching: true
+
+  # Use Haiku model for routine operations (3x cheaper)
+  prefer_haiku: true
+
+  # Cost target per story (USD)
+  max_cost_per_story: 0.15
+
+  # Maximum turns before stopping
+  max_turns:
+    simple: 10      # Simple CRUD stories
+    complex: 20     # Standard implementations
+    architecture: 30 # Major refactoring
+
+# Enabled workflows
+workflows:
+  dev_story: true
+  qa_validation: true
+  parallel_stories: true
+  installer_testing: true
+
+# Rate limit handling
+rate_limits:
+  retry_on_429: true
+  max_retries: 3
+  backoff_seconds: [2, 4, 8]
+
+# Runner configuration
+runners:
+  default: ubuntu-latest
+  # Uncomment for self-hosted:
+  # self_hosted: ["self-hosted", "linux", "x64"]

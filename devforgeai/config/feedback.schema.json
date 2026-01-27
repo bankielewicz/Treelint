@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Feedback Configuration Schema",
+  "description": "Schema for DevForgeAI feedback system configuration (YAML-based)",
+  "type": "object",
+  "properties": {
+    "enabled": {
+      "type": "boolean",
+      "description": "Master enable/disable switch for feedback collection",
+      "default": true
+    },
+    "trigger_mode": {
+      "type": "string",
+      "enum": [
+        "always",
+        "failures-only",
+        "specific-operations",
+        "never"
+      ],
+      "description": "Determines when feedback is collected",
+      "default": "failures-only"
+    },
+    "operations": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "description": "List of operations to collect feedback for (only used if trigger_mode is 'specific-operations')",
+      "default": null
+    },
+    "conversation_settings": {
+      "type": "object",
+      "description": "Conversation-level settings for feedback collection",
+      "properties": {
+        "max_questions": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum number of questions per conversation (0 = unlimited)",
+          "default": 5
+        },
+        "allow_skip": {
+          "type": "boolean",
+          "description": "Whether users can skip feedback questions",
+          "default": true
+        }
+      },
+      "additionalProperties": false,
+      "default": {
+        "max_questions": 5,
+        "allow_skip": true
+      }
+    },
+    "skip_tracking": {
+      "type": "object",
+      "description": "Skip tracking configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether skip tracking is active",
+          "default": true
+        },
+        "max_consecutive_skips": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum consecutive skips allowed (0 = unlimited)",
+          "default": 3
+        },
+        "reset_on_positive": {
+          "type": "boolean",
+          "description": "Whether to reset skip counter on positive feedback",
+          "default": true
+        }
+      },
+      "additionalProperties": false,
+      "default": {
+        "enabled": true,
+        "max_consecutive_skips": 3,
+        "reset_on_positive": true
+      }
+    },
+    "templates": {
+      "type": "object",
+      "description": "Template preferences for feedback collection",
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": [
+            "structured",
+            "free-text"
+          ],
+          "description": "Template format for feedback questions",
+          "default": "structured"
+        },
+        "tone": {
+          "type": "string",
+          "enum": [
+            "brief",
+            "detailed"
+          ],
+          "description": "Tone for feedback questions",
+          "default": "brief"
+        }
+      },
+      "additionalProperties": false,
+      "default": {
+        "format": "structured",
+        "tone": "brief"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": [],
+  "default": {
+    "enabled": true,
+    "trigger_mode": "failures-only",
+    "operations": null,
+    "conversation_settings": {
+      "max_questions": 5,
+      "allow_skip": true
+    },
+    "skip_tracking": {
+      "enabled": true,
+      "max_consecutive_skips": 3,
+      "reset_on_positive": true
+    },
+    "templates": {
+      "format": "structured",
+      "tone": "brief"
+    }
+  }
+}

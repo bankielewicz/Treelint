@@ -1,0 +1,60 @@
+# DevForgeAI Feedback System Configuration
+# Version: 1.0
+# Documentation: devforgeai/config/README.md
+# Schema: devforgeai/config/feedback.schema.json
+
+# Master enable/disable switch for all feedback operations
+# When false, no feedback is collected regardless of other settings
+enabled: true
+
+# Trigger mode determines when feedback is collected
+# Options:
+#   - always: Collect feedback after every operation (high token cost)
+#   - failures-only: Only collect feedback when operations fail (recommended)
+#   - specific-operations: Only collect for operations listed below
+#   - never: Disable all feedback collection
+trigger_mode: failures-only
+
+# Required only when trigger_mode is 'specific-operations'
+# List of operations that should trigger feedback collection
+# Examples: qa, dev, development, architecture, orchestrate
+operations:
+  - qa
+  - dev
+
+# Conversation settings control the feedback interaction experience
+conversation_settings:
+  # Maximum number of feedback questions per session (0 = unlimited)
+  # Recommended: 5-10 to balance insight depth vs user patience
+  max_questions: 5
+
+  # Allow users to skip individual feedback questions
+  # When true, users can dismiss prompts without responding
+  allow_skip: true
+
+# Skip tracking monitors user engagement and prevents feedback fatigue
+skip_tracking:
+  # Enable skip pattern detection
+  enabled: true
+
+  # Number of consecutive skips before pausing feedback collection
+  # After threshold reached, system suggests disabling feedback
+  max_consecutive_skips: 3
+
+  # Reset skip counter when user provides positive feedback
+  # Positive feedback indicates engagement, so counting restarts
+  reset_on_positive: true
+
+# Template preferences control feedback format and tone
+templates:
+  # Format determines how users provide feedback
+  # Options:
+  #   - structured: Predefined options (e.g., "Very helpful", "Helpful", etc.)
+  #   - free-text: Open text input for custom responses
+  format: structured
+
+  # Tone controls question verbosity
+  # Options:
+  #   - brief: Concise questions (≤50 chars), no context
+  #   - detailed: Full context included (operation type, outcome, errors)
+  tone: brief

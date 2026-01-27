@@ -1,0 +1,9 @@
+{
+  "backup_retention_count": 5,
+  "migration_timeout_seconds": 300,
+  "validate_after_migration": true,
+  "migration_script_directory": "migrations",
+  "backup_directory": "devforgeai/backups",
+  "new_feature_enabled": true,
+  "v1_2_feature": "enabled"
+}

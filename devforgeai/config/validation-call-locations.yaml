@@ -1,0 +1,82 @@
+# Validation Call Locations for devforgeai-development SKILL.md
+# Maps phase IDs to validation call requirements
+# Created by STORY-153: Skill Validation Integration
+#
+# Usage: This file is the single source of truth for phase-to-validation mapping.
+# Referenced by: SKILL.md "Phase Transition Validation Calls" section
+#
+# Call patterns per phase:
+#   phase_check: true  -> Entry gate: devforgeai-validate phase-check STORY-XXX --from={prev} --to={id}
+#   complete_phase: true -> Exit gate: devforgeai-validate phase-complete STORY-XXX --phase={id} --checkpoint-passed
+#   subagents: [...]   -> Record: devforgeai-validate record-subagent STORY-XXX --phase={id} --subagent={name}
+
+version: "1.0"
+skill_file: ".claude/skills/devforgeai-development/SKILL.md"
+
+phases:
+  - id: "00"
+    name: "Initialization"
+    init_state: true
+    phase_check: false  # First phase, no prior check
+    subagents: []
+    complete_phase: true
+
+  - id: "01"
+    name: "Pre-Flight"
+    phase_check: true
+    subagents: ["git-validator", "tech-stack-detector"]
+    complete_phase: true
+
+  - id: "02"
+    name: "Test-First (Red)"
+    phase_check: true
+    subagents: ["test-automator"]
+    complete_phase: true
+
+  - id: "03"
+    name: "Implementation (Green)"
+    phase_check: true
+    subagents: ["backend-architect", "frontend-developer", "context-validator"]
+    complete_phase: true
+
+  - id: "04"
+    name: "Refactoring"
+    phase_check: true
+    subagents: ["refactoring-specialist", "code-reviewer"]
+    complete_phase: true
+
+  - id: "05"
+    name: "Integration Testing"
+    phase_check: true
+    subagents: ["integration-tester"]
+    complete_phase: true
+
+  - id: "06"
+    name: "Deferral Challenge"
+    phase_check: true
+    subagents: ["deferral-validator"]
+    complete_phase: true
+
+  - id: "07"
+    name: "DoD Update"
+    phase_check: true
+    subagents: []
+    complete_phase: true
+
+  - id: "08"
+    name: "Git Workflow"
+    phase_check: true
+    subagents: []
+    complete_phase: true
+
+  - id: "09"
+    name: "Feedback Hook"
+    phase_check: true
+    subagents: []
+    complete_phase: true
+
+  - id: "10"
+    name: "Result Interpretation"
+    phase_check: true
+    subagents: ["dev-result-interpreter"]
+    complete_phase: true

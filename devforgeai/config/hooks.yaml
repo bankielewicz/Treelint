@@ -1,0 +1,370 @@
+# DevForgeAI Hook Registry Configuration
+#
+# This file defines hooks that are automatically triggered on operation completion.
+# Hooks enable event-driven workflows like feedback collection, monitoring, and
+# automated retrospectives.
+#
+# For complete schema reference, see:
+# .claude/skills/devforgeai-feedback/HOOK-SYSTEM.md
+
+# ============================================================================
+# Global Hook Settings
+# ============================================================================
+
+# Master switch for hook system (required for any hooks to trigger)
+enabled: true
+
+# Global trigger rules (can be overridden per-operation)
+global_rules:
+  trigger_on: all  # all | failures-only | none
+
+# ============================================================================
+# Hook Registry
+# ============================================================================
+
+hooks:
+  # Example 1: Post-Development Feedback
+  # Triggers after /dev command completes successfully
+  - id: post-dev-feedback
+    name: "Post-Development Feedback"
+    operation_type: command
+    operation_pattern: "dev"
+    trigger_status: [success, partial]
+    trigger_conditions:
+      operation_duration_min_ms: 300000  # Only if >5 minutes
+      user_approval_required: true       # PILOT: Ask user before triggering
+    feedback_type: conversation
+    feedback_config:
+      mode: "focused"  # PILOT: Use focused mode (3-5 questions) instead of comprehensive
+      questions:
+        - "What challenges did you encounter during TDD?"
+        - "Were acceptance criteria clear and testable?"
+        - "Did you defer any DoD items? Why?"
+    max_duration_ms: 5000
+    enabled: true  # PILOT ENABLED (2025-11-12)
+    tags: [development, feedback, tdd, pilot]
+
+  # Example 2: Post-QA Retrospective
+  # Triggers after /qa command with deep validation
+  - id: post-qa-retrospective
+    name: "Post-QA Retrospective"
+    operation_type: command
+    operation_pattern: "qa"
+    trigger_status: [failure]  # PILOT: Failures only initially
+    trigger_conditions:
+      result_code: partial  # Only on partial success (with deferrals)
+      user_approval_required: true  # PILOT: Ask user before triggering
+    feedback_type: conversation
+    feedback_config:
+      mode: "focused"
+      questions:
+        - "Were QA failures expected or surprising?"
+        - "How can we prevent similar issues in future stories?"
+    max_duration_ms: 5000
+    enabled: true  # PILOT ENABLED (2025-11-12)
+    tags: [qa, feedback, quality, pilot]
+
+  # Example 3: Post-Release Monitoring
+  # Triggers after production releases
+  - id: post-release-monitoring
+    name: "Post-Release Monitoring"
+    operation_type: command
+    operation_pattern: "release"
+    trigger_status: [success]
+    trigger_conditions:
+      execution_order: last  # Only after final release in sequence
+    feedback_type: metrics
+    feedback_config:
+      metrics: [deployment_duration, test_pass_rate, rollback_needed]
+    max_duration_ms: 3000
+    enabled: true
+    tags: [release, monitoring, deployment]
+
+  # Post-Orchestrate Workflow Retrospective
+  # Triggers after complete /orchestrate workflow (dev → qa → release)
+  # STORY-026 Implementation
+  - id: post-orchestrate-retrospective
+    name: "Post-Orchestrate Workflow Retrospective"
+    operation_type: command
+    operation_pattern: "orchestrate"
+    trigger_status: [failure]  # DEFAULT: Failures-only mode (AC4)
+    trigger_conditions:
+      user_approval_required: false  # Automatic trigger on workflow failures
+      operation_duration_min_ms: 0   # No minimum duration (all workflows eligible)
+    feedback_type: conversation
+    feedback_config:
+      mode: "comprehensive"  # Full retrospective for end-to-end workflows
+      questions:
+        # Workflow-level questions (AC5: workflow experience focus)
+        - "Which phase was the biggest bottleneck (dev, QA, or release)?"
+        - "Did quality gates catch issues effectively (coverage, compliance, deployment)?"
+        - "Were there unexpected failures or blockers during the workflow?"
+        - "How could the end-to-end workflow be improved?"
+        # Checkpoint-specific (AC3: if checkpoint resume detected)
+        - "If you resumed from a checkpoint, was the context clear about what needed to be done?"
+        # Performance reflection
+        - "Was the total workflow duration acceptable for this story complexity?"
+    max_duration_ms: 5000
+    enabled: true
+    tags: [orchestrate, workflow, end-to-end, retrospective, story-026]
+    metadata:
+      story_id: "STORY-026"
+      acceptance_criteria: ["AC1", "AC2", "AC3", "AC4", "AC5", "AC6", "AC7"]
+      implementation_date: "2025-11-14"
+      notes: "Failures-only mode default (AC4). Change trigger_status to [success, failure] for all-statuses mode."
+
+  # Example 4: Sprint Retrospective
+  # Triggers after sprint planning completes
+  - id: sprint-retrospective
+    name: "Sprint Retrospective"
+    operation_type: command
+    operation_pattern: "create-sprint"
+    trigger_status: [success]
+    feedback_type: checklist
+    feedback_config:
+      checklist_items:
+        - "Sprint capacity realistic? (20-40 points recommended)"
+        - "Story dependencies identified?"
+        - "Technical debt addressed?"
+    max_duration_ms: 5000
+    enabled: true
+    tags: [sprint, planning, retrospective]
+
+  # Example 5: Subagent Performance Tracking
+  # Triggers after any subagent execution
+  - id: subagent-performance-tracker
+    name: "Subagent Performance Tracker"
+    operation_type: subagent
+    operation_pattern: ".*"  # All subagents
+    trigger_status: [success]
+    trigger_conditions:
+      operation_duration_min_ms: 60000  # Only if >1 minute
+      token_usage_percent: 75  # Only if high token usage
+    feedback_type: metrics
+    feedback_config:
+      metrics: [execution_time, token_usage, result_quality]
+    max_duration_ms: 2000
+    enabled: true
+    tags: [subagent, performance, monitoring]
+
+  # Example 6: Epic Completion Celebration
+  # Triggers when epic creation completes
+  - id: epic-completion-celebration
+    name: "Epic Completion Celebration"
+    operation_type: command
+    operation_pattern: "^create-epic$"
+    trigger_status: [success]
+    feedback_type: summary
+    feedback_config:
+      summary_sections: [features_created, complexity_score, timeline_estimate]
+    max_duration_ms: 3000
+    enabled: true
+    tags: [epic, planning, completion]
+
+  # ============================================================================
+  # AI Architectural Analysis Hooks
+  # ============================================================================
+
+  # AI Analysis: Post-Development Architectural Review
+  # Triggers after /dev command to capture Claude's framework recommendations
+  - id: post-dev-ai-analysis
+    name: "Post-Development AI Architectural Analysis"
+    operation_type: command
+    operation_pattern: "^dev$"
+    trigger_status: [success, partial, failure]
+    trigger_conditions:
+      user_approval_required: false  # Auto-trigger for AI analysis
+    feedback_type: ai_analysis  # NEW feedback type for AI-generated recommendations
+    feedback_config:
+      mode: "architectural"
+      analysis_prompts:
+        - what_worked_well
+        - areas_for_improvement
+        - recommendations
+        - patterns_observed
+        - anti_patterns_detected
+        - constraint_analysis
+      constraint_check: "claude-code-terminal"  # Ensure recommendations are feasible
+      storage_path: "devforgeai/feedback/ai-analysis/"
+    max_duration_ms: 30000  # Allow more time for thorough analysis
+    enabled: true
+    tags: [ai-analysis, architectural, dev, framework-improvement]
+    metadata:
+      description: "Captures Claude's architectural recommendations after development workflows"
+      implementation_date: "2025-12-28"
+      purpose: "Systematize manual post-workflow architectural advice prompts"
+
+  # AI Analysis: Post-QA Architectural Review
+  # Triggers after /qa command to capture Claude's quality insights
+  - id: post-qa-ai-analysis
+    name: "Post-QA AI Architectural Analysis"
+    operation_type: command
+    operation_pattern: "^qa$"
+    trigger_status: [success, partial, failure]
+    trigger_conditions:
+      user_approval_required: false  # Auto-trigger for AI analysis
+    feedback_type: ai_analysis
+    feedback_config:
+      mode: "architectural"
+      analysis_prompts:
+        - what_worked_well
+        - areas_for_improvement
+        - recommendations
+        - patterns_observed
+        - anti_patterns_detected
+        - constraint_analysis
+      constraint_check: "claude-code-terminal"
+      storage_path: "devforgeai/feedback/ai-analysis/"
+    max_duration_ms: 30000
+    enabled: true
+    tags: [ai-analysis, architectural, qa, framework-improvement]
+    metadata:
+      description: "Captures Claude's architectural recommendations after QA validation"
+      implementation_date: "2025-12-28"
+      purpose: "Systematize manual post-workflow architectural advice prompts"
+
+# ============================================================================
+# Post Tool Call Hooks (STORY-151)
+# ============================================================================
+
+post_tool_call:
+  hooks:
+    - name: post-subagent-recording
+      script: devforgeai/hooks/post-subagent-recording.sh
+      blocking: false
+      filter:
+        tool: Task
+        has_param: subagent_type
+      description: "Records subagent invocations to phase state file for audit trail"
+      tags: [phase-enforcement, audit, story-151]
+      metadata:
+        story_id: "STORY-151"
+        implementation_date: "2025-12-28"
+
+# ============================================================================
+# Configuration Guidelines
+# ============================================================================
+
+# Field Reference:
+#
+# id (required):
+#   - Unique hook identifier (lowercase, hyphens, max 50 chars)
+#   - Pattern: ^[a-z0-9-]+$
+#
+# name (required):
+#   - Human-readable hook name (max 100 chars)
+#
+# operation_type (required):
+#   - Values: command | skill | subagent
+#   - Determines what type of operations trigger this hook
+#
+# operation_pattern (required):
+#   - Pattern to match operation names
+#   - Exact: "dev" (matches only "dev")
+#   - Glob: "dev*" (matches "dev", "dev-extended", etc.)
+#   - Regex: "^(dev|qa)$" (matches "dev" or "qa" exactly)
+#
+# trigger_status (required):
+#   - Array of status values that trigger hook
+#   - Values: success | failure | partial | deferred | completed
+#
+# trigger_conditions (optional):
+#   - Additional conditions for hook invocation
+#   - operation_duration_min_ms: Minimum duration (ms)
+#   - operation_duration_max_ms: Maximum duration (ms)
+#   - result_code: Match specific result (success|partial|failure)
+#   - token_usage_percent: Token usage threshold (0-100)
+#   - execution_order: Hook execution order (first|last|nth)
+#   - user_approval_required: Whether hook needs user consent (boolean)
+#   - batch_mode: Whether to batch multiple hooks (boolean)
+#
+# feedback_type (required):
+#   - Values: conversation | summary | metrics | checklist
+#   - Determines the type of feedback session
+#
+# feedback_config (optional):
+#   - Configuration for feedback session
+#   - Structure depends on feedback_type
+#
+# max_duration_ms (optional):
+#   - Hook timeout in milliseconds
+#   - Range: 1000-30000 (default: 5000)
+#
+# enabled (optional):
+#   - Whether hook is active (default: true)
+#   - Set to false to disable without removing
+#
+# tags (optional):
+#   - Array of tags for organization (max 5)
+#   - Useful for filtering and management
+
+# ============================================================================
+# Activation Instructions
+# ============================================================================
+
+# 1. Enable hooks by setting `enabled: true` for desired hooks above
+# 2. Customize trigger_conditions to match your workflow patterns
+# 3. Adjust feedback_config questions/metrics for your team's needs
+# 4. Test hooks with: /dev STORY-XXX (watch for hook invocation logs)
+# 5. Monitor hooks with: /audit-hooks (shows invocation history)
+# 6. Reload config without restart (hot-reload automatic on file save)
+
+# ============================================================================
+# Hook Development Tips
+# ============================================================================
+
+# Start Simple:
+#   - Enable 1-2 hooks initially
+#   - Use "dev" and "qa" patterns (most common)
+#   - Keep trigger_conditions minimal at first
+#
+# Iterate Based on Feedback:
+#   - Adjust operation_duration_min_ms based on actual operation times
+#   - Refine questions in feedback_config based on team responses
+#   - Add new hooks as patterns emerge
+#
+# Monitor Performance:
+#   - Check hook invocation logs for timeouts
+#   - Ensure hooks complete within max_duration_ms
+#   - Watch for circular dependency warnings
+#
+# Security Considerations:
+#   - Hook context data doesn't include API keys or secrets
+#   - Hooks respect operation permissions (can't elevate)
+#   - Registry modification requires framework maintainer role
+
+# ============================================================================
+# Troubleshooting
+# ============================================================================
+
+# Hook Not Triggering:
+#   1. Check `enabled: true` for the hook
+#   2. Verify operation_pattern matches operation name
+#   3. Check trigger_status includes operation result
+#   4. Review trigger_conditions (may be too restrictive)
+#   5. Check logs: grep "hook" devforgeai/logs/*.log
+#
+# Hook Timeout:
+#   1. Increase max_duration_ms (range: 1000-30000ms)
+#   2. Simplify feedback_config (fewer questions)
+#   3. Check for slow dependencies in feedback session
+#
+# Circular Dependency Warning:
+#   1. Review hook chains (A triggers B triggers A)
+#   2. Adjust operation_pattern to break cycle
+#   3. System automatically halts at depth 3
+#
+# Configuration Errors:
+#   1. Validate YAML syntax: python3 -c "import yaml; yaml.safe_load(open('devforgeai/config/hooks.yaml'))"
+#   2. Check schema: /audit-hooks --validate
+#   3. Review error logs for specific field violations
+
+# ============================================================================
+# Additional Resources
+# ============================================================================
+
+# - Hook System Architecture: .claude/skills/devforgeai-feedback/HOOK-SYSTEM.md
+# - Hook API Reference: src/hook_system.py (docstrings)
+# - Example Usage: tests/test_hook_*.py (175 test cases)
+# - Performance Tuning: devforgeai/docs/HOOK-PERFORMANCE.md
+# - Migration Guide: devforgeai/docs/HOOK-MIGRATION.md
