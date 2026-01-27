@@ -14,6 +14,13 @@ categories = ["command-line-utilities", "development-tools"]
 # CLI Framework (per dependencies.md)
 clap = { version = "4.5", features = ["derive", "cargo"] }
 
+# tree-sitter Parsing (per dependencies.md)
+tree-sitter = "0.22"
+tree-sitter-python = "0.21"
+tree-sitter-typescript = "0.21"
+tree-sitter-rust = "0.21"
+tree-sitter-md = "0.2"
+
 # Serialization (per dependencies.md)
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -28,6 +35,10 @@ pretty_assertions = "1.4"
 tempfile = "3.10"
 assert_cmd = "2.0"
 predicates = "3.1"
+
+[[test]]
+name = "story_002"
+path = "tests/story_002_tests/mod.rs"
 
 [profile.release]
 lto = true
