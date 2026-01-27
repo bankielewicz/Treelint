@@ -29,6 +29,9 @@ serde_json = "1.0"
 thiserror = "1.0"
 anyhow = "1.0"
 
+# Database (per dependencies.md)
+rusqlite = { version = "0.31", features = ["bundled"] }
+
 [dev-dependencies]
 # Testing (per dependencies.md)
 pretty_assertions = "1.4"

@@ -6,6 +6,7 @@
 
 pub mod cli;
 pub mod error;
+pub mod index;
 pub mod output;
 pub mod parser;
 
