@@ -104,6 +104,48 @@ pub struct IndexStorage {
 }
 
 impl IndexStorage {
+    /// Create a new index database at the specified path.
+    ///
+    /// Creates the database file and initializes the schema.
+    ///
+    /// # Arguments
+    ///
+    /// * `db_path` - Path to the database file
+    ///
+    /// # Returns
+    ///
+    /// `Ok(IndexStorage)` if successful, `Err(StorageError)` otherwise.
+    pub fn create(db_path: &Path) -> Result<Self, StorageError> {
+        let conn = Connection::open(db_path).map_err(|e| {
+            StorageError::ConnectionFailed(format!("Failed to create database: {}", e))
+        })?;
+
+        schema::initialize_schema(&conn)?;
+
+        Ok(Self {
+            conn: RefCell::new(Some(conn)),
+        })
+    }
+
+    /// Open an existing index database.
+    ///
+    /// # Arguments
+    ///
+    /// * `db_path` - Path to the database file
+    ///
+    /// # Returns
+    ///
+    /// `Ok(IndexStorage)` if successful, `Err(StorageError)` otherwise.
+    pub fn open(db_path: &Path) -> Result<Self, StorageError> {
+        let conn = Connection::open(db_path).map_err(|e| {
+            StorageError::ConnectionFailed(format!("Failed to open database: {}", e))
+        })?;
+
+        Ok(Self {
+            conn: RefCell::new(Some(conn)),
+        })
+    }
+
     /// Create or open the index database.
     ///
     /// Creates the `.treelint` directory and `index.db` file if they don't exist.
@@ -786,6 +828,47 @@ impl IndexStorage {
             .collect();
 
         Ok(symbols)
+    }
+
+    /// Get all symbols from the index.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(Vec<Symbol>)` with all symbols in the index, sorted by file and line.
+    pub fn get_all_symbols(&self) -> Result<Vec<Symbol>, StorageError> {
+        let conn = self.conn()?;
+        let mut stmt = conn
+            .prepare(
+                r#"
+                SELECT name, type, visibility, file_path, line_start, line_end, signature, body, language
+                FROM symbols
+                ORDER BY file_path, line_start
+                "#,
+            )
+            .map_err(StorageError::from)?;
+
+        let symbols = stmt
+            .query_map([], row_to_symbol)
+            .map_err(StorageError::from)?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        Ok(symbols)
+    }
+
+    /// Get the count of indexed files.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(usize)` with the number of files tracked in the index.
+    pub fn get_file_count(&self) -> Result<usize, StorageError> {
+        let conn = self.conn()?;
+        let count: i64 = conn
+            .query_row("SELECT COUNT(DISTINCT file_path) FROM symbols", [], |row| {
+                row.get(0)
+            })
+            .map_err(StorageError::from)?;
+        Ok(count as usize)
     }
 
     /// Query symbols with combined filters.

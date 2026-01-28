@@ -32,6 +32,15 @@ anyhow = "1.0"
 # Database (per dependencies.md)
 rusqlite = { version = "0.31", features = ["bundled"] }
 
+# Regex (per dependencies.md)
+regex = "1.10"
+
+# File System (per dependencies.md)
+walkdir = "2.5"
+
+# Terminal UI (per dependencies.md)
+indicatif = "0.17"
+
 [dev-dependencies]
 # Testing (per dependencies.md)
 pretty_assertions = "1.4"
@@ -42,6 +51,10 @@ predicates = "3.1"
 [[test]]
 name = "story_002"
 path = "tests/story_002_tests/mod.rs"
+
+[[test]]
+name = "story_004"
+path = "tests/story_004.rs"
 
 [profile.release]
 lto = true
