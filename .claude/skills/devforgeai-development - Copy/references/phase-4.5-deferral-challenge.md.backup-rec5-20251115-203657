@@ -1,0 +1,793 @@
+# Phase 4.5: Deferral Challenge Checkpoint
+
+**Skill Reference:** devforgeai-development
+**Phase:** Phase 4.5 (After Integration Testing, Before Git Workflow)
+**Loaded:** After Phase 4 completes, if story has any deferred DoD items
+**Token Cost:** ~8,000-12,000 tokens (separate from main skill context)
+
+**Purpose:** Challenge ALL deferred Definition of Done items (pre-existing + new) to prevent autonomous deferrals and ensure user approval. This is the PRIMARY enforcement mechanism for RCA-006.
+
+**Trigger:** After Phase 4 (Integration Testing) completes successfully, before Phase 5 (Git Workflow)
+
+**Integration Pattern:** The devforgeai-development skill loads this reference via:
+```
+Read(file_path=".claude/skills/devforgeai-development/references/phase-4.5-deferral-challenge.md")
+```
+
+**Progressive Disclosure:** This reference is loaded ONLY if story has deferred DoD items (pre-existing or new), optimizing token usage.
+
+**RCA-006 Context:** This checkpoint addresses the root cause identified in RCA-006 where pre-justified deferrals in story templates bypassed validation, allowing autonomous deferrals without user approval.
+
+---
+
+## Skill Context Available
+
+When this reference is loaded by the skill, the following context is available:
+
+- **STORY_ID:** Extracted from conversation (e.g., STORY-008.1)
+- **STORY_FILE:** Path to story file (devforgeai/specs/Stories/STORY-008.1-feature.story.md)
+- **Story Content:** Already loaded in conversation via @ reference from /dev command
+- **Completion Status:** Phases 0-4 complete (Pre-Flight, Red, Green, Refactor, Integration)
+- **Variables from Phase 0:**
+  - `$WORKFLOW_MODE` (git_based or file_based)
+  - `$GIT_AVAILABLE` (true or false)
+  - `$TEST_COMMAND` (detected test framework command)
+
+**The skill has already completed:**
+- ✅ Phase 0: Pre-Flight Validation (Git, context files, tech stack)
+- ✅ Phase 1-4: TDD Cycle (Red → Green → Refactor → Integration)
+- ⏳ Phase 4.5: NOW - This checkpoint (Deferral Challenge)
+
+---
+
+## Checkpoint Workflow
+
+### Step 1: Detect All Deferred Items [MANDATORY]
+
+<detection_phase>
+  <method>Grep for deferred DoD items with justifications</method>
+  <pattern>Lines with "- [ ]" followed by deferral justifications</pattern>
+  <scope>ALL deferrals (pre-existing from template + new from TDD)</scope>
+</detection_phase>
+
+**Use Grep to find ALL deferred items:**
+
+```
+Grep(
+  pattern="- \[ \].*",
+  path="${STORY_FILE}",
+  output_mode="content",
+  -A=3
+)
+```
+
+**Parse results to identify deferrals:**
+
+```
+deferred_items = []
+
+FOR each match from Grep (DoD section only):
+  item_text = line starting with "- [ ]"
+  context_lines = next 3 lines (via -A=3)
+
+  # Check if item has deferral justification
+  has_deferral = false
+  justification_text = ""
+
+  FOR each context_line in context_lines:
+    IF context_line contains "Deferred to STORY-":
+      has_deferral = true
+      justification_text = context_line
+      break
+
+    ELSE IF context_line contains "Blocked by:":
+      has_deferral = true
+      justification_text = context_line
+      break
+
+    ELSE IF context_line contains "Out of scope: ADR-":
+      has_deferral = true
+      justification_text = context_line
+      break
+
+  IF has_deferral:
+    # Extract details
+    IF "Deferred to" in justification_text:
+      target_story = extract STORY-ID from justification_text
+      reason = extract text after ":"
+      deferral_type = "story"
+
+    ELSE IF "Blocked by:" in justification_text:
+      blocker = extract text after "Blocked by:"
+      deferral_type = "blocker"
+      target_story = null
+
+    ELSE IF "Out of scope:" in justification_text:
+      adr_reference = extract ADR-XXX
+      deferral_type = "scope_change"
+      target_story = null
+
+    deferred_items.append({
+      text: item_text,
+      justification: justification_text,
+      type: deferral_type,
+      target: target_story or blocker or adr_reference,
+      reason: reason
+    })
+```
+
+**Result:**
+- `deferred_items` = List of ALL deferred DoD items with their justifications
+- Includes BOTH pre-existing deferrals AND new deferrals from TDD cycle
+
+---
+
+### Step 2: Skip Checkpoint if No Deferrals
+
+**IF deferred_items is empty:**
+
+```
+Display: "✓ No deferred DoD items found - all items complete or in progress"
+Display: "Skipping Phase 4.5 (Deferral Challenge Checkpoint)"
+Display: "Proceeding to Phase 5 (Git Workflow)..."
+
+Exit this checkpoint
+Return control to skill for Phase 5
+```
+
+**OTHERWISE:** Continue to Step 3
+
+---
+
+### Step 3: Invoke deferral-validator Subagent [MANDATORY IF deferrals exist]
+
+<deferral_validation>
+  <purpose>Validate that blockers are still accurate and detect resolvable deferrals</purpose>
+  <subagent>deferral-validator</subagent>
+  <input>All deferred items with justifications</input>
+  <output>Categorization: can_resolve_now vs must_stay_deferred</output>
+</deferral_validation>
+
+**Display checkpoint notice:**
+
+```
+Display:
+"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Phase 4.5: DEFERRAL CHALLENGE CHECKPOINT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Found {len(deferred_items)} deferred Definition of Done items:
+
+{FOR each item in deferred_items}:
+  {index}. {item.text}
+     Justification: {item.justification}
+
+Validating blockers with deferral-validator subagent..."
+```
+
+**Invoke deferral-validator subagent:**
+
+```
+Task(
+  subagent_type="deferral-validator",
+  description="Validate deferred items for ${STORY_ID}",
+  prompt="""
+Validate the following deferred items:
+
+Story: ${STORY_ID}
+Deferred Items:
+{FOR each item in deferred_items}:
+  - {item.text}
+    {item.justification}
+
+For each deferral:
+1. If deferred to story:
+   - Check: git log --grep="{target_story}" --oneline
+   - Check: devforgeai/specs/Stories/{target_story}*.story.md status
+   - Determine if dependency story is complete
+
+2. If blocked by toolchain:
+   - Check: rustup toolchain list (Rust)
+   - Check: npm --version (Node.js)
+   - Check: dotnet --list-sdks (.NET)
+   - Determine if toolchain is available
+
+3. If blocked by artifacts:
+   - Check: ls -la {expected_artifact_paths}
+   - Determine if artifacts exist
+
+4. If out of scope (ADR):
+   - Check: devforgeai/specs/adrs/{adr_reference}.md exists
+   - Determine if ADR is documented
+
+Return JSON:
+{
+  "can_resolve_now": [
+    {
+      "item": "...",
+      "reason": "Blocker resolved: ...",
+      "command": "... (command to attempt resolution)"
+    }
+  ],
+  "must_stay_deferred": [
+    {
+      "item": "...",
+      "reason": "Blocker still valid: ...",
+      "blocker": "..."
+    }
+  ],
+  "violations": [
+    {
+      "item": "...",
+      "severity": "CRITICAL | HIGH | MEDIUM",
+      "issue": "Circular deferral | Missing target | Invalid justification"
+    }
+  ]
+}
+"""
+)
+```
+
+**Wait for subagent result...**
+
+---
+
+### Step 4: Handle Validation Results [MANDATORY IF deferrals exist]
+
+**Extract subagent result:**
+
+```
+validation_result = subagent response (parsed JSON)
+
+can_resolve_count = len(validation_result.can_resolve_now)
+must_defer_count = len(validation_result.must_stay_deferred)
+violation_count = len(validation_result.violations)
+```
+
+**Display validation summary:**
+
+```
+Display:
+"
+DEFERRAL VALIDATION RESULTS:
+
+✅ Resolvable Deferrals: {can_resolve_count}
+{FOR each item in can_resolve_now}:
+   - {item.item}
+     Reason: {item.reason}
+     Action: {item.command}
+
+⏸️  Valid Deferrals: {must_defer_count}
+{FOR each item in must_stay_deferred}:
+   - {item.item}
+     Blocker: {item.blocker}
+     Reason: {item.reason}
+
+{IF violation_count > 0}:
+❌ VIOLATIONS DETECTED: {violation_count}
+{FOR each violation in violations}:
+   - {violation.item}
+     Severity: {violation.severity}
+     Issue: {violation.issue}
+"
+```
+
+---
+
+### Step 5: Handle Violations [MANDATORY IF violations detected]
+
+**IF violations with severity CRITICAL:**
+
+```
+Display:
+"❌ CRITICAL DEFERRAL VIOLATIONS DETECTED
+
+The following violations MUST be resolved before proceeding:
+
+{FOR each violation in violations WHERE severity == "CRITICAL"}:
+  - {violation.item}
+    Issue: {violation.issue}
+
+Common critical violations:
+  • Circular deferral chains (STORY-A → STORY-B → STORY-A)
+  • Missing target stories/ADRs that don't exist
+  • Invalid justification format
+
+Actions Required:
+1. Fix circular deferral chains (redesign dependencies)
+2. Create missing target stories/ADRs
+3. Update deferral justifications to valid format
+
+WORKFLOW HALTED - Cannot proceed to git commit until resolved.
+
+Fix issues and re-run: /dev ${STORY_ID}"
+
+HALT execution
+Exit Phase 4.5
+Return error to skill
+```
+
+**IF violations with severity HIGH (non-critical):**
+
+```
+AskUserQuestion:
+  Question: "HIGH-severity deferral violations detected. How should we proceed?"
+  Header: "Deferral Violations"
+  Options:
+    - "Fix violations now (I'll update deferrals)"
+    - "Override and proceed (I'll provide justification)"
+  multiSelect: false
+
+IF user selects "Fix violations now":
+  Display: "Please fix violations manually:
+
+  {FOR each violation in violations WHERE severity == "HIGH"}:
+    - {violation.item}: {violation.issue}
+
+  After fixing, re-run: /dev ${STORY_ID}"
+
+  HALT execution
+  Exit Phase 4.5
+
+ELSE IF user selects "Override and proceed":
+  AskUserQuestion:
+    Question: "Provide justification for overriding HIGH-severity violations:"
+    Header: "Override Justification"
+    # User provides free-form text
+
+  override_justification = user_input
+
+  Log to story file:
+  "⚠️ HIGH-severity deferral violations overridden by user
+  Justification: {override_justification}
+  Timestamp: {current_timestamp}"
+
+  Proceed to Step 6
+```
+
+---
+
+### Step 6: Challenge ALL Deferrals with User Approval [MANDATORY IF deferrals exist]
+
+<user_approval_gate>
+  <policy>ZERO autonomous deferrals</policy>
+  <mechanism>AskUserQuestion for EVERY deferred item</mechanism>
+  <scope>ALL deferrals (resolvable + valid)</scope>
+  <enforcement>Git commit BLOCKED until all approved</enforcement>
+</user_approval_gate>
+
+**FOR EACH deferred item (both resolvable + valid):**
+
+```
+Display:
+"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ DEFERRAL #{index}/{total_deferrals}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Item: {item.text}
+Current Justification: {item.justification}
+
+{IF item in can_resolve_now}:
+⚠️  BLOCKER RESOLVED: {item.reason}
+Recommended Action: {item.command}
+
+{ELSE IF item in must_stay_deferred}:
+✓ BLOCKER VALID: {item.reason}
+Blocker: {item.blocker}
+"
+
+AskUserQuestion:
+  Question: "How should we handle this deferred item?"
+  Header: "Deferral Decision"
+  Options:
+    - "Attempt now (implement during this workflow)"
+    - "Keep deferred (blocker still valid)"
+    - "Update justification (blocker changed)"
+    - "Remove from DoD (no longer needed)"
+  multiSelect: false
+
+user_decision = response
+
+BASED ON user_decision:
+
+## Option 1: "Attempt now"
+```
+Display: "Returning to Phase 2 (TDD Green) to implement: {item.text}"
+
+# Remove deferral justification from story file
+Edit(
+  file_path="${STORY_FILE}",
+  old_string="- [ ] {item.text}
+    {item.justification}",
+  new_string="- [ ] {item.text}"
+)
+
+# Mark item for implementation
+items_to_implement.append(item.text)
+
+Display: "Deferral removed. Item will be implemented."
+
+# After ALL items processed, return to Phase 2
+IF index == total_deferrals:
+  IF items_to_implement is not empty:
+    Display:
+    "Returning to Phase 2 (TDD Green) to implement {len(items_to_implement)} items:
+    {list items_to_implement}
+
+    After implementation, Phase 4.5 will run again to validate remaining deferrals."
+
+    HALT Phase 4.5
+    Return to skill with instruction: "Resume Phase 2 for items: {items_to_implement}"
+```
+
+## Option 2: "Keep deferred"
+```
+# Add user approval timestamp to justification
+current_timestamp = $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+Edit(
+  file_path="${STORY_FILE}",
+  old_string="{item.justification}",
+  new_string="{item.justification}
+    User approved: {current_timestamp}"
+)
+
+Display: "✓ Deferral approved and timestamped: {item.text}"
+
+# Log approval
+approved_deferrals.append({
+  item: item.text,
+  justification: item.justification,
+  timestamp: current_timestamp
+})
+```
+
+## Option 3: "Update justification"
+```
+AskUserQuestion:
+  Question: "Provide updated justification for deferring '{item.text}'"
+  Header: "New Justification"
+  # User provides free-form text
+
+new_justification = user_input
+
+# Determine deferral type from new justification
+IF "Deferred to STORY-" in new_justification:
+  target_story = extract STORY-ID from new_justification
+
+  # Validate target story exists
+  Glob(pattern="devforgeai/specs/Stories/{target_story}*.story.md")
+
+  IF not found:
+    Display: "⚠️ WARNING: Story {target_story} doesn't exist yet. You must create it."
+
+ELSE IF "Blocked by:" in new_justification:
+  blocker = extract blocker description
+
+  # Log to technical debt register
+  Check if devforgeai/technical-debt-register.md exists
+  IF not exists:
+    Create from template
+
+  Append to register:
+  "- {item.text} (from ${STORY_ID}): {blocker} | Date: {current_date} | Status: Open"
+
+ELSE IF "Out of scope: ADR-" in new_justification:
+  adr_reference = extract ADR-XXX
+
+  # Validate ADR exists
+  Glob(pattern="devforgeai/specs/adrs/{adr_reference}*.md")
+
+  IF not found:
+    Display: "⚠️ WARNING: ADR {adr_reference} doesn't exist. You must create it to document scope change."
+
+# Update story file with new justification
+current_timestamp = $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+Edit(
+  file_path="${STORY_FILE}",
+  old_string="- [ ] {item.text}
+    {item.justification}",
+  new_string="- [ ] {item.text}
+    {new_justification}
+    User approved: {current_timestamp}"
+)
+
+Display: "✓ Justification updated and approved: {item.text}"
+```
+
+## Option 4: "Remove from DoD"
+```
+AskUserQuestion:
+  Question: "Why is '{item.text}' no longer needed? (This will be logged as scope change)"
+  Header: "Removal Reason"
+  # User provides free-form text
+
+removal_reason = user_input
+
+# Remove item from DoD entirely
+Edit(
+  file_path="${STORY_FILE}",
+  old_string="- [ ] {item.text}
+    {item.justification}",
+  new_string=""
+)
+
+# Log scope change
+Read(file_path="${STORY_FILE}")
+
+Look for "## Workflow History" section
+Append before Workflow History:
+"### Scope Changes
+
+- **Removed:** {item.text}
+  - **Reason:** {removal_reason}
+  - **Date:** {current_timestamp}
+  - **Approved by:** User
+
+"
+
+Display: "✓ Item removed from DoD: {item.text}"
+Display: "ℹ️  Consider creating ADR to document scope change if significant."
+
+removed_items.append({
+  item: item.text,
+  reason: removal_reason
+})
+```
+
+# END FOR EACH loop
+```
+
+---
+
+### Step 7: Final Summary and Proceed [MANDATORY]
+
+<checkpoint_completion>
+  <validation>All deferrals challenged and user-approved</validation>
+  <output>Summary of approvals, removals, and items to implement</output>
+  <next_phase>Phase 5 (Git Workflow) OR return to Phase 2 (if items to implement)</next_phase>
+</checkpoint_completion>
+
+**Display final summary:**
+
+```
+Display:
+"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PHASE 4.5 COMPLETE: Deferral Challenge Checkpoint
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Deferral Summary:
+- Total deferrals challenged: {total_deferrals}
+- Approved (kept deferred): {len(approved_deferrals)}
+- To implement (removed deferrals): {len(items_to_implement)}
+- Removed from DoD: {len(removed_items)}
+
+{IF approved_deferrals is not empty}:
+✓ Approved Deferrals:
+{FOR each deferral in approved_deferrals}:
+  - {deferral.item}
+    Justification: {deferral.justification}
+    Approved: {deferral.timestamp}
+
+{IF items_to_implement is not empty}:
+⏸️  Items to Implement:
+{FOR each item in items_to_implement}:
+  - {item}
+
+Returning to Phase 2 (TDD Green) to implement these items...
+
+{IF removed_items is not empty}:
+🗑️  Removed from DoD:
+{FOR each item in removed_items}:
+  - {item.item}
+    Reason: {item.reason}
+"
+
+# Determine next action
+IF items_to_implement is not empty:
+  Display: "Workflow will resume at Phase 2 (TDD Green) to implement {len(items_to_implement)} items."
+
+  HALT Phase 4.5
+  Return to skill with instruction:
+  "Resume Phase 2 (TDD Green) for items: {items_to_implement}
+   After implementation, re-run Phase 4 (Integration Testing), then Phase 4.5 to validate."
+
+ELSE:
+  Display: "All deferrals approved. Proceeding to Phase 5 (Git Workflow)..."
+
+  Exit Phase 4.5 successfully
+  Return control to skill for Phase 5
+```
+
+---
+
+## Success Criteria
+
+This checkpoint succeeds when:
+- [ ] All deferred items detected via Grep
+- [ ] deferral-validator subagent invoked and results processed
+- [ ] CRITICAL violations halted workflow (if any)
+- [ ] HIGH violations handled (fixed or overridden)
+- [ ] User interaction completed for EVERY deferred item
+- [ ] Story file updated with user approvals (timestamps)
+- [ ] Items to implement flagged for return to Phase 2
+- [ ] Removed items logged in Workflow History
+- [ ] All deferrals have user approval timestamp
+
+**On success (all deferrals approved):** Proceed to Phase 5 (Git Workflow)
+
+**On success (items to implement):** Return to Phase 2 (TDD Green), then re-run Phase 4.5
+
+**On failure (CRITICAL violations):** HALT workflow, user must fix and re-run /dev
+
+---
+
+## Integration Notes
+
+**Invoked by:** devforgeai-development skill (after Phase 4, before Phase 5)
+
+**Invokes:**
+- deferral-validator subagent (blocker validation)
+- requirements-analyst subagent (if creating follow-up stories)
+- architect-reviewer subagent (if creating ADRs for scope changes)
+
+**Updates:**
+- Story file (deferral approvals, justifications, scope changes)
+- Technical debt register (external blockers)
+
+**References:**
+- `.claude/agents/deferral-validator.md` (subagent for blocker validation)
+- `.claude/skills/devforgeai-development/references/dod-validation-checkpoint.md` (Phase 5 checkpoint, different purpose)
+- RCA-006 findings and recommendations
+
+**Token Efficiency:**
+- Uses native Grep tool (60% savings vs Bash grep)
+- Uses Edit tool for updates (75% savings vs sed)
+- Story file already loaded in context
+- Estimated: 8,000-12,000 tokens per execution
+
+**Character Count:** ~11,500 characters (well under 15K budget per task file)
+
+---
+
+## Error Handling
+
+### Story File Not Loaded
+```
+ERROR: Story file not available in conversation context
+
+Expected:
+- Story file loaded via @ reference in /dev command
+- OR story file path provided via conversation
+
+Actions:
+1. Verify /dev command includes: @devforgeai/specs/Stories/${STORY_ID}.story.md
+2. Check story file exists: Glob(pattern="devforgeai/specs/Stories/${STORY_ID}*.story.md")
+3. Re-run /dev command with proper story reference
+```
+
+### deferral-validator Subagent Fails
+```
+ERROR: deferral-validator subagent failed to complete
+
+Possible causes:
+- Git unavailable (cannot check dependency stories)
+- Toolchain detection commands failed
+- Artifact paths inaccessible
+
+Actions:
+1. Review subagent error output above
+2. Fix environment issues (install git, toolchains)
+3. Re-run /dev ${STORY_ID}
+
+Fallback: If subagent fails repeatedly, proceed with manual validation:
+- User reviews each deferral manually
+- User confirms blockers without automated checks
+```
+
+### Story File Update Fails
+```
+ERROR: Cannot update story file with approval timestamps
+
+Possible causes:
+- File not writable (check permissions)
+- old_string not unique (Edit tool requires unique match)
+- File modified during checkpoint execution
+
+Actions:
+1. Read story file again: Read(file_path="${STORY_FILE}")
+2. Verify item text matches exactly
+3. Use Edit with unique context if needed
+4. Re-run checkpoint
+```
+
+### User Cancels Approval Process
+```
+WARNING: User cancelled deferral approval process
+
+This checkpoint requires user approval for ALL deferred items.
+Cannot proceed to git commit without approvals.
+
+Actions:
+1. Re-run /dev ${STORY_ID} when ready to approve deferrals
+2. Or complete deferred items first, then re-run
+```
+
+---
+
+## Protocol Compliance
+
+**This checkpoint enforces:**
+- DevForgeAI zero technical debt policy
+- RCA-006 findings (prevent autonomous deferrals)
+- "Ask, Don't Assume" framework principle
+- "Attempt First, Defer Only If Blocked" pattern
+
+**User approval required for:**
+- Every pre-existing deferral (from story template)
+- Every new deferral (created during TDD cycle)
+- Every blocker justification update
+- Every scope change (DoD item removal)
+
+**No exceptions. No autonomous decisions. Zero tolerance for unapproved deferrals.**
+
+---
+
+## Difference from Phase 5 DoD Validation
+
+**Phase 4.5 (This Checkpoint):**
+- Purpose: Challenge ALL deferrals (pre-existing + new)
+- Scope: Only deferred items
+- Timing: After TDD cycle, before git commit
+- Validation: deferral-validator checks blocker validity
+- Action: User approves/updates/removes each deferral
+
+**Phase 5 DoD Validation (Existing):**
+- Purpose: Handle incomplete items WITHOUT justifications
+- Scope: Items developer couldn't complete during TDD
+- Timing: During git commit preparation
+- Validation: User provides justifications for new incomplete items
+- Action: User defers/completes/scopes out new incomplete items
+
+**Both checkpoints work together:**
+1. Phase 4.5 challenges existing deferrals
+2. Phase 5 handles new incomplete items (if any remain after Phase 4.5)
+
+**No duplication:** Phase 4.5 only processes items WITH justifications. Phase 5 only processes items WITHOUT justifications.
+
+---
+
+## Phase 4.5 Complete: Handoff to DoD Update Bridge
+
+**After all deferral validation completes, proceed to DoD format update workflow.**
+
+### Next Phase: DoD Update Workflow (Phase 4.5-5 Bridge)
+
+**Purpose:** Update Definition of Done items in correct format for git commit validation
+
+**CRITICAL:** Phase 5 git commit will FAIL if DoD items not formatted correctly. This bridge ensures format compliance.
+
+**Load and execute:**
+
+```
+Read(file_path=".claude/skills/devforgeai-development/references/dod-update-workflow.md")
+```
+
+**What the bridge does:**
+1. Marks completed DoD items [x] in Definition of Done section
+2. Adds items to Implementation Notes (FLAT LIST - no ### subsections)
+3. Validates format: `devforgeai validate-dod ${STORY_FILE}` (must pass)
+4. Updates Workflow Status checkboxes
+
+**Pre-Phase-5 Checklist:**
+- [ ] All deferred items have user approval (Phase 4.5 validation)
+- [ ] DoD items marked [x] in Definition of Done section
+- [ ] DoD items added to Implementation Notes (flat list, no ### subsection)
+- [ ] Workflow Status updated (Development [x], QA/Release [ ])
+- [ ] devforgeai validate-dod passes (exit code 0)
+- [ ] Ready for git commit (no format blockers)
+
+**If ANY checkbox unchecked:** DO NOT proceed to Phase 5 - complete bridge workflow first
+
+**See:** `dod-update-workflow.md` for detailed DoD formatting requirements and common errors

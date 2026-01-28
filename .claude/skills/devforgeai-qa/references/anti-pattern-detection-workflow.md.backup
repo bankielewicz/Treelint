@@ -1,0 +1,362 @@
+# Phase 2: Anti-Pattern Detection Workflow
+
+Execute 4-step anti-pattern scanning and security checks.
+
+---
+
+## Overview
+
+Detects forbidden patterns, architecture violations, and security issues using context file constraints and automated scanning tools.
+
+## References Used
+
+This workflow references:
+- **anti-pattern-detection.md** - Detection patterns, algorithms, severity assessment, false positive handling
+- **security-scanning.md** - OWASP Top 10 checks, SAST tools, vulnerability detection
+
+---
+
+## Step 1: Load Context Files
+
+```
+Read(file_path="devforgeai/specs/context/tech-stack.md")
+Read(file_path="devforgeai/specs/context/source-tree.md")
+Read(file_path="devforgeai/specs/context/architecture-constraints.md")
+Read(file_path="devforgeai/specs/context/anti-patterns.md")
+```
+
+**Purpose:** Extract constraints for validation
+- tech-stack.md → Locked technologies (detect substitution)
+- source-tree.md → File location rules (detect structure violations)
+- architecture-constraints.md → Layer boundaries (detect cross-layer dependencies)
+- anti-patterns.md → Forbidden patterns (detect god objects, magic numbers, etc.)
+
+---
+
+## Step 2: Detect Anti-Patterns by Category
+
+### Category 1: Library Substitution (CRITICAL)
+
+**Pattern:** Locked technology in tech-stack.md swapped with alternative
+
+```
+# Check for library substitution
+locked_orm = extract_from_tech_stack("ORM")
+
+IF locked_orm == "Dapper":
+    Grep(pattern="using EntityFramework|using Microsoft\\.EntityFrameworkCore",
+         path="src/",
+         output_mode="content")
+
+    IF found:
+        violations.append({
+            "type": "Library substitution",
+            "severity": "CRITICAL",
+            "message": "Entity Framework used instead of locked ORM (Dapper)",
+            "file": found.file,
+            "line": found.line,
+            "remediation": "Replace Entity Framework with Dapper per tech-stack.md"
+        })
+        BLOCK: QA approval CANNOT proceed
+```
+
+**Full detection algorithms:** `anti-pattern-detection.md` section "Category 1: Library Substitution"
+
+**Other library checks:**
+- State management (React: Redux vs Zustand)
+- HTTP client (axios vs fetch)
+- Testing framework (Jest vs Vitest)
+- Validation library (Zod vs Joi)
+
+---
+
+### Category 2: Structure Violations (HIGH)
+
+**Pattern:** Files in wrong locations per source-tree.md
+
+```
+# Validate file locations match source-tree.md rules
+source_tree_rules = parse_source_tree()
+
+FOR each source_file in implementation:
+    expected_location = determine_expected_location(source_file, source_tree_rules)
+    actual_location = source_file.directory
+
+    IF actual_location != expected_location:
+        violations.append({
+            "type": "Structure violation",
+            "severity": "HIGH",
+            "message": f"File in wrong location: {source_file}",
+            "expected": expected_location,
+            "actual": actual_location,
+            "remediation": f"Move to {expected_location} per source-tree.md"
+        })
+```
+
+**Detection algorithm:** `anti-pattern-detection.md` section "Category 2: Structure Violations"
+
+**Examples:**
+- Domain model in Infrastructure layer
+- API controller in Domain layer
+- Test file outside tests/ directory
+
+---
+
+### Category 3: Cross-Layer Dependencies (CRITICAL)
+
+**Pattern:** Layer violates dependency rules from architecture-constraints.md
+
+```
+# Domain layer purity check
+Grep(pattern="using.*Infrastructure|using.*Application",
+     path="src/Domain/",
+     output_mode="content")
+
+IF found:
+    violations.append({
+        "type": "Cross-layer dependency",
+        "severity": "CRITICAL",
+        "layer": "Domain",
+        "message": "Domain layer references Infrastructure/Application",
+        "file": found.file,
+        "line": found.line,
+        "imports": found.matches,
+        "remediation": "Remove infrastructure dependencies, use dependency inversion"
+    })
+    BLOCK: QA approval CANNOT proceed
+```
+
+**Full detection:** `anti-pattern-detection.md` section "Category 3: Cross-Layer Dependencies"
+
+**Other layer checks:**
+- Presentation → Domain (should go through Application)
+- Infrastructure → Application (violates dependency inversion)
+- Circular layer dependencies
+
+---
+
+### Category 4: Security Anti-Patterns (CRITICAL)
+
+#### SQL Injection Detection
+
+```
+Grep(pattern="ExecuteRawSql\\(.*\\+|string\\.Format.*SELECT|f\"SELECT.*\\{",
+     path="src/",
+     output_mode="content")
+
+IF found:
+    violations.append({
+        "type": "SQL Injection vulnerability",
+        "severity": "CRITICAL",
+        "message": "SQL query concatenation detected",
+        "file": found.file,
+        "line": found.line,
+        "code": found.match,
+        "remediation": "Use parameterized queries (SqlParameter, @param syntax)"
+    })
+    BLOCK: QA approval CANNOT proceed
+```
+
+#### Hardcoded Secrets Detection
+
+```
+Grep(pattern="password|apikey|api_key|secret|token\\s*=\\s*[\"'][^\"']+[\"']",
+     path="src/",
+     -i=true,
+     output_mode="content")
+
+IF found AND looks_like_hardcoded_value:
+    violations.append({
+        "type": "Hardcoded secret",
+        "severity": "CRITICAL",
+        "message": "Potential hardcoded secret detected",
+        "file": found.file,
+        "line": found.line,
+        "code": found.match,
+        "remediation": "Load from environment variables or secure vault"
+    })
+    BLOCK: QA approval CANNOT proceed
+```
+
+**Full security patterns:** `security-scanning.md`
+
+**Other security checks:**
+- XSS vulnerabilities (unescaped user input)
+- Path traversal (file path validation)
+- Weak cryptography (MD5, SHA1 usage)
+- Insecure random (Math.random for security)
+
+---
+
+### Category 5: Code Smells (MEDIUM/LOW)
+
+#### God Objects
+
+```
+# Detect classes with >500 lines or >20 methods
+FOR each class_file in source_files:
+    line_count = count_lines(class_file)
+    method_count = Grep(pattern="def |public |private ",
+                       path=class_file,
+                       output_mode="count")
+
+    IF line_count > 500:
+        violations.append(MEDIUM: f"God object: {class_file} ({line_count} lines)")
+
+    IF method_count > 20:
+        violations.append(MEDIUM: f"God object: {class_file} ({method_count} methods)")
+```
+
+#### High Complexity
+
+```
+# Already checked in Phase 4, but critical cases caught here
+FOR method WITH complexity > 15:
+    violations.append(MEDIUM: f"Very high complexity: {method} ({complexity})")
+```
+
+#### Magic Numbers
+
+```
+Grep(pattern="\\s[0-9]+\\s",
+     path="src/",
+     output_mode="content")
+
+# Filter out acceptable numbers (0, 1, 100, etc.)
+FOR match in magic_number_candidates:
+    IF not in allowed_list:
+        violations.append(LOW: f"Magic number: {match.file}:{match.line}")
+```
+
+#### Long Methods
+
+```
+FOR method WITH line_count > 100:
+    violations.append(MEDIUM: f"Long method: {method} ({line_count} lines)")
+```
+
+#### Code Duplication
+
+```
+# Detailed duplication check in Phase 4
+# Quick check here for critical duplication
+IF duplication_percentage > 10%:
+    violations.append(HIGH: f"Excessive code duplication: {duplication_percentage}%")
+```
+
+**Detection algorithms:** `anti-pattern-detection.md` section "Category 5: Code Smells"
+
+---
+
+## Step 3: Run Security Scanners
+
+Execute language-specific security scanning tools.
+
+### Python - Bandit
+
+```
+IF language == "Python":
+    Bash(command="bandit -r src/ -f json -o bandit-report.json")
+    Read(file_path="bandit-report.json")
+
+    # Parse results
+    FOR issue in bandit_results:
+        IF issue.severity == "HIGH":
+            violations.append(CRITICAL: f"Security: {issue.test_id} - {issue.issue_text}")
+        ELIF issue.severity == "MEDIUM":
+            violations.append(HIGH: f"Security: {issue.test_id} - {issue.issue_text}")
+```
+
+### Node.js - npm audit
+
+```
+IF language == "Node.js":
+    Bash(command="npm audit --json > audit-report.json")
+    Read(file_path="audit-report.json")
+
+    # Parse results
+    FOR vuln in audit_results.vulnerabilities:
+        IF vuln.severity == "critical" OR vuln.severity == "high":
+            violations.append(CRITICAL: f"Dependency vuln: {vuln.name} - {vuln.title}")
+```
+
+### .NET - Dependency Vulnerability Check
+
+```
+IF language == ".NET":
+    Bash(command="dotnet list package --vulnerable --include-transitive")
+
+    # Parse output
+    IF vulnerabilities found:
+        violations.append(CRITICAL: "Vulnerable NuGet packages detected")
+```
+
+### Rust - cargo audit
+
+```
+IF language == "Rust":
+    Bash(command="cargo audit")
+
+    IF vulnerabilities found:
+        violations.append(CRITICAL: "Vulnerable crate dependencies detected")
+```
+
+**Full security scanning:** `security-scanning.md` with tool configurations and interpretation
+
+---
+
+## Step 4: Categorize Violations by Severity
+
+```
+categorized_violations = {
+    "CRITICAL": [],
+    "HIGH": [],
+    "MEDIUM": [],
+    "LOW": []
+}
+
+FOR violation in all_violations:
+    categorized_violations[violation.severity].append(violation)
+
+# Sort by severity and file location
+categorized_violations = sort_violations(categorized_violations)
+```
+
+**Severity Assessment Rules:**
+
+**CRITICAL (blocks immediately):**
+- Security vulnerabilities (SQL injection, XSS, hardcoded secrets)
+- Architecture violations (cross-layer dependencies)
+- Library substitution (tech-stack.md violations)
+
+**HIGH (blocks QA approval):**
+- Spec violations (missing acceptance criteria implementation)
+- Structure violations (files in wrong locations)
+- Significant security issues (weak crypto, insecure dependencies)
+
+**MEDIUM (warnings, may defer):**
+- Maintainability issues (god objects, long methods)
+- Code smells (magic numbers, high coupling)
+- Documentation gaps
+
+**LOW (informational):**
+- Code quality suggestions (duplication <5%, minor formatting)
+- Test quality improvements (assertion ratios)
+
+**Severity assessment:** `anti-pattern-detection.md` section "Severity Assessment"
+
+---
+
+## Phase 2 Output
+
+**Results to carry forward:**
+- Anti-pattern violations by severity (CRITICAL/HIGH/MEDIUM/LOW)
+- Security scan results
+- False positive filtering applied
+- Remediation guidance per violation
+
+**Violations block QA approval if:**
+- Any CRITICAL violation detected
+- Any HIGH violation detected (unless approved exception documented)
+
+**Continue to Phase 3 (Spec Compliance Validation) after Phase 2 completes.**

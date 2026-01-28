@@ -1,0 +1,25 @@
+{
+  "project_type": "cli_tool",
+  "deployment_target": "local_installation",
+  "staging": {
+    "platform": "local",
+    "installation_path": ".claude/scripts/devforgeai_cli",
+    "deployment_strategy": "direct_install",
+    "validation": "command_availability_check"
+  },
+  "production": {
+    "platform": "local",
+    "installation_path": ".claude/scripts/devforgeai_cli",
+    "deployment_strategy": "direct_install",
+    "validation": "command_availability_check"
+  },
+  "smoke_tests": {
+    "enabled": true,
+    "test_commands": [
+      "devforgeai feedback --help",
+      "devforgeai feedback-config view",
+      "devforgeai feedback-search --help",
+      "devforgeai feedback-export-data --help"
+    ]
+  }
+}

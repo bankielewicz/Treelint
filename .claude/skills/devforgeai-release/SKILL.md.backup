@@ -1,0 +1,1734 @@
+---
+name: devforgeai-release
+description: Orchestrate production releases with deployment automation, smoke testing, rollback capabilities, and release documentation. Use after QA approval to deploy stories to production. Supports multiple deployment strategies (blue-green, canary, rolling, recreate) and environments (staging, production). Enforces release gates and maintains deployment audit trail.
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+  - AskUserQuestion
+  - Bash(git:*)
+  - Bash(kubectl:*)
+  - Bash(docker:*)
+  - Bash(terraform:*)
+  - Bash(ansible:*)
+  - Bash(az:*)
+  - Bash(aws:*)
+  - Bash(gcloud:*)
+  - Bash(helm:*)
+  - Bash(dotnet:*)
+  - Bash(npm:*)
+  - Bash(pytest:*)
+  - Skill
+---
+
+# DevForgeAI Release Skill
+
+Manage safe, repeatable production deployments with automated validation, smoke testing, and rollback procedures.
+
+## Purpose
+
+This skill orchestrates the **release workflow** from QA-approved code to production deployment. It is the **final stage** of the DevForgeAI spec-driven development framework.
+
+### Core Capabilities
+
+1. **Release Validation** - Verify QA approval and readiness gates before deployment
+2. **Deployment Orchestration** - Execute deployment across staging → production
+3. **Smoke Testing** - Validate deployment success with automated health checks
+4. **Rollback Management** - Handle failed deployments gracefully with quick recovery
+5. **Release Documentation** - Generate release notes, changelog, and audit trail
+6. **Multi-Strategy Support** - Blue-green, canary, rolling update, or recreate
+
+### Philosophy
+
+**"Deploy with Confidence, Fail Gracefully"**
+
+- **Confidence**: Automated checks at every stage prevent deployment of broken code
+- **Graceful Failure**: Detect issues early, rollback quickly, maintain service availability
+- **Repeatability**: Same process every time, no manual variance
+- **Auditability**: Complete deployment history for compliance and review
+
+**"Safety Over Speed"**
+
+- Never skip release gates (QA approval required)
+- Validate deployment health before declaring success
+- Prefer staged rollouts over big-bang deploys
+- Always have a rollback plan ready
+
+**"Environment Parity"**
+
+- Staging must mirror production (infrastructure, configuration)
+- Test deployment in staging first (dress rehearsal)
+- Validate infrastructure-as-code changes before production
+
+## When to Use This Skill
+
+**Use this skill when:**
+
+✅ **After QA Approval**: Story status = "QA Approved", all quality gates passed, ready for production
+
+✅ **Coordinated Sprint Releases**: Multiple stories released together at end-of-sprint
+
+✅ **Hotfix Deployments**: Critical bug fix bypasses normal sprint cycle (still requires QA approval)
+
+✅ **Rollback Operations**: Production issue detected, revert to previous stable version
+
+❌ **When NOT to use:**
+
+- Story not QA-approved (must pass QA validation first)
+- Missing deployment configuration or credentials
+- Production maintenance window not available
+- No rollback plan documented
+
+**Typical invocation:**
+```
+# Deploy story after QA approval
+Skill(command="devforgeai-release --story=STORY-001")
+
+# Coordinated multi-story release
+Skill(command="devforgeai-release --sprint=SPRINT-001")
+
+# Hotfix deployment
+Skill(command="devforgeai-release --story=HOTFIX-001 --expedited")
+
+# Rollback to previous version
+Skill(command="devforgeai-release --rollback --story=STORY-001")
+```
+
+---
+
+## Release Workflow (6 Phases)
+
+### Phase 1: Pre-Release Validation
+
+**Objective**: Verify release readiness before deployment begins
+
+#### Step 1: Load Story and QA Report
+
+```
+# Load story document
+Read(file_path="devforgeai/specs/Stories/{story_id}.story.md")
+
+# Parse frontmatter metadata
+story_metadata = extract_yaml_frontmatter(story):
+  - id
+  - title
+  - status (MUST be "QA Approved")
+  - epic
+  - sprint
+  - created date
+
+# Validate story structure
+IF story.status != "QA Approved":
+    BLOCK: "Story not ready for release"
+    Reason: "Story must be QA Approved before deployment"
+    Action: "Complete QA validation first"
+    Return: BLOCKED
+
+# Load QA report
+qa_report_path = f"devforgeai/qa/reports/{story_id}-qa-report.md"
+
+IF NOT file_exists(qa_report_path):
+    BLOCK: "QA report not found"
+    Reason: "Cannot verify quality approval without QA report"
+    Action: "Run devforgeai-qa --mode=deep --story={story_id}"
+    Return: BLOCKED
+
+Read(file_path=qa_report_path)
+
+# Parse QA status from report
+qa_status = extract_qa_status(qa_report)
+critical_violations = count_violations(qa_report, severity="CRITICAL")
+high_violations = count_violations(qa_report, severity="HIGH")
+coverage_percentage = extract_coverage(qa_report)
+```
+
+#### Step 2: Validate Release Gates
+
+**Gate 1: QA Approval Gate**
+
+```
+CHECKS:
+  ✓ Story status == "QA Approved"
+  ✓ QA report exists
+  ✓ QA report status == "PASS"
+  ✓ Zero CRITICAL violations
+  ✓ Zero HIGH violations (or documented exceptions)
+  ✓ Coverage meets thresholds (95%/85%/80%)
+
+IF any_check_fails:
+    BLOCK: "Release gate failed"
+    Report: "Cannot deploy - QA approval criteria not met"
+    Detail:
+        - Story status: {story.status}
+        - QA status: {qa_status}
+        - Critical violations: {critical_count}
+        - High violations: {high_count}
+        - Coverage: {coverage_percentage}%
+    Action: "Address QA issues before attempting release"
+    Return: BLOCKED
+```
+
+**Gate 2: Dependency Gate**
+
+```
+# Check for blocking dependencies
+Read(file_path="devforgeai/specs/Stories/{story_id}.story.md")
+dependencies = extract_dependencies(story)
+
+IF dependencies.exists:
+    blocking_dependencies = filter_blocking(dependencies)
+
+    FOR each dependency in blocking_dependencies:
+        # Check if dependency is released
+        Read(file_path=f"devforgeai/specs/Stories/{dependency.story_id}.story.md")
+        dependency_status = extract_status(dependency_story)
+
+        IF dependency_status != "Released":
+            AskUserQuestion:
+            Question: f"Story {story_id} depends on {dependency.story_id} which is not released. Proceed anyway?"
+            Header: "Dependency blocker"
+            Description: f"{dependency.story_id} status: {dependency_status}"
+            Options:
+              - label: "Block release - Deploy dependency first"
+                description: "Safe approach: ensure dependencies deployed in order"
+              - label: "Proceed with risk - Deploy without dependency"
+                description: "RISKY: May cause runtime errors if dependency code is required"
+              - label: "Deploy both together - Coordinated release"
+                description: "Deploy dependency and this story in same release"
+            multiSelect: false
+
+            IF answer == "Block release":
+                BLOCK: "Dependency not deployed"
+                Action: f"Deploy {dependency.story_id} first"
+                Return: BLOCKED
+
+            IF answer == "Deploy both together":
+                # Add dependency to release batch
+                stories_to_deploy.append(dependency.story_id)
+```
+
+**Gate 3: Environment Readiness Gate**
+
+```
+# Check environment health and availability
+
+# For Kubernetes deployments
+TRY:
+    Bash(command="kubectl get pods --namespace=staging")
+    Bash(command="kubectl get pods --namespace=production")
+    k8s_available = True
+EXCEPT:
+    k8s_available = False
+
+# For Azure App Service deployments
+TRY:
+    Bash(command=f"az webapp show --name {app_name}-staging --resource-group {rg}")
+    Bash(command=f"az webapp show --name {app_name}-production --resource-group {rg}")
+    azure_available = True
+EXCEPT:
+    azure_available = False
+
+# For AWS ECS deployments
+TRY:
+    Bash(command=f"aws ecs describe-services --cluster {cluster}-staging --services {service}")
+    Bash(command=f"aws ecs describe-services --cluster {cluster}-production --services {service}")
+    aws_available = True
+EXCEPT:
+    aws_available = False
+
+# Verify at least one deployment target is available
+IF NOT (k8s_available OR azure_available OR aws_available):
+    BLOCK: "No deployment environment available"
+    Report: "Cannot connect to staging or production environments"
+    Action: "Check credentials and environment configuration"
+    Return: BLOCKED
+
+# Check for conflicting deployments in progress
+Read(file_path="devforgeai/releases/active-deployments.json")
+IF file_exists AND has_active_deployments:
+    active_releases = parse_active_deployments()
+
+    FOR each active in active_releases:
+        IF active.environment == "production":
+            AskUserQuestion:
+            Question: f"Another release is in progress: {active.story_id}. How to proceed?"
+            Header: "Conflicting deployment"
+            Description: f"Started: {active.timestamp}, Status: {active.status}"
+            Options:
+              - label: "Wait - Let current deployment complete"
+                description: "Safe approach: avoid deployment conflicts"
+              - label: "Proceed anyway - Deploy in parallel"
+                description: "RISKY: May cause race conditions or conflicts"
+              - label: "Cancel other deployment - Take priority"
+                description: "Emergency hotfix override (requires approval)"
+            multiSelect: false
+
+            IF answer == "Wait":
+                BLOCK: "Conflicting deployment in progress"
+                Action: "Wait for current deployment to complete"
+                Return: BLOCKED
+
+            IF answer == "Cancel other deployment":
+                # Log override decision
+                # Proceed with current deployment
+                WARN: "Deployment conflict override - monitor closely"
+```
+
+#### Step 3: Determine Deployment Strategy
+
+```
+# Ask user to select deployment strategy
+
+AskUserQuestion:
+Question: f"Which deployment strategy should be used for {story_id}?"
+Header: "Deployment strategy"
+Description: "Strategy affects deployment speed, risk, and resource requirements"
+Options:
+  - label: "Blue-Green Deployment"
+    description: "Zero downtime, instant rollback. Requires 2x resources during deployment."
+  - label: "Rolling Update"
+    description: "Gradual replacement, minimal overhead. Rollback requires redeployment."
+  - label: "Canary Deployment"
+    description: "Progressive rollout (5%→25%→50%→100%). Early issue detection. Slower."
+  - label: "Recreate"
+    description: "Simple: stop old, deploy new. Brief downtime acceptable."
+multiSelect: false
+
+deployment_strategy = answer
+
+# Store strategy for execution in Phase 3
+strategy_config = {
+    "strategy": deployment_strategy,
+    "story_id": story_id,
+    "timestamp": current_timestamp()
+}
+
+# Read deployment strategy guide if needed
+IF deployment_strategy in ["Blue-Green", "Canary"]:
+    # Load detailed guide for complex strategies
+    Read(file_path=".claude/skills/devforgeai-release/references/deployment-strategies.md")
+    # Parse strategy-specific requirements
+```
+
+**Strategy Characteristics:**
+
+- **Blue-Green**: Two identical environments (blue=current, green=new). Deploy to green, test, switch traffic. Instant rollback (switch back to blue). Resource cost: 2x infrastructure during deployment.
+
+- **Rolling Update**: Gradually replace old instances with new (e.g., 25% at a time). No downtime. Rollback: Deploy previous version. Resource cost: Minimal overhead.
+
+- **Canary**: Deploy to small subset (5-10% traffic), monitor metrics, gradually increase. Rollback: Stop canary, keep baseline. Resource cost: Minimal overhead.
+
+- **Recreate**: Stop old version, deploy new version. Downtime during deployment. Rollback: Redeploy old version. Resource cost: None (simplest).
+
+#### Step 4: Pre-Deployment Report
+
+```
+Report: f"""
+════════════════════════════════════════════════
+Release Pre-Flight Check: {story_id}
+════════════════════════════════════════════════
+
+Story: {story.title}
+Status: {story.status} ✅
+QA Status: {qa_status} ✅
+Coverage: {coverage_percentage}%
+
+Deployment Strategy: {deployment_strategy}
+Target Environments:
+  - Staging: {staging_url}
+  - Production: {production_url}
+
+Pre-Flight Validation:
+  ✓ QA Approved
+  ✓ Zero critical/high violations
+  ✓ Dependencies resolved
+  ✓ Environments available
+  ✓ No conflicting deployments
+
+Ready to proceed with staging deployment.
+────────────────────────────────────────────────
+"""
+```
+
+---
+
+### Phase 2: Staging Deployment
+
+**Objective**: Deploy to staging environment and validate before production
+
+#### Step 1: Prepare Deployment Artifacts
+
+**Git Workflow:**
+
+```
+# Ensure on correct branch
+Bash(command="git status")
+current_branch = parse_current_branch(git_output)
+
+# Create release branch from main
+Bash(command="git checkout main && git pull origin main")
+Bash(command=f"git checkout -b release/{story_id}")
+
+# Generate version tag
+# Version format: v{major}.{minor}.{patch} or {story-id}-release
+version = generate_version_tag(story_id)  # e.g., v1.2.3 or STORY-001-release
+
+Bash(command=f"git tag -a {version} -m 'Release {story_id}: {story.title}'")
+Bash(command=f"git push origin {version}")
+
+Report: f"✓ Git: Created release branch and tagged {version}"
+```
+
+**Build Artifacts** (language-specific):
+
+```
+# Detect project type
+project_files = Glob(pattern="*.{csproj,sln,package.json,requirements.txt,pom.xml}")
+
+IF "*.csproj" OR "*.sln":
+    # .NET project
+    Bash(command="dotnet restore")
+    Bash(command="dotnet publish -c Release -o ./publish")
+    Report: "✓ Build: .NET application published to ./publish"
+
+ELIF "package.json":
+    # Node.js project
+    Bash(command="npm install")
+    Bash(command="npm run build")
+    Report: "✓ Build: Node.js application built"
+
+ELIF "requirements.txt":
+    # Python project
+    Bash(command="pip install -r requirements.txt")
+    Report: "✓ Build: Python dependencies installed"
+
+# Build Docker image if Dockerfile exists
+IF file_exists("Dockerfile"):
+    image_name = get_image_name_from_config()
+    registry = get_registry_from_config()
+
+    Bash(command=f"docker build -t {image_name}:{version} .")
+    Bash(command=f"docker tag {image_name}:{version} {registry}/{image_name}:{version}")
+    Bash(command=f"docker push {registry}/{image_name}:{version}")
+
+    Report: f"✓ Docker: Image pushed to {registry}/{image_name}:{version}"
+```
+
+#### Step 2: Deploy to Staging
+
+**Deployment methods based on infrastructure:**
+
+**Kubernetes (Helm/Kubectl):**
+
+```
+IF deployment_target == "kubernetes":
+    # Update Helm values or deployment manifest
+    IF helm_chart_exists:
+        Bash(command=f"helm upgrade {release_name} ./chart --set image.tag={version} --namespace=staging --install")
+        Bash(command=f"kubectl rollout status deployment/{deployment_name} --namespace=staging --timeout=5m")
+    ELSE:
+        # Use kubectl directly
+        Bash(command=f"kubectl set image deployment/{deployment_name} {container_name}={image}:{version} --namespace=staging")
+        Bash(command=f"kubectl rollout status deployment/{deployment_name} --namespace=staging --timeout=5m")
+
+    Report: "✓ Kubernetes: Staging deployment complete"
+```
+
+**Azure App Service:**
+
+```
+IF deployment_target == "azure":
+    # Deploy via Azure CLI
+    Bash(command=f"az webapp deployment source config-zip --resource-group {rg} --name {app_name}-staging --src ./publish.zip")
+
+    # Wait for deployment
+    Bash(command=f"az webapp show --name {app_name}-staging --resource-group {rg} --query state -o tsv")
+
+    Report: "✓ Azure: Staging deployment complete"
+```
+
+**AWS ECS:**
+
+```
+IF deployment_target == "aws_ecs":
+    # Register new task definition
+    Bash(command=f"aws ecs register-task-definition --cli-input-json file://task-def.json")
+
+    # Update service
+    Bash(command=f"aws ecs update-service --cluster {cluster}-staging --service {service} --task-definition {task_def}:{version}")
+
+    # Wait for stability
+    Bash(command=f"aws ecs wait services-stable --cluster {cluster}-staging --services {service}")
+
+    Report: "✓ AWS ECS: Staging deployment complete"
+```
+
+**AWS Lambda (Serverless):**
+
+```
+IF deployment_target == "aws_lambda":
+    # Deploy function
+    Bash(command=f"aws lambda update-function-code --function-name {function_name}-staging --zip-file fileb://function.zip")
+
+    # Update alias
+    Bash(command=f"aws lambda update-alias --function-name {function_name} --name staging --function-version $LATEST")
+
+    Report: "✓ AWS Lambda: Staging deployment complete"
+```
+
+**Traditional VPS (Ansible/Terraform):**
+
+```
+IF deployment_target == "vps":
+    IF ansible_playbook_exists:
+        Bash(command="ansible-playbook deploy-staging.yml -i inventory/staging")
+    ELIF terraform_config_exists:
+        Bash(command="terraform apply -target=module.staging -auto-approve")
+
+    Report: "✓ VPS: Staging deployment complete"
+```
+
+#### Step 3: Smoke Test Staging Deployment
+
+**Wait for application startup:**
+
+```
+# Allow time for application to initialize
+Report: "Waiting 30 seconds for application startup..."
+sleep(30)
+```
+
+**Health Endpoint Check:**
+
+```
+# Get staging URL from configuration
+staging_url = get_staging_url_from_config()
+
+# Execute health check script
+TRY:
+    Bash(command=f"python {SKILL_DIR}/scripts/health_check.py --url {staging_url}/health --retries 5 --timeout 10")
+    health_check_passed = True
+EXCEPT:
+    health_check_passed = False
+    health_error = parse_health_check_error()
+
+IF NOT health_check_passed:
+    CRITICAL: "Staging health check failed"
+    Report: f"Health endpoint {staging_url}/health not responding"
+    Detail: health_error
+    Action: "Rollback staging deployment"
+
+    # Rollback staging (revert to previous version)
+    execute_staging_rollback(deployment_target, previous_version)
+
+    BLOCK: "Cannot proceed to production - staging deployment failed health check"
+    Return: BLOCKED
+```
+
+**Functional Smoke Tests:**
+
+```
+# Load smoke testing guide
+Read(file_path=".claude/skills/devforgeai-release/references/smoke-testing-guide.md")
+
+# Run automated smoke tests
+smoke_test_suite = [
+    "test_user_authentication",
+    "test_api_endpoints_respond",
+    "test_database_connectivity",
+    "test_external_integrations"
+]
+
+Report: "Running smoke tests against staging environment..."
+
+FOR each test in smoke_test_suite:
+    TRY:
+        Bash(command=f"pytest tests/smoke/{test}.py --environment=staging --verbose")
+        test_results[test] = "PASS"
+    EXCEPT:
+        test_results[test] = "FAIL"
+        failed_tests.append(test)
+
+IF failed_tests.exists:
+    CRITICAL: "Staging smoke tests failed"
+    Report: f"Failed tests: {', '.join(failed_tests)}"
+
+    # Show detailed test output
+    FOR each failed_test in failed_tests:
+        Report: f"\n{failed_test} Output:"
+        Read(file_path=f"test-results/{failed_test}.log")
+
+    Action: "Rollback staging deployment"
+    execute_staging_rollback(deployment_target, previous_version)
+
+    BLOCK: "Cannot proceed to production - staging smoke tests failed"
+    Return: BLOCKED
+
+Report: "✓ Smoke Tests: All tests passed in staging"
+```
+
+**Manual Validation (Optional):**
+
+```
+AskUserQuestion:
+Question: "Staging deployment complete. Smoke tests passed. Perform manual validation before production?"
+Header: "Manual testing"
+Description: f"Staging URL: {staging_url}"
+Options:
+  - label: "Manual testing complete - Proceed to production"
+    description: "Manual validation successful, ready for production deployment"
+  - label: "Issues found - Rollback staging"
+    description: "Discovered issues during manual testing"
+  - label: "Skip manual testing - Proceed to production"
+    description: "Trust automated tests, deploy to production immediately"
+multiSelect: false
+
+IF answer == "Issues found":
+    Report: "Manual validation failed - rolling back staging"
+    execute_staging_rollback(deployment_target, previous_version)
+    BLOCK: "Manual validation failed"
+    Return: BLOCKED
+
+IF answer == "Manual testing complete" OR answer == "Skip manual testing":
+    Report: "✓ Staging Validation: Complete and successful"
+    # Proceed to production deployment
+```
+
+---
+
+### Phase 3: Production Deployment
+
+**Objective**: Deploy to production using selected strategy
+
+#### Step 1: Final Pre-Production Checks
+
+**Production Readiness Confirmation:**
+
+```
+AskUserQuestion:
+Question: f"Ready to deploy {story_id} to PRODUCTION using {deployment_strategy} strategy?"
+Header: "Production deployment"
+Description: f"This will deploy version {version} to production environment"
+Options:
+  - label: "Yes - Proceed with production deployment"
+    description: "Staging validated, ready for production"
+  - label: "No - Abort deployment (need more testing)"
+    description: "Keep staging deployed for additional testing"
+  - label: "Wait - Not ready yet (maintenance window pending)"
+    description: "Staging ready, wait for approved deployment window"
+multiSelect: false
+
+IF answer == "No":
+    Report: "Production deployment aborted by user"
+    Action: "Staging remains deployed for testing"
+    Return: ABORTED
+
+IF answer == "Wait":
+    Report: "Production deployment postponed"
+    Action: "Staging deployed and validated, awaiting deployment window"
+    Return: POSTPONED
+```
+
+**Backup Current Production State:**
+
+```
+# Capture current production version for rollback
+current_production_version = get_current_production_version(deployment_target)
+
+Report: f"Current production version: {current_production_version}"
+Report: "Creating rollback checkpoint..."
+
+# Database backup if needed
+IF requires_database_migration(story_id):
+    AskUserQuestion:
+    Question: "This deployment includes database migrations. Create database backup?"
+    Header: "Database backup"
+    Description: "Backup allows safe rollback if issues occur"
+    Options:
+      - label: "Yes - Create backup (recommended)"
+        description: "Safe: allows full rollback including database"
+      - label: "No - Skip backup (forward-only migration)"
+        description: "RISKY: Cannot rollback database changes"
+    multiSelect: false
+
+    IF answer == "Yes":
+        TRY:
+            Bash(command="./scripts/backup_database.sh production")
+            backup_id = parse_backup_id(backup_output)
+            Report: f"✓ Database backup created: {backup_id}"
+        EXCEPT:
+            CRITICAL: "Database backup failed"
+            BLOCK: "Cannot proceed without backup"
+            Return: BLOCKED
+```
+
+#### Step 2: Execute Deployment Strategy
+
+**Blue-Green Deployment:**
+
+```
+IF deployment_strategy == "Blue-Green":
+    Report: "Executing Blue-Green deployment strategy..."
+
+    # Step 1: Deploy to green environment (inactive)
+    Bash(command=f"helm upgrade {release_name}-green ./chart --set image.tag={version} --namespace=production-green --install")
+    Bash(command=f"kubectl rollout status deployment/{deployment_name} --namespace=production-green --timeout=5m")
+
+    Report: "✓ Green environment deployed"
+
+    # Step 2: Run smoke tests against green
+    Report: "Running smoke tests against green environment..."
+
+    green_url = get_green_environment_url()
+
+    TRY:
+        Bash(command=f"python {SKILL_DIR}/scripts/smoke_test_runner.py --environment production-green --url {green_url}")
+        smoke_tests_passed = True
+    EXCEPT:
+        smoke_tests_passed = False
+
+    IF NOT smoke_tests_passed:
+        CRITICAL: "Smoke tests failed in production-green environment"
+        Report: "Rolling back: Deleting green deployment"
+        Bash(command=f"helm uninstall {release_name}-green --namespace=production-green")
+        BLOCK: "Blue-Green deployment failed smoke tests"
+        Return: BLOCKED
+
+    # Step 3: Switch traffic from blue to green
+    Report: "Switching traffic from blue to green..."
+    Bash(command=f"kubectl patch service/{service_name} -n production -p '{{\"spec\":{{\"selector\":{{\"version\":\"green\"}}}}}}'")
+
+    Report: "✓ Traffic switched to green environment"
+
+    # Step 4: Monitor production metrics for 5 minutes
+    Report: "Monitoring production metrics (5 minutes)..."
+
+    TRY:
+        Bash(command=f"python {SKILL_DIR}/scripts/metrics_collector.py --environment production --duration 300 --baseline-compare")
+        metrics_healthy = parse_metrics_result(metrics_output)
+    EXCEPT:
+        metrics_healthy = False
+
+    IF NOT metrics_healthy:
+        CRITICAL: "Production metrics degraded after switching to green"
+        Report: "Rolling back: Switching traffic back to blue"
+        Bash(command=f"kubectl patch service/{service_name} -n production -p '{{\"spec\":{{\"selector\":{{\"version\":\"blue\"}}}}}}'")
+        BLOCK: "Blue-Green deployment failed metrics validation"
+        Return: BLOCKED
+
+    Report: "✓ Blue-Green deployment successful"
+    Report: "Blue environment kept as rollback option (will be scaled down after monitoring period)"
+```
+
+**Rolling Update Deployment:**
+
+```
+IF deployment_strategy == "Rolling Update":
+    Report: "Executing Rolling Update deployment strategy..."
+
+    # Update deployment with rolling update strategy
+    Bash(command=f"kubectl set image deployment/{deployment_name} {container}={image}:{version} --namespace=production")
+
+    # Monitor rollout progress
+    Report: "Monitoring rolling update progress..."
+    Bash(command=f"kubectl rollout status deployment/{deployment_name} --namespace=production --timeout=10m")
+
+    # Kubernetes automatically:
+    # - Updates 25% of pods at a time (default maxSurge/maxUnavailable)
+    # - Monitors health checks
+    # - Pauses if failures detected
+
+    rollout_status = parse_kubectl_output(rollout_output)
+
+    IF rollout_status == "success":
+        Report: "✓ Rolling update completed successfully"
+    ELSE:
+        CRITICAL: "Rolling update failed"
+        Report: "Rolling back to previous version"
+        Bash(command=f"kubectl rollout undo deployment/{deployment_name} --namespace=production")
+        BLOCK: "Rolling update failed"
+        Return: BLOCKED
+```
+
+**Canary Deployment:**
+
+```
+IF deployment_strategy == "Canary":
+    Report: "Executing Canary deployment strategy..."
+
+    # Step 1: Deploy canary version (5% traffic)
+    Report: "Deploying canary (5% traffic)..."
+    Bash(command=f"helm upgrade {release_name}-canary ./chart --set image.tag={version} --set replicaCount=1 --namespace=production --install")
+
+    # Configure traffic split (95% baseline, 5% canary)
+    Bash(command="kubectl apply -f canary-traffic-split-5.yaml")
+
+    # Step 2: Monitor canary metrics for 10 minutes
+    Report: "Monitoring canary metrics (10 minutes, 5% traffic)..."
+    canary_metrics_5 = monitor_canary_metrics(duration=600, canary_percentage=5)
+
+    IF canary_metrics_5.error_rate > baseline_error_rate * 1.1:
+        CRITICAL: "Canary error rate too high at 5%"
+        Report: f"Canary error rate: {canary_metrics_5.error_rate}, Baseline: {baseline_error_rate}"
+        execute_canary_rollback()
+        BLOCK: "Canary deployment failed at 5%"
+        Return: BLOCKED
+
+    # Step 3: Increase to 25% traffic
+    Report: "Canary healthy at 5%, increasing to 25% traffic..."
+    Bash(command="kubectl apply -f canary-traffic-split-25.yaml")
+
+    canary_metrics_25 = monitor_canary_metrics(duration=600, canary_percentage=25)
+
+    IF NOT canary_metrics_25.healthy:
+        CRITICAL: "Canary metrics degraded at 25%"
+        execute_canary_rollback()
+        BLOCK: "Canary deployment failed at 25%"
+        Return: BLOCKED
+
+    # Step 4: Increase to 50% traffic
+    Report: "Canary healthy at 25%, increasing to 50% traffic..."
+    Bash(command="kubectl apply -f canary-traffic-split-50.yaml")
+
+    canary_metrics_50 = monitor_canary_metrics(duration=600, canary_percentage=50)
+
+    IF NOT canary_metrics_50.healthy:
+        CRITICAL: "Canary metrics degraded at 50%"
+        execute_canary_rollback()
+        BLOCK: "Canary deployment failed at 50%"
+        Return: BLOCKED
+
+    # Step 5: Complete rollout to 100%
+    Report: "Canary healthy at 50%, completing rollout to 100%..."
+    Bash(command=f"kubectl scale deployment/{deployment_name} --replicas=0 --namespace=production")  # Scale down baseline
+    Bash(command=f"kubectl scale deployment/{deployment_name}-canary --replicas={target_replicas} --namespace=production")
+
+    Report: "✓ Canary rollout successful - 100% traffic on new version"
+```
+
+**Recreate Deployment:**
+
+```
+IF deployment_strategy == "Recreate":
+    Report: "Executing Recreate deployment strategy..."
+    WARN: "This strategy will cause brief downtime during deployment"
+
+    # Step 1: Scale down current version
+    Report: "Scaling down current version..."
+    Bash(command=f"kubectl scale deployment/{deployment_name} --replicas=0 --namespace=production")
+
+    # Wait for pods to terminate
+    sleep(30)
+
+    # Step 2: Deploy new version
+    Report: "Deploying new version..."
+    Bash(command=f"kubectl set image deployment/{deployment_name} {container}={image}:{version} --namespace=production")
+    Bash(command=f"kubectl scale deployment/{deployment_name} --replicas={target_replicas} --namespace=production")
+
+    # Step 3: Wait for new pods to be ready
+    Bash(command=f"kubectl rollout status deployment/{deployment_name} --namespace=production --timeout=5m")
+
+    rollout_status = parse_kubectl_output(rollout_output)
+
+    IF rollout_status == "success":
+        Report: "✓ Recreate deployment successful"
+    ELSE:
+        CRITICAL: "Recreate deployment failed"
+        Report: "Rolling back to previous version"
+        Bash(command=f"kubectl set image deployment/{deployment_name} {container}={image}:{current_production_version} --namespace=production")
+        Bash(command=f"kubectl scale deployment/{deployment_name} --replicas={target_replicas}")
+        BLOCK: "Recreate deployment failed"
+        Return: BLOCKED
+```
+
+---
+
+### Phase 4: Post-Deployment Validation
+
+**Objective**: Verify production deployment health and stability
+
+#### Step 1: Production Smoke Tests
+
+```
+# Wait for application to stabilize
+Report: "Waiting 60 seconds for production application to stabilize..."
+sleep(60)
+
+# Get production URL
+production_url = get_production_url_from_config()
+
+# Health check
+Report: "Running production health check..."
+TRY:
+    Bash(command=f"python {SKILL_DIR}/scripts/health_check.py --url {production_url}/health --retries 5")
+    health_check_passed = True
+EXCEPT:
+    health_check_passed = False
+
+IF NOT health_check_passed:
+    CRITICAL: "Production health check failed"
+    Report: "Initiating emergency rollback..."
+    execute_production_rollback(deployment_target, deployment_strategy, current_production_version)
+    BLOCK: "Production deployment failed health check"
+    Return: BLOCKED
+
+# Run smoke tests
+Report: "Running smoke tests against production..."
+TRY:
+    Bash(command=f"python {SKILL_DIR}/scripts/smoke_test_runner.py --environment production --url {production_url}")
+    smoke_tests_passed = True
+EXCEPT:
+    smoke_tests_passed = False
+    failed_tests = parse_failed_tests()
+
+IF NOT smoke_tests_passed:
+    CRITICAL: "Production smoke tests failed"
+    Report: f"Failed tests: {', '.join(failed_tests)}"
+    Report: "Initiating emergency rollback..."
+    execute_production_rollback(deployment_target, deployment_strategy, current_production_version)
+    BLOCK: "Production deployment failed smoke tests"
+    Return: BLOCKED
+
+Report: "✓ Production smoke tests: All passed"
+```
+
+#### Step 2: Metrics Monitoring
+
+```
+# Monitor key production metrics for 15 minutes
+Report: "Monitoring production metrics (15 minutes)..."
+
+TRY:
+    Bash(command=f"python {SKILL_DIR}/scripts/metrics_collector.py --environment production --duration 900 --metrics error_rate,response_time_p95,cpu,memory --baseline-compare")
+    metrics_report = parse_metrics_output()
+EXCEPT:
+    WARN: "Metrics collection failed - manual monitoring required"
+    metrics_report = None
+
+IF metrics_report:
+    # Compare against baseline
+    baseline = load_baseline_metrics()
+
+    CHECKS:
+      ✓ error_rate < baseline_error_rate * 1.2  # Within 20% of baseline
+      ✓ response_time_p95 < baseline_p95 * 1.3  # Within 30% of baseline
+      ✓ cpu_utilization < 80%  # Not overloaded
+      ✓ memory_usage < 85%  # Not memory-starved
+
+    violations = []
+
+    IF metrics_report.error_rate > baseline.error_rate * 1.2:
+        violations.append(f"Error rate increased: {metrics_report.error_rate} vs baseline {baseline.error_rate}")
+
+    IF metrics_report.response_time_p95 > baseline.p95 * 1.3:
+        violations.append(f"Response time degraded: {metrics_report.response_time_p95}ms vs baseline {baseline.p95}ms")
+
+    IF metrics_report.cpu > 80:
+        violations.append(f"CPU utilization high: {metrics_report.cpu}%")
+
+    IF metrics_report.memory > 85:
+        violations.append(f"Memory usage high: {metrics_report.memory}%")
+
+    IF violations.exists:
+        WARN: "Production metrics show degradation"
+        Report: f"Metrics violations:\n" + "\n".join(violations)
+
+        AskUserQuestion:
+        Question: "Production metrics show degradation. How to proceed?"
+        Header: "Metrics warning"
+        Description: "Deployment successful but metrics outside normal thresholds"
+        Options:
+          - label: "Continue monitoring - Acceptable degradation"
+            description: "Metrics within acceptable range, continue monitoring"
+          - label: "Rollback immediately - Unacceptable performance"
+            description: "Performance degradation too severe"
+          - label: "Investigate before deciding - Gather more data"
+            description: "Monitor for additional 15 minutes before decision"
+        multiSelect: false
+
+        IF answer == "Rollback immediately":
+            Report: "User requested rollback due to metrics degradation"
+            execute_production_rollback(deployment_target, deployment_strategy, current_production_version)
+            BLOCK: "Production deployment rolled back due to metrics"
+            Return: ROLLED_BACK
+
+        IF answer == "Investigate before deciding":
+            Report: "Extended monitoring period (15 minutes)..."
+            # Monitor for additional period
+            extended_metrics = monitor_extended(duration=900)
+            # Re-evaluate based on extended metrics
+
+    ELSE:
+        Report: "✓ Production metrics: Within acceptable thresholds"
+```
+
+#### Step 3: User Acceptance Validation (Optional)
+
+```
+# For high-risk deployments, allow manual UAT
+AskUserQuestion:
+Question: "Production deployment complete. Smoke tests and metrics passed. Perform user acceptance testing?"
+Header: "User acceptance testing"
+Description: "Final validation with real users before declaring release successful"
+Options:
+  - label: "UAT complete - Release successful"
+    description: "Manual validation successful, declare release complete"
+  - label: "Issues found - Rollback"
+    description: "Discovered issues during UAT"
+  - label: "Skip UAT - Declare success"
+    description: "Trust automated validation, declare release successful"
+multiSelect: false
+
+IF answer == "Issues found":
+    Report: "UAT failed - initiating rollback"
+    execute_production_rollback(deployment_target, deployment_strategy, current_production_version)
+    BLOCK: "Production deployment rolled back due to UAT failures"
+    Return: ROLLED_BACK
+
+IF answer == "UAT complete" OR answer == "Skip UAT":
+    Report: "✓ Production validation: Complete and successful"
+```
+
+---
+
+### Phase 5: Release Documentation
+
+**Objective**: Document release for audit trail and communication
+
+#### Step 1: Generate Release Notes
+
+```
+# Load release notes template
+Read(file_path=".claude/skills/devforgeai-release/assets/templates/release-notes-template.md")
+
+# Populate template with story data
+release_notes = populate_template(
+    template=release_notes_template,
+    data={
+        "version": version,
+        "date": current_date(),
+        "story_id": story_id,
+        "story_title": story.title,
+        "changes": extract_changes_from_story(story),
+        "acceptance_criteria": extract_acceptance_criteria(story),
+        "qa_status": "PASS",
+        "coverage": coverage_percentage,
+        "deployment_strategy": deployment_strategy,
+        "deployer": get_current_user(),
+        "deployed_at": current_timestamp(),
+        "staging_timestamp": staging_deploy_timestamp,
+        "production_timestamp": production_deploy_timestamp,
+        "error_rate": metrics_report.error_rate if metrics_report else "N/A",
+        "baseline_error_rate": baseline.error_rate if baseline else "N/A",
+        "response_time": metrics_report.response_time_p95 if metrics_report else "N/A",
+        "baseline_response_time": baseline.p95 if baseline else "N/A",
+        "cpu_utilization": metrics_report.cpu if metrics_report else "N/A",
+        "memory_usage": metrics_report.memory if metrics_report else "N/A",
+        "previous_version": current_production_version,
+        "rollback_command": generate_rollback_command(deployment_target, current_production_version),
+        "backup_id": backup_id if backup_id else "N/A",
+        "additional_notes": ""
+    }
+)
+
+# Write release notes
+Write(file_path=f"devforgeai/releases/release-{version}.md", content=release_notes)
+
+Report: f"✓ Release notes generated: devforgeai/releases/release-{version}.md"
+```
+
+#### Step 2: Update Story Status
+
+```
+# Update story frontmatter status
+Read(file_path=f"devforgeai/specs/Stories/{story_id}.story.md")
+
+Edit(file_path=f"devforgeai/specs/Stories/{story_id}.story.md",
+     old_string="status: QA Approved",
+     new_string="status: Released")
+
+# Check workflow box
+Edit(file_path=f"devforgeai/specs/Stories/{story_id}.story.md",
+     old_string="- [ ] Released",
+     new_string="- [x] Released")
+
+# Add release metadata to frontmatter
+Edit(file_path=f"devforgeai/specs/Stories/{story_id}.story.md",
+     old_string=f"created: {story.created}",
+     new_string=f"created: {story.created}\nreleased: {current_date()}\nversion: {version}")
+
+# Append workflow history
+history_entry = f"""
+### {current_timestamp()} - Released
+- **Previous Status:** QA Approved
+- **Action Taken:** Production deployment via {deployment_strategy} strategy
+- **Version:** {version}
+- **Deployment:** Successful
+- **Smoke Tests:** PASS
+- **Metrics:** Within acceptable thresholds
+- **Release Notes:** devforgeai/releases/release-{version}.md
+"""
+
+# Append to workflow history section
+IF "## Workflow History" NOT in story_content:
+    # Add workflow history section
+    Edit(file_path=f"devforgeai/specs/Stories/{story_id}.story.md",
+         old_string="## Notes",
+         new_string=f"## Workflow History\n\n{history_entry}\n\n## Notes")
+ELSE:
+    # Append to existing history
+    Edit(file_path=f"devforgeai/specs/Stories/{story_id}.story.md",
+         old_string="## Workflow History\n\n",
+         new_string=f"## Workflow History\n\n{history_entry}\n")
+
+Report: f"✓ Story updated: {story_id} status → Released"
+```
+
+#### Step 3: Update Sprint Progress
+
+```
+# If story is part of a sprint, update sprint document
+IF story.sprint:
+    sprint_file = f"devforgeai/specs/Sprints/{story.sprint}.sprint.md"
+
+    IF file_exists(sprint_file):
+        Read(file_path=sprint_file)
+
+        # Mark story as complete
+        Edit(file_path=sprint_file,
+             old_string=f"- [ ] {story_id}:",
+             new_string=f"- [x] {story_id}:")
+
+        # Update sprint completion percentage
+        # (Calculate: completed_points / total_points * 100)
+
+        Report: f"✓ Sprint updated: {story.sprint} progress updated"
+```
+
+#### Step 4: Generate Changelog Entry
+
+```
+# Update project changelog
+IF file_exists("CHANGELOG.md"):
+    Read(file_path="CHANGELOG.md")
+
+    # Determine change type (Added, Changed, Fixed)
+    change_type = determine_change_type(story)
+
+    changelog_entry = f"""## [{version}] - {current_date()}
+
+### {change_type}
+{format_story_changes(story)}
+
+### Deployment
+- Story: {story_id}
+- QA Coverage: {coverage_percentage}%
+- Deployment: {deployment_strategy} strategy
+- Released: {current_timestamp()}
+"""
+
+    # Append to changelog
+    Edit(file_path="CHANGELOG.md",
+         old_string="## [Unreleased]",
+         new_string=f"## [Unreleased]\n\n{changelog_entry}")
+
+    Report: "✓ Changelog updated"
+```
+
+---
+
+### Phase 6: Post-Release Monitoring & Closure
+
+**Objective**: Monitor production stability and close release
+
+#### Step 1: Configure Post-Release Monitoring
+
+```
+# Set up alerts for 24-hour monitoring period
+alert_config = {
+    "error_rate_threshold": baseline.error_rate * 1.5,
+    "response_time_threshold": baseline.p95 * 1.5,
+    "duration": "24 hours",
+    "notification": "email/slack",
+    "story_id": story_id,
+    "version": version
+}
+
+# Save alert configuration (implementation depends on monitoring stack)
+Write(file_path=f"devforgeai/monitoring/alerts/{story_id}-post-release.json",
+      content=json.dumps(alert_config, indent=2))
+
+Report: "✓ Post-release monitoring configured (24-hour window)"
+```
+
+#### Step 2: Schedule Post-Deployment Review
+
+```
+# Create follow-up task for 24-hour review
+review_document = f"""# Post-Release Review: {story_id}
+
+**Version:** {version}
+**Released:** {current_timestamp()}
+**Review Date:** {timestamp + 24 hours}
+
+## Review Checklist
+- [ ] Review 24-hour error rates
+- [ ] Check user feedback/support tickets
+- [ ] Review production logs for anomalies
+- [ ] Validate metrics against baseline
+- [ ] Document lessons learned
+
+## Metrics to Review
+- Error rate: Target < {alert_config.error_rate_threshold}
+- Response time (p95): Target < {alert_config.response_time_threshold}ms
+- User complaints: Target = 0
+- Rollbacks triggered: Current = 0
+
+## Actions If Issues Found
+- [ ] Create hotfix story if needed
+- [ ] Plan rollback if critical
+- [ ] Update monitoring thresholds if false positives
+- [ ] Document incident in release retrospective
+
+## Sign-Off
+- [ ] Tech Lead approval
+- [ ] Product Owner notification
+- [ ] Release declared stable
+"""
+
+Write(file_path=f"devforgeai/post-release/{story_id}-review.md", content=review_document)
+
+Report: f"✓ Post-release review scheduled for {timestamp + 24h}"
+```
+
+#### Step 3: Report Release Success
+
+```
+Report: f"""
+════════════════════════════════════════════════
+✅ Release Successful: {story_id}
+════════════════════════════════════════════════
+
+Version: {version}
+Deployed: {current_timestamp()}
+Strategy: {deployment_strategy}
+
+Environments:
+  ✓ Staging: Deployed and validated ({staging_deploy_timestamp})
+  ✓ Production: Deployed and validated ({production_deploy_timestamp})
+
+Validation:
+  ✓ Smoke tests: PASS
+  ✓ Health checks: PASS
+  ✓ Metrics: Within thresholds
+
+Metrics:
+  Error Rate: {metrics_report.error_rate} (Baseline: {baseline.error_rate})
+  Response Time (p95): {metrics_report.response_time_p95}ms (Baseline: {baseline.p95}ms)
+  CPU: {metrics_report.cpu}%
+  Memory: {metrics_report.memory}%
+
+Documentation:
+  ✓ Release notes: devforgeai/releases/release-{version}.md
+  ✓ Story updated: Status = Released
+  ✓ Changelog updated
+  ✓ Sprint progress updated
+
+Post-Release:
+  - Monitoring alerts configured (24-hour window)
+  - Post-release review scheduled
+  - Rollback plan documented
+
+Rollback Information:
+  Previous Version: {current_production_version}
+  Rollback Command: {rollback_command}
+  Database Backup: {backup_id if backup_id else "N/A"}
+
+Next Steps:
+  1. Monitor production for 24 hours
+  2. Conduct post-release review
+  3. Start next story in sprint
+
+────────────────────────────────────────────────
+"""
+```
+
+---
+
+## Rollback Procedures
+
+### Automatic Rollback Triggers
+
+**Immediate rollback if:**
+- Health check fails (HTTP 500+ status)
+- Smoke test fails
+- Error rate > 2x baseline
+- Critical service unavailable
+- Database migration fails with data loss risk
+
+### Rollback Execution
+
+**Kubernetes Rollback:**
+
+```
+FUNCTION execute_kubernetes_rollback(deployment_name, namespace):
+    Report: "Executing Kubernetes rollback..."
+
+    # Rollback to previous revision
+    Bash(command=f"kubectl rollout undo deployment/{deployment_name} --namespace={namespace}")
+
+    # Wait for rollback to complete
+    Bash(command=f"kubectl rollout status deployment/{deployment_name} --namespace={namespace} --timeout=5m")
+
+    # Verify rollback success
+    rollback_status = parse_kubectl_status()
+
+    IF rollback_status == "success":
+        Report: "✓ Kubernetes rollback successful"
+    ELSE:
+        CRITICAL: "Kubernetes rollback failed - manual intervention required"
+```
+
+**Azure App Service Rollback:**
+
+```
+FUNCTION execute_azure_rollback(app_name, resource_group):
+    Report: "Executing Azure App Service rollback..."
+
+    # Swap staging/production slots back
+    Bash(command=f"az webapp deployment slot swap --slot staging --name {app_name} --resource-group {resource_group} --target-slot production --action=swap")
+
+    Report: "✓ Azure App Service rollback successful"
+```
+
+**AWS ECS Rollback:**
+
+```
+FUNCTION execute_ecs_rollback(cluster, service, previous_task_def):
+    Report: "Executing AWS ECS rollback..."
+
+    # Revert to previous task definition
+    Bash(command=f"aws ecs update-service --cluster {cluster} --service {service} --task-definition {previous_task_def}")
+
+    # Wait for service stability
+    Bash(command=f"aws ecs wait services-stable --cluster {cluster} --services {service}")
+
+    Report: "✓ AWS ECS rollback successful"
+```
+
+**Database Rollback:**
+
+```
+FUNCTION execute_database_rollback(migration_id, backup_id):
+    Report: "Executing database rollback..."
+
+    IF migration_applied:
+        # Run down migration
+        TRY:
+            Bash(command=f"./scripts/rollback_migration.sh {migration_id}")
+            Report: "✓ Database migration rolled back"
+        EXCEPT:
+            WARN: "Migration rollback failed - may need manual intervention"
+
+    IF backup_id AND severe_data_changes:
+        # Restore from backup (last resort)
+        AskUserQuestion:
+        Question: "Database migration rollback failed. Restore from backup?"
+        Header: "Database restore"
+        Description: "WARNING: This will restore database to pre-deployment state (data loss)"
+        Options:
+          - label: "Yes - Restore from backup (data loss accepted)"
+            description: "Restore database to backup point"
+          - label: "No - Manual intervention required"
+            description: "DBA will manually resolve migration issues"
+        multiSelect: false
+
+        IF answer == "Yes":
+            Bash(command=f"./scripts/restore_database.sh {backup_id}")
+            Report: "✓ Database restored from backup"
+```
+
+### Post-Rollback Actions
+
+```
+# Update story status
+Edit(file_path=f"devforgeai/specs/Stories/{story_id}.story.md",
+     old_string="status: Releasing",
+     new_string="status: QA Approved")
+
+# Document rollback
+rollback_report = f"""# Rollback: {version}
+
+**Reason:** {rollback_reason}
+**Rolled Back At:** {current_timestamp()}
+**Previous Version Restored:** {previous_version}
+
+## Root Cause
+{rollback_details}
+
+## Actions Taken
+- Production rolled back to {previous_version}
+- Database restored: {backup_id if backup_id else "N/A"}
+- Alerts cleared
+- Monitoring resumed
+
+## Impact
+- Downtime: {calculate_downtime()}
+- Affected Users: {estimate_affected_users()}
+- Data Loss: {data_loss_assessment}
+
+## Next Steps
+- [ ] Root cause analysis
+- [ ] Fix issue in development
+- [ ] Re-run QA validation
+- [ ] Plan re-deployment
+"""
+
+Write(file_path=f"devforgeai/releases/rollback-{version}.md", content=rollback_report)
+
+# Create hotfix story if needed
+AskUserQuestion:
+Question: "Rollback complete. Create hotfix story for the issue?"
+Header: "Hotfix creation"
+Description: "Create new story to track fix and re-deployment"
+Options:
+  - label: "Yes - Create hotfix story"
+    description: "Create HOTFIX-XXX story for expedited fix"
+  - label: "No - Fix in next sprint"
+    description: "Address in normal sprint workflow"
+multiSelect: false
+
+IF answer == "Yes":
+    # Invoke orchestration to create hotfix story
+    Skill(command="devforgeai-orchestration --create-story --type=hotfix --parent={story_id}")
+```
+
+---
+
+## Integration Points
+
+### From devforgeai-qa
+
+**Handoff Data Required:**
+- Story ID with status "QA Approved"
+- QA report with PASS status (devforgeai/qa/reports/{story-id}-qa-report.md)
+- Test coverage metrics (must meet 95%/85%/80% thresholds)
+- Zero critical/high violations
+
+**Validation:**
+```
+# This skill MUST validate QA approval before proceeding
+IF story.status != "QA Approved":
+    BLOCK: "Story not QA approved"
+    Action: "Run devforgeai-qa --mode=deep first"
+
+IF NOT file_exists(qa_report):
+    BLOCK: "QA report missing"
+    Action: "QA validation required"
+```
+
+### To devforgeai-orchestration
+
+**Updates Provided:**
+- Story status changed to "Released"
+- Workflow history updated with release details
+- Sprint progress updated (if story part of sprint)
+- Release notes path
+
+**Orchestration Then:**
+- Marks story as complete
+- Updates sprint velocity
+- May trigger next story in queue
+
+---
+
+## Success Criteria
+
+**Release skill succeeds when ALL criteria met:**
+
+- [x] QA approval validated (story status + report)
+- [x] Staging deployment successful
+- [x] Staging smoke tests passed
+- [x] Production deployment successful (using selected strategy)
+- [x] Production smoke tests passed
+- [x] Metrics within acceptable thresholds (< 1.2x baseline)
+- [x] Release notes generated
+- [x] Story status updated to "Released"
+- [x] Changelog updated
+- [x] Sprint progress updated
+- [x] Post-release monitoring configured
+- [x] No rollback required
+
+**Output Artifacts:**
+- Release notes: `devforgeai/releases/release-{version}.md`
+- Updated story document: `devforgeai/specs/Stories/{story-id}.story.md` (status = "Released")
+- Updated changelog: `CHANGELOG.md`
+- Deployment logs
+- Post-release monitoring configuration
+- Post-release review task
+
+**Failure Handling:**
+- Rollback executed if any validation fails
+- Rollback report generated: `devforgeai/releases/rollback-{version}.md`
+- Story status reverted to "QA Approved"
+- Hotfix story optionally created
+
+---
+
+## AskUserQuestion Patterns
+
+### Pattern 1: Deployment Strategy Selection
+
+```
+CONTEXT:
+- Story approved for release
+- Multiple strategies available
+- User must choose based on risk tolerance and infrastructure
+
+AskUserQuestion:
+Question: "Which deployment strategy for {story_id}?"
+Header: "Deployment strategy"
+Description: "Strategy determines deployment speed, risk, and resource requirements"
+Options:
+  - label: "Blue-Green (Zero downtime, instant rollback)"
+    description: "Requires 2x resources. Best for high-risk deployments."
+  - label: "Rolling Update (Gradual, minimal resources)"
+    description: "No additional resources. Good for standard deployments."
+  - label: "Canary (Progressive 5%→25%→50%→100%)"
+    description: "Minimal resources. Best for detecting issues early."
+  - label: "Recreate (Simple, brief downtime OK)"
+    description: "No additional resources. Acceptable for maintenance windows."
+multiSelect: false
+```
+
+### Pattern 2: Degraded Metrics Decision
+
+```
+CONTEXT:
+- Deployment complete
+- Metrics show increase but within threshold
+- User must decide if acceptable
+
+AskUserQuestion:
+Question: "Error rate increased from 0.1% to 0.13% (+30%). How to proceed?"
+Header: "Metrics degradation"
+Description: "Within 2x threshold but higher than baseline"
+Options:
+  - label: "Acceptable - Continue monitoring"
+    description: "Increase within normal variance, monitor for 24 hours"
+  - label: "Rollback - Unacceptable increase"
+    description: "Performance degradation too severe, revert deployment"
+  - label: "Investigate logs before deciding"
+    description: "Review logs to understand cause of increase"
+multiSelect: false
+```
+
+### Pattern 3: Hotfix Expedite Decision
+
+```
+CONTEXT:
+- Critical bug in production
+- Fix available and QA-approved
+- User must decide deployment priority
+
+AskUserQuestion:
+Question: "This is a critical bug fix. Expedite deployment?"
+Header: "Hotfix deployment"
+Description: "Hotfix bypasses normal release schedule"
+Options:
+  - label: "Yes - Deploy immediately (hotfix process)"
+    description: "Fast-track deployment, bypass normal release window"
+  - label: "No - Wait for next scheduled release"
+    description: "Include in next coordinated release"
+  - label: "Deploy to staging first, then fast-track"
+    description: "Quick staging validation then immediate production"
+multiSelect: false
+```
+
+### Pattern 4: Rollback Confirmation
+
+```
+CONTEXT:
+- Deployment experiencing failures
+- Automatic rollback triggered
+- User must confirm
+
+AskUserQuestion:
+Question: "Deployment failed smoke tests. Rollback to {previous_version}?"
+Header: "Rollback confirmation"
+Description: "Production will revert to previous stable version"
+Options:
+  - label: "Yes - Rollback immediately"
+    description: "Safe: revert to known good state"
+  - label: "No - Try to fix forward (risky)"
+    description: "RISKY: Attempt to fix issues in production"
+  - label: "Investigate first (production affected during investigation)"
+    description: "Diagnose issue before deciding (users impacted)"
+multiSelect: false
+```
+
+### Pattern 5: Database Backup Decision
+
+```
+CONTEXT:
+- Deployment includes database migrations
+- Backup recommended for safety
+- User must decide
+
+AskUserQuestion:
+Question: "This deployment includes database migrations. Create database backup?"
+Header: "Database backup"
+Description: "Backup allows safe rollback if migration issues occur"
+Options:
+  - label: "Yes - Create backup (recommended)"
+    description: "Safe: allows full rollback including database"
+  - label: "No - Skip backup (forward-only migration)"
+    description: "RISKY: Cannot rollback database changes"
+multiSelect: false
+```
+
+### Pattern 6: Conflicting Deployment Resolution
+
+```
+CONTEXT:
+- Another release in progress
+- User must resolve conflict
+- Options: wait, proceed, or cancel other
+
+AskUserQuestion:
+Question: "Another release is in progress: {active_story_id}. How to proceed?"
+Header: "Conflicting deployment"
+Description: "Started: {active.timestamp}, Status: {active.status}"
+Options:
+  - label: "Wait - Let current deployment complete"
+    description: "Safe: avoid deployment conflicts"
+  - label: "Proceed anyway - Deploy in parallel (risky)"
+    description: "RISKY: May cause race conditions"
+  - label: "Cancel other deployment - Take priority (requires approval)"
+    description: "Emergency hotfix override"
+multiSelect: false
+```
+
+### Pattern 7: Manual Testing Decision
+
+```
+CONTEXT:
+- Staging deployed and smoke tests passed
+- User can optionally perform manual validation
+- Decision: proceed or test more
+
+AskUserQuestion:
+Question: "Staging deployment complete. Smoke tests passed. Perform manual validation?"
+Header: "Manual testing"
+Description: "Staging URL: {staging_url}"
+Options:
+  - label: "Manual testing complete - Proceed to production"
+    description: "Validated manually, ready for production"
+  - label: "Issues found - Rollback staging"
+    description: "Discovered issues during manual testing"
+  - label: "Skip manual testing - Proceed to production"
+    description: "Trust automated tests, deploy now"
+multiSelect: false
+```
+
+### Pattern 8: Extended Monitoring Decision
+
+```
+CONTEXT:
+- Metrics show minor degradation
+- Within thresholds but concerning
+- User must decide on extended monitoring
+
+AskUserQuestion:
+Question: "Metrics show minor degradation. Extend monitoring period?"
+Header: "Extended monitoring"
+Description: "Current: 15 minutes monitored. Extend to 30 minutes?"
+Options:
+  - label: "Yes - Extend monitoring (30 minutes total)"
+    description: "Gather more data before final decision"
+  - label: "No - Declare success now"
+    description: "Metrics acceptable, complete release"
+  - label: "Rollback - Degradation unacceptable"
+    description: "Revert deployment due to performance concerns"
+multiSelect: false
+```
+
+---
+
+## Tool Usage Protocol
+
+### Use Native Tools for File Operations
+
+**CRITICAL: 40-73% token savings (per efficiency analysis)**
+
+```
+✅ CORRECT: Read(file_path="devforgeai/specs/Stories/{story-id}.story.md")
+❌ FORBIDDEN: Bash(command="cat devforgeai/specs/Stories/{story-id}.story.md")
+
+✅ CORRECT: Write(file_path="devforgeai/releases/release-{version}.md", content=notes)
+❌ FORBIDDEN: Bash(command="cat > devforgeai/releases/release-{version}.md <<EOF...")
+
+✅ CORRECT: Edit(file_path="story.md", old_string="status: QA Approved", new_string="status: Released")
+❌ FORBIDDEN: Bash(command="sed -i 's/status: QA Approved/status: Released/' story.md")
+
+✅ CORRECT: Glob(pattern="devforgeai/specs/Stories/*.story.md")
+❌ FORBIDDEN: Bash(command="find devforgeai/specs/Stories/ -name '*.story.md'")
+```
+
+### Use Bash for Terminal Operations
+
+```
+✅ Deployment commands:
+  - Bash(command="kubectl set image deployment/...")
+  - Bash(command="helm upgrade...")
+  - Bash(command="az webapp deployment...")
+  - Bash(command="aws ecs update-service...")
+
+✅ Health checks and monitoring:
+  - Bash(command="python scripts/health_check.py ...")
+  - Bash(command="python scripts/smoke_test_runner.py ...")
+  - Bash(command="python scripts/metrics_collector.py ...")
+
+✅ Git operations:
+  - Bash(command="git checkout main && git pull")
+  - Bash(command="git tag -a {version} -m '...'")
+  - Bash(command="git push origin {version}")
+
+✅ Build operations:
+  - Bash(command="dotnet publish -c Release")
+  - Bash(command="docker build -t {image}:{version}")
+  - Bash(command="npm run build")
+```
+
+---
+
+## Reference Materials
+
+Load these as needed during release execution:
+
+- [Deployment Strategies](./references/deployment-strategies.md) - Detailed guide for blue-green, canary, rolling, recreate
+- [Smoke Testing Guide](./references/smoke-testing-guide.md) - Standard tests and critical path validation
+- [Rollback Procedures](./references/rollback-procedures.md) - Platform-specific rollback commands
+- [Monitoring Metrics](./references/monitoring-metrics.md) - Key metrics and alert thresholds
+- [Release Checklist](./references/release-checklist.md) - Pre/during/post deployment checklists
+
+## Templates
+
+- [Release Notes Template](./assets/templates/release-notes-template.md) - Standardized release documentation
+- [Rollback Plan Template](./assets/templates/rollback-plan-template.md) - Rollback documentation structure
+- [Deployment Config Template](./assets/templates/deployment-config-template.yaml) - Kubernetes/Helm configuration
+
+## Scripts
+
+Automation utilities:
+- `scripts/health_check.py` - HTTP health endpoint checker with retry logic
+- `scripts/smoke_test_runner.py` - Orchestrate smoke test suite with environment config
+- `scripts/metrics_collector.py` - Collect and compare metrics against baseline
+- `scripts/rollback_automation.sh` - Automated rollback for multiple platforms
+- `scripts/release_notes_generator.py` - Generate release notes from story documents
+
+---
+
+**The release skill ensures every deployment is safe, repeatable, and auditable: QA Approved → Staging → Production → Monitoring, with comprehensive rollback capabilities.**

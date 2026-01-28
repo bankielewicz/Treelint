@@ -1,0 +1,1652 @@
+# Lean Orchestration Pattern Protocol
+
+**Version:** 1.0
+**Date:** 2025-11-05
+**Status:** Active Protocol
+**Applies To:** All DevForgeAI slash commands
+
+---
+
+## Purpose
+
+This protocol defines the **lean orchestration pattern** for slash commands in the DevForgeAI framework, ensuring commands remain within character budget constraints while delegating business logic to skills and subagents.
+
+**Problem Solved:**
+- Commands becoming "top-heavy" with business logic (692 lines, 31K characters)
+- Character budget violations (15K limit exceeded)
+- Duplication between commands and skills
+- Mixed concerns (validation + interpretation + display in one file)
+- Token inefficiency (commands consuming 8K+ tokens in main conversation)
+
+**Pattern Origin:**
+- Established in `/dev` refactoring (860 → 513 lines, 40% reduction)
+- Proven in `/qa` refactoring (692 → 295 lines, 57% reduction)
+- Based on Claude Skills architectural principles (progressive disclosure, context isolation)
+
+---
+
+## Constitutional Principle
+
+**Commands orchestrate. Skills validate. Subagents specialize.**
+
+This separation of concerns ensures:
+- ✅ Commands stay within 15K character budget
+- ✅ Skills contain comprehensive business logic
+- ✅ Subagents handle specialized tasks in isolated contexts
+- ✅ Token efficiency (66-80% reduction in main conversation)
+- ✅ Maintainability (single source of truth per concern)
+
+---
+
+## The Pattern
+
+### Command Responsibilities (ONLY)
+
+**What commands SHOULD do:**
+1. **Parse arguments** - Extract and validate user input ($1, $2, etc.)
+2. **Load context** - Load story/epic files via @file reference
+3. **Set markers** - Provide explicit context statements for skills
+4. **Invoke skill** - Single Skill(command="...") call
+5. **Display results** - Output what skill returns (no parsing, no formatting)
+
+**What commands should NOT do:**
+- ❌ Business logic (validation algorithms, report generation)
+- ❌ Complex parsing (reading reports, extracting sections)
+- ❌ Template generation (creating display variants)
+- ❌ Decision-making (branching on failure types)
+- ❌ Error recovery (determining remediation strategies)
+
+**Total target:** 150-300 lines, 6K-12K characters
+
+---
+
+### Skill Responsibilities
+
+**What skills SHOULD do:**
+1. **Extract parameters** - Parse story ID, mode, environment from conversation context
+2. **Execute workflow** - Multi-phase validation, implementation, or deployment
+3. **Invoke subagents** - Delegate specialized tasks to domain experts
+4. **Generate outputs** - Reports, code, documentation
+5. **Return results** - Structured summaries for command to display
+6. **Communicate errors** - Clear error messages with recovery steps
+
+**What skills should NOT do:**
+- ❌ User interaction (AskUserQuestion belongs in commands for UX decisions)
+- ❌ Argument parsing (commands handle user input)
+
+**Total target:** 1,000-2,000 lines (comprehensive implementation logic)
+
+---
+
+### Subagent Responsibilities
+
+**What subagents SHOULD do:**
+1. **Specialized tasks** - Domain-specific work (testing, security, interpretation)
+2. **Isolated context** - Heavy token work separate from main conversation
+3. **Return structured data** - JSON or well-defined format for reliable parsing
+4. **Reference guardrails** - Consult framework reference files for constraints
+
+**What subagents should NOT do:**
+- ❌ Make autonomous decisions (follow framework constraints)
+- ❌ Operate in silos (must be framework-aware)
+- ❌ Violate context files (tech-stack, anti-patterns, etc.)
+
+**Total target:** 200-500 lines (focused, specialized logic)
+
+---
+
+## Character Budget Management
+
+### Budget Limits
+
+| Limit | Threshold | Action |
+|-------|-----------|--------|
+| **Hard Limit** | 15,000 chars | Must refactor if exceeded |
+| **Warning** | 12,000 chars | Monitor, may need refactoring |
+| **Target** | 6,000-10,000 chars | Optimal range |
+| **Minimum** | 1,000 chars | Avoid over-optimization |
+
+### Budget Calculation
+
+```bash
+# Check command budget
+wc -c < .claude/commands/your-command.md
+
+# Budget status
+chars=$(wc -c < .claude/commands/your-command.md)
+if [ $chars -gt 15000 ]; then
+  echo "❌ OVER BUDGET: $chars chars (limit: 15,000)"
+elif [ $chars -gt 12000 ]; then
+  echo "⚠️ HIGH: $chars chars (approaching limit)"
+else
+  echo "✅ COMPLIANT: $chars chars"
+fi
+```
+
+### Current Command Status (2025-11-06)
+
+| Command | Lines | Characters | Status | Priority |
+|---------|-------|------------|--------|----------|
+| qa | 295 | 7,205 | ✅ Compliant | ✅ Reference |
+| **create-epic** | **392** | **11,270** | **✅ Compliant** | **✅ Reference** |
+| ideate | 410 | 11,717 | ⚠️ High | ✅ Refactored |
+| create-context | 420 | 12,631 | ⚠️ High | 🟡 Watch |
+| dev | 513 | 12,630 | ⚠️ High | ✅ Refactored |
+| audit-deferrals | 452 | 13,088 | ⚠️ High | 🟡 Watch |
+| **orchestrate** | 599 | **15,012** | ❌ **OVER** | 🟡 **MEDIUM** |
+| **release** | 655 | **18,166** | ❌ **OVER** | 🔴 **HIGH** |
+| **create-ui** | 614 | **18,908** | ❌ **OVER** | 🔴 **HIGH** |
+| **create-story** | 857 | **23,006** | ❌ **OVER** | 🔴 **CRITICAL** |
+
+**Summary:**
+- **4 commands OVER BUDGET** - Require refactoring (unchanged)
+- **4 commands HIGH USAGE** - Monitor and consider optimization (down from 5)
+- **3 commands COMPLIANT** - Reference implementations (qa, create-epic, create-sprint)
+- **6 commands REFACTORED** - Lean orchestration applied (dev, qa, ideate, create-story [pending], create-sprint, create-epic)
+- **3 test commands** - Compliant (not counted above)
+
+---
+
+## Refactoring Decision Matrix
+
+### When to Refactor
+
+Use this decision tree to determine if a command needs refactoring:
+
+```
+Is command >15,000 characters?
+    ├─ YES → MUST refactor (budget violation)
+    │
+    └─ NO → Is command >12,000 characters?
+              ├─ YES → SHOULD refactor (approaching limit)
+              │
+              └─ NO → Is command >10,000 characters?
+                        ├─ YES → CONSIDER refactoring (optimization opportunity)
+                        │
+                        └─ NO → COMPLIANT (no action needed)
+```
+
+### Refactoring Priority
+
+**Priority 1: CRITICAL (Over Budget)**
+- create-story (23K chars, 153% over)
+
+**Priority 2: HIGH (Over Budget)**
+- create-ui (19K chars, 126% over)
+- release (18K chars, 121% over)
+
+**Priority 3: MEDIUM (At Budget Limit)**
+- orchestrate (15K chars, 100% at limit)
+
+**Priority 4: WATCH (Approaching Limit, 90-95%)**
+- create-epic (14K chars, 95%)
+- audit-deferrals (13K chars, 87%)
+
+**Priority 5: MONITOR (High Usage, 80-85%)**
+- create-context (13K chars, 84%)
+- dev (13K chars, 84%) ✅ Refactored
+- ideate (12K chars, 78%) ✅ Refactored
+
+**✅ COMPLIANT (Reference Implementations)**
+- qa (7K chars, 48%) ✅ Refactored
+- create-sprint (8K chars, 53%) ✅ Refactored
+
+---
+
+## Refactoring Methodology
+
+### Step 1: Identify Top-Heavy Logic
+
+**Common patterns in top-heavy commands:**
+- Complex argument validation (>30 lines)
+- Multiple display templates (>100 lines)
+- Error handling matrix (>50 lines)
+- Business logic (validation, parsing, decision-making)
+- Deferral/failure handling (branching logic)
+- Report parsing and interpretation
+- Result formatting and template generation
+
+**Example from `/qa` (BEFORE):**
+```markdown
+Phase 2: Handle QA Results (72 lines) ← BUSINESS LOGIC
+Phase 3: Result Verification (33 lines) ← PARSING
+Phase 4: Display Results (161 lines) ← TEMPLATES
+Phase 5: Summary (34 lines) ← DUPLICATION
+Error Handling (97 lines) ← EDGE CASES
+
+Total: 397 lines of logic that belongs elsewhere
+```
+
+### Step 2: Categorize Logic
+
+For each section of logic, ask:
+
+**Q1: Is this argument parsing?**
+- YES → Keep minimal version in command (~20 lines)
+- Example: Story ID format validation, mode parsing
+
+**Q2: Is this business logic (validation, analysis, decisions)?**
+- YES → Move to skill
+- Example: Coverage calculations, anti-pattern detection, deferral validation
+
+**Q3: Is this template generation or formatting?**
+- YES → Create specialized subagent
+- Example: Display templates, result interpretation, remediation guidance
+
+**Q4: Is this error handling?**
+- YES → Skill communicates errors, command displays them (~20 lines)
+- Example: Minimal error display, refer to skill output for details
+
+**Q5: Is this documentation or integration notes?**
+- YES → Can keep (educational value) but make concise
+- Example: Quick reference, integration patterns, success criteria
+
+### Step 3: Determine Extraction Strategy
+
+**Option A: Move to Skill** (Best for business logic)
+- ✅ Use when: Validation, analysis, workflow logic
+- ✅ Benefits: Single source of truth, comprehensive implementation
+- ❌ Drawback: Skill grows (but that's acceptable)
+
+**Option B: Create Subagent** (Best for specialized tasks)
+- ✅ Use when: Parsing/interpretation, template generation, specialized analysis
+- ✅ Benefits: Isolated context, token efficiency, testable
+- ❌ Drawback: More files to maintain
+
+**Option C: Delete** (Best for duplication)
+- ✅ Use when: Duplicate guidance, redundant documentation
+- ✅ Benefits: Reduced bloat, clearer focus
+- ❌ Drawback: May lose useful context (review carefully)
+
+### Step 4: Create Refactoring Plan
+
+**Template:**
+```markdown
+# [Command] Refactoring Plan
+
+## Current State
+- Lines: [XXX]
+- Characters: [XXX]
+- Budget status: [OVER/HIGH/COMPLIANT]
+
+## Issues Identified
+1. [Phase/Section]: [Lines] - [Issue description]
+2. [Phase/Section]: [Lines] - [Issue description]
+
+## Extraction Strategy
+1. [Section] → [Skill/Subagent/Delete] - [Rationale]
+2. [Section] → [Skill/Subagent/Delete] - [Rationale]
+
+## Target State
+- Lines: [~XXX] (XX% reduction)
+- Characters: [~XXX] (within budget)
+
+## New Artifacts
+- Subagent: [name] (if needed)
+- Reference file: [name] (if subagent created)
+- Skill updates: [changes needed]
+
+## Testing
+- Unit tests: [count]
+- Integration tests: [count]
+- Regression tests: [count]
+```
+
+### Step 5: Execute Refactoring
+
+**Follow this sequence:**
+
+1. **Create backup** (preserve original)
+   ```bash
+   cp .claude/commands/command.md .claude/commands/command.md.backup
+   ```
+
+2. **Create new artifacts** (if needed)
+   - Subagent: `.claude/agents/new-subagent.md`
+   - Reference: `.claude/skills/skill-name/references/guide.md`
+
+3. **Refactor command**
+   - Keep: Argument validation, context loading, skill invocation
+   - Remove: Business logic, templates, complex error handling
+   - Simplify: Error messages, integration notes
+
+4. **Update skill** (if moving logic there)
+   - Add: Phases/steps for logic from command
+   - Add: Subagent invocations (if created subagent)
+   - Add: Return structured results
+
+5. **Test comprehensively**
+   - Run all test cases (unit, integration, regression)
+   - Verify token budgets
+   - Confirm behavior unchanged
+
+6. **Update references**
+   - `.claude/memory/subagents-reference.md` (if created subagent)
+   - `.claude/memory/commands-reference.md` (note refactoring)
+   - `CLAUDE.md` (if pattern changes)
+
+7. **Deploy**
+   - Git commit with descriptive message
+   - Restart terminal
+   - Smoke tests (3 command runs)
+
+---
+
+## Proven Pattern: /qa Refactoring Example
+
+### Before (Top-Heavy)
+
+```markdown
+/qa command: 692 lines, 31K characters
+
+Phase 0: Argument Validation (99 lines)
+├─ Complex story ID validation
+├─ Mode parsing with flag handling
+└─ Story file existence checks
+
+Phase 1: Invoke Skill (39 lines)
+└─ Skill(command="devforgeai-qa")
+
+Phase 2: Handle QA Results (72 lines) ← BUSINESS LOGIC
+├─ Read QA report from disk
+├─ Parse failure reasons
+├─ Branch on deferral failures
+└─ AskUserQuestion for next steps
+
+Phase 3: Result Verification (33 lines) ← DUPLICATION
+├─ Read QA report again
+├─ Parse report sections
+└─ Verify story status
+
+Phase 4: Display Results (161 lines) ← TEMPLATES
+├─ Light PASS template
+├─ Deep PASS template
+├─ Failure template
+├─ Coverage failure template
+└─ Spec compliance template
+
+Phase 5: Summary (34 lines) ← DUPLICATE GUIDANCE
+├─ Light mode next steps
+├─ Deep mode next steps
+└─ Failure next steps
+
+Error Handling (97 lines) ← EDGE CASES
+├─ Story not found
+├─ Invalid status
+├─ Skill failed
+├─ Missing context
+├─ Report missing
+└─ Invalid mode
+
+Issues:
+- Over budget: 31K > 15K ❌
+- Duplication: Report read/parsed twice
+- Mixed concerns: 7 different responsibilities
+- Token waste: 8K in main conversation
+```
+
+### After (Lean Orchestration)
+
+```markdown
+/qa command: 295 lines, 8K characters
+
+Phase 0: Argument Validation (20 lines)
+├─ Validate story ID format
+├─ Verify story file exists (Glob)
+├─ Load story via @file
+└─ Parse mode (deep/light)
+
+Phase 1: Invoke Skill (15 lines)
+├─ Set context markers
+│   **Story ID:** ${STORY_ID}
+│   **Validation Mode:** ${MODE}
+└─ Skill(command="devforgeai-qa")
+
+Phase 2: Display Results (10 lines)
+└─ Output: result.display.template
+    (Skill returns pre-generated display)
+
+Phase 3: Next Steps (5 lines)
+└─ Display: result.next_steps
+    (Skill provides recommendations)
+
+Error Handling (25 lines)
+├─ Story ID invalid
+├─ Story file not found
+├─ Invalid mode
+└─ Skill execution failed
+
+Integration Notes (125 lines)
+├─ Command options reference
+├─ Success criteria
+├─ Framework integration
+└─ Performance targets
+
+Benefits:
+- Within budget: 8K < 15K ✅
+- Single concern: Orchestration only
+- No duplication: Skill handles logic
+- Token efficient: 2K in main conversation (66% savings)
+
+NEW: qa-result-interpreter subagent
+├─ Runs in isolated context (8K tokens)
+├─ Parses QA report
+├─ Generates display templates
+├─ Provides remediation guidance
+├─ Returns structured JSON
+└─ Respects framework constraints (via reference file)
+```
+
+### What Changed
+
+**Extracted to Skill:**
+- Phase 2 (QA result handling) - 72 lines
+- Phase 3 (Result verification) - 33 lines
+- Phase 5 (Summary/next steps) - 34 lines
+- Error matrix (partial) - 40 lines
+- **Total moved:** 179 lines
+
+**Extracted to Subagent (qa-result-interpreter):**
+- Phase 4 (Display templates) - 161 lines
+- Report parsing and interpretation
+- Remediation guidance generation
+- **Total moved:** 161 lines
+
+**Kept in Command:**
+- Phase 0 (Argument validation) - Simplified to 20 lines
+- Phase 1 (Skill invocation) - Simplified to 15 lines
+- Error handling - Simplified to 25 lines
+- Integration notes - 125 lines (educational)
+
+**Result:**
+- 692 lines → 295 lines (57% reduction)
+- 31K chars → 8K chars (74% reduction)
+- 8K tokens → 2K tokens (66% reduction main conversation)
+
+---
+
+## Implementation Checklist
+
+### Pre-Refactoring
+
+- [ ] Analyze current command structure (count lines per phase)
+- [ ] Check character budget: `wc -c < .claude/commands/command.md`
+- [ ] Identify top-heavy sections (>50 lines of non-orchestration logic)
+- [ ] Determine extraction strategy (skill vs subagent vs delete)
+- [ ] Review skill to see what's already there (avoid duplication)
+
+### During Refactoring
+
+- [ ] Create backup: `cp command.md command.md.backup`
+- [ ] Create new subagent (if needed)
+- [ ] Create reference file for subagent (framework guardrails)
+- [ ] Refactor command to lean structure (150-300 lines)
+- [ ] Update skill with new phases/subagent invocations
+- [ ] Test argument validation (various inputs)
+- [ ] Test skill invocation (context extraction works)
+- [ ] Test subagent (if created) - unit tests
+- [ ] Integration test (full workflow)
+- [ ] Regression test (behavior unchanged)
+- [ ] Verify character budget: `wc -c < command.md` (should be <12K)
+
+### Post-Refactoring
+
+- [ ] Update `.claude/memory/commands-reference.md`
+- [ ] Update `.claude/memory/subagents-reference.md` (if created subagent)
+- [ ] Document refactoring in `devforgeai/specs/enhancements/`
+- [ ] Git commit with descriptive message
+- [ ] Restart terminal
+- [ ] Smoke tests (3 command runs)
+- [ ] Monitor for 1 week (token usage, errors)
+
+---
+
+## Anti-Patterns to Avoid
+
+### Anti-Pattern 1: Command with Business Logic
+
+**Problem:**
+```markdown
+# Command contains validation algorithms
+Phase 2: Validate Coverage
+  FOR each file:
+    Calculate coverage percentage
+    Compare to threshold
+    IF below threshold:
+      Generate gap report
+```
+
+**Solution:**
+```markdown
+# Command delegates to skill
+Phase 1: Invoke Skill
+  Skill(command="devforgeai-qa")
+
+# Skill contains validation logic
+```
+
+### Anti-Pattern 2: Reading Files Command Already Generated
+
+**Problem:**
+```markdown
+Phase 1: Skill generates QA report
+Phase 2: Command reads QA report from disk
+Phase 3: Command parses report sections
+```
+
+**Solution:**
+```markdown
+Phase 1: Skill generates report AND invokes subagent to parse it
+Phase 2: Skill returns parsed result to command
+Phase 3: Command displays result (no file reading)
+```
+
+### Anti-Pattern 3: Multiple Display Templates in Command
+
+**Problem:**
+```markdown
+# Command has 5 display templates (161 lines)
+IF mode == "light" AND status == "PASS":
+  Display: "✅ Light QA PASSED..."
+IF mode == "deep" AND status == "PASS":
+  Display: "✅ Deep QA PASSED... [full metrics]"
+IF mode == "deep" AND status == "FAIL" AND violation_type == "coverage":
+  Display: "❌ Coverage Failed... [specific template]"
+...
+```
+
+**Solution:**
+```markdown
+# Subagent generates appropriate template
+Phase 1: Skill invokes qa-result-interpreter
+Phase 2: Subagent determines template based on mode/result/violations
+Phase 3: Subagent returns template in result.display
+Phase 4: Command outputs result.display (no logic)
+```
+
+### Anti-Pattern 4: Complex Error Handling Matrix
+
+**Problem:**
+```markdown
+# 97 lines of error scenarios
+Error: Story not found (10 lines)
+Error: Invalid status (12 lines)
+Error: Skill failed (19 lines)
+Error: Missing context (18 lines)
+Error: Report missing (17 lines)
+Error: Invalid mode (11 lines)
+Error: [10 more scenarios...]
+```
+
+**Solution:**
+```markdown
+# Minimal error handling (25 lines)
+Error: Story ID invalid
+  → "Usage: /command STORY-001"
+
+Error: Story file not found
+  → List available stories
+
+Error: Skill execution failed
+  → Display skill error output
+
+All other errors: Skill communicates them
+```
+
+### Anti-Pattern 5: Argument Parsing with All Edge Cases
+
+**Problem:**
+```markdown
+# 99 lines of argument validation
+IF $1 empty:
+  AskUserQuestion...
+ELIF $1 invalid format:
+  AskUserQuestion...
+ELIF story file not found:
+  AskUserQuestion...
+ELIF $2 is flag:
+  Parse flag...
+  IF flag invalid:
+    AskUserQuestion...
+  ELSE:
+    Extract value...
+ELIF $2 is value:
+  Validate value...
+...
+```
+
+**Solution:**
+```markdown
+# 20 lines of essential validation
+IF $1 empty OR $1 doesn't match "STORY-[0-9]+":
+  AskUserQuestion: "What story ID?"
+
+Glob: .ai_docs/Stories/$1*.story.md
+IF not found:
+  AskUserQuestion: "Story not found. Cancel or list stories?"
+
+MODE = $2 or infer from story status
+```
+
+---
+
+## Template: Lean Command Structure
+
+Use this template for all refactored commands:
+
+```markdown
+---
+description: [Brief command description]
+argument-hint: [arg1] [arg2]
+model: opus
+allowed-tools: Read, Skill, AskUserQuestion, [others as needed]
+---
+
+# /command-name - [Title]
+
+[One-paragraph description]
+
+---
+
+## Quick Reference
+
+```bash
+# Common usage examples (3-5 examples)
+/command ARG1 ARG2
+/command ARG1       # With default
+```
+
+---
+
+## Command Workflow
+
+### Phase 0: Argument Validation and Context Loading
+
+**Validate required arguments:**
+```
+IF $1 invalid:
+  AskUserQuestion with clear options
+  Extract from response OR exit
+```
+
+**Load context:**
+```
+@.ai_docs/[Type]/$1.[type].md
+```
+
+**Parse optional arguments:**
+```
+ARG2 = $2 or default_value
+```
+
+**Validation summary:**
+```
+✓ [Primary arg]: ${VALUE}
+✓ [Secondary arg]: ${VALUE}
+✓ Proceeding...
+```
+
+---
+
+### Phase 1: Invoke Skill
+
+**Set context markers:**
+```
+**[Primary Param]:** ${VALUE}
+**[Secondary Param]:** ${VALUE}
+```
+
+**Invoke skill:**
+```
+Skill(command="devforgeai-[skillname]")
+```
+
+**What skill does:**
+[Brief description of skill workflow]
+
+---
+
+### Phase 2: Display Results
+
+**Receive and output:**
+```
+# Skill returns structured result
+output result.display
+
+# OR skill returns summary text
+output skill_result
+```
+
+---
+
+### Phase 3: Provide Next Steps
+
+**Display recommendations:**
+```
+output result.next_steps
+
+# OR
+Based on result:
+- [Action 1]
+- [Action 2]
+```
+
+---
+
+## Error Handling
+
+### [Error Type 1]
+```
+Error: [Description]
+Action: [What to do]
+```
+
+### [Error Type 2]
+```
+Error: [Description]
+Action: [What to do]
+```
+
+[Keep minimal - 3-5 error types max]
+
+---
+
+## Success Criteria
+
+- [ ] [Criterion 1]
+- [ ] [Criterion 2]
+- [ ] [Criterion 3]
+- [ ] Token usage [target]
+- [ ] Character count <12K
+
+---
+
+## Integration
+
+**Invoked by:** [Who calls this command]
+**Invokes:** [What skills/subagents]
+**Updates:** [What files change]
+
+---
+
+## Performance
+
+**Token Budget:**
+- Command overhead: [~XXK]
+- Skill execution: [~XXK] (isolated)
+- Total main conversation: [~XXK]
+
+**Execution Time:**
+- Typical: [X-Y minutes]
+- Complex: [Y-Z minutes]
+```
+
+**Target:** 150-300 lines, 6K-12K characters
+
+---
+
+## Subagent Creation Guidelines
+
+### When to Create a Subagent
+
+Create a specialized subagent when:
+- ✅ Task is computationally expensive (parsing, analysis)
+- ✅ Task has specialized domain knowledge (security, testing)
+- ✅ Task benefits from isolated context (heavy token usage)
+- ✅ Task is reusable across multiple skills
+- ✅ Task needs framework guardrails (interpretation, formatting)
+
+Don't create a subagent when:
+- ❌ Logic is simple (<30 lines)
+- ❌ Task is command-specific (not reusable)
+- ❌ Logic already exists in skill
+- ❌ No framework constraints needed
+
+### Subagent Template
+
+```markdown
+---
+name: [subagent-name]
+description: [When to invoke this subagent]. Use [specific scenarios].
+model: opus|sonnet|inherit
+tools: Read, Grep, Glob, [others - minimal set]
+---
+
+# [Subagent Title]
+
+[One-paragraph purpose statement]
+
+## Purpose
+
+This subagent:
+1. [Primary responsibility]
+2. [Secondary responsibility]
+3. [Tertiary responsibility]
+
+## When Invoked
+
+**Proactively triggered:**
+- [Automatic invocation scenario 1]
+- [Automatic invocation scenario 2]
+
+**Explicit invocation:**
+```
+Task(
+  subagent_type="[name]",
+  description="[Brief task]",
+  prompt="[Detailed instructions with context]"
+)
+```
+
+**Not invoked:**
+- [When NOT to use]
+
+## Workflow
+
+### Step 1: [First Step]
+
+[Instructions for step 1]
+
+```
+[Pseudocode or example]
+```
+
+### Step 2: [Second Step]
+
+[Instructions for step 2]
+
+### Step N: Return Structured Result
+
+```json
+{
+  "status": "...",
+  "data": {...},
+  "recommendations": [...]
+}
+```
+
+---
+
+## Framework Integration
+
+**Invoked by:** [Which skills invoke this]
+**Requires:** [What context/files needed]
+**References:** [What reference files to consult]
+**Returns:** [What gets sent back]
+
+---
+
+## Framework Constraints
+
+[List key DevForgeAI rules this subagent must follow]
+
+**Load reference file for complete constraints:**
+```
+Read(file_path=".claude/skills/[skill]/references/[guide].md")
+```
+
+---
+
+## Success Criteria
+
+- [ ] [Criterion 1]
+- [ ] [Criterion 2]
+- [ ] Token usage <[target]
+- [ ] Returns structured output
+- [ ] Framework-aware (not siloed)
+
+---
+
+## Error Handling
+
+### [Error Scenario 1]
+**Detection:** [How to detect]
+**Response:** [What to return]
+**Recovery:** [How caller should handle]
+
+---
+
+## Testing Checklist
+
+- [ ] Unit test: [Test scenario 1]
+- [ ] Unit test: [Test scenario 2]
+- [ ] Integration: [Full workflow test]
+- [ ] Regression: [Behavior unchanged]
+- [ ] Performance: Token usage <[target]
+```
+
+**Target:** 200-500 lines, framework-aware, minimal tool access
+
+---
+
+## Reference File Template
+
+### When to Create a Reference File
+
+**Create reference file when subagent needs:**
+- ✅ Framework context (workflow states, quality gates)
+- ✅ Immutable constraints (coverage thresholds, violation rules)
+- ✅ Decision boundaries (what's valid, what's invalid)
+- ✅ Display guidelines (templates, tone, structure)
+- ✅ Integration patterns (how to work with other components)
+
+**Don't create reference file when:**
+- ❌ Subagent has minimal logic (<100 lines)
+- ❌ No framework-specific constraints
+- ❌ Task is generic (not DevForgeAI-specific)
+
+### Reference File Structure
+
+```markdown
+# [Topic] Guide
+
+**Purpose:** Framework-aware guardrails for [subagent-name]
+
+[One-paragraph description of why this reference exists]
+
+---
+
+## DevForgeAI Context
+
+### [Framework Concept 1]
+
+[Explain concept relevant to subagent's work]
+
+**Example:**
+```
+[Concrete example from framework]
+```
+
+### [Framework Concept 2]
+
+[Another relevant concept]
+
+---
+
+## Framework Constraints
+
+### 1. [Constraint Category 1] (Strict, Immutable)
+
+[Define the constraint]
+
+**Rules:**
+- [Rule 1]
+- [Rule 2]
+
+**Display guidance:**
+- [How to present this]
+- [What NOT to say]
+
+**Example:**
+```
+[Concrete example]
+```
+
+### 2. [Constraint Category 2] (Deterministic)
+
+[Define the constraint]
+
+---
+
+## [Subagent-Specific] Guidelines
+
+### [Guideline Topic 1]
+
+[Specific instructions for subagent task]
+
+**Template:**
+```
+[Example template or structure]
+```
+
+### [Guideline Topic 2]
+
+[More instructions]
+
+---
+
+## Framework Integration Points
+
+### Context Files to Reference
+
+- **tech-stack.md** - [When to check]
+- **anti-patterns.md** - [When to check]
+- [Other context files as relevant]
+
+### Related Skills/Subagents
+
+- **[Related component 1]** - [When to invoke]
+- **[Related component 2]** - [When to coordinate]
+
+---
+
+## Error Scenarios
+
+### [Error Type 1]
+
+**Detection:** [How subagent detects]
+**Response:** [What to return]
+**Guidance:** [How caller should handle]
+
+---
+
+## Testing Checklist
+
+- [ ] Subagent respects constraint 1
+- [ ] Subagent respects constraint 2
+- [ ] Output format matches guidelines
+- [ ] Framework-aware behavior verified
+- [ ] Integration with [skill] tested
+```
+
+**Target:** 200-400 lines, framework-specific, explicit constraints
+
+---
+
+## Refactoring Roadmap
+
+### Immediate Actions (Priority 1)
+
+**Commands requiring refactoring NOW:**
+
+1. **create-story** (23K chars, 153% over budget)
+   - Extract to: story-formatter subagent (YAML + markdown generation)
+   - Reference: story-template-guide.md
+   - Target: 300 lines, 10K chars
+
+2. **create-ui** (19K chars, 126% over budget)
+   - Already uses devforgeai-ui-generator skill ✓
+   - Issue: Command has too much integration logic
+   - Extract to: ui-spec-formatter subagent (template generation)
+   - Reference: ui-template-guide.md
+   - Target: 300 lines, 10K chars
+
+3. **release** (18K chars, 121% over budget)
+   - Extract to: release-orchestrator subagent (deployment sequence)
+   - Reference: release-workflow-guide.md
+   - Target: 300 lines, 10K chars
+
+### Near-Term Actions (Priority 2)
+
+**Commands approaching budget:**
+
+4. **ideate** (15K chars, 102% over budget)
+   - Extract to: requirements-formatter subagent
+   - Target: 300 lines, 10K chars
+
+5. **orchestrate** (15K chars, 100% at budget)
+   - Extract to: workflow-coordinator subagent
+   - Target: 300 lines, 10K chars
+
+### Monitor (Priority 3)
+
+**Commands at 80-95% of budget:**
+- create-epic (14K chars, 95%)
+- audit-deferrals (13K chars, 87%)
+- create-context (13K chars, 84%)
+- dev (13K chars, 84%)
+- create-sprint (13K chars, 84%)
+
+**Action:** Review quarterly, refactor if growth continues
+
+---
+
+## Success Metrics
+
+### Command Quality
+
+| Metric | Target | Current /qa | Current /dev |
+|--------|--------|-------------|--------------|
+| **Lines** | 150-300 | 295 ✅ | 513 ⚠️ |
+| **Characters** | 6K-12K | 8K ✅ | 13K ⚠️ |
+| **Budget** | <15K | 48% ✅ | 84% ⚠️ |
+| **Phases** | 3-5 | 4 ✅ | 4 ✅ |
+| **Token Overhead** | <3K | 2K ✅ | 3-5K ⚠️ |
+
+### Framework Compliance
+
+- [ ] All commands <15K characters (budget compliance)
+- [ ] Commands delegate business logic (lean orchestration)
+- [ ] Skills contain comprehensive implementation
+- [ ] Subagents handle specialized tasks (framework-aware)
+- [ ] Reference files provide guardrails (explicit constraints)
+- [ ] No duplication between command/skill/subagent
+- [ ] Token efficiency >50% improvement (vs pre-refactoring)
+
+---
+
+## Testing Strategy
+
+### For Each Refactored Command
+
+**Unit Tests (10-15 cases):**
+- Argument validation scenarios
+- Context loading edge cases
+- Skill invocation with various inputs
+- Subagent output parsing (if applicable)
+- Error handling paths
+
+**Integration Tests (8-12 cases):**
+- Full workflow with real stories
+- Mode/option variations
+- Failure scenarios with recovery
+- Status transitions
+- Retry cycles (if applicable)
+
+**Regression Tests (8-10 cases):**
+- Behavior unchanged from original
+- Quality gates still enforced
+- Thresholds still respected
+- Status transitions same
+- Error messages preserved
+
+**Performance Tests:**
+- Token budget: Command <3K tokens
+- Character budget: <12K chars (target) or <15K (max)
+- Execution time: Within expected range
+
+---
+
+## Rollback Procedure
+
+**If refactoring causes issues:**
+
+### Immediate Rollback (<15 minutes)
+
+```bash
+# 1. Restore original command
+git checkout HEAD~ .claude/commands/[command].md
+
+# 2. Remove new subagent (if created)
+rm .claude/agents/[new-subagent].md
+
+# 3. Remove reference file (if created)
+rm .claude/skills/[skill]/references/[new-guide].md
+
+# 4. Restore skill (if modified)
+git checkout HEAD~ .claude/skills/[skill]/SKILL.md
+
+# 5. Restore memory references
+git checkout HEAD~ .claude/memory/*.md
+
+# 6. Restart terminal
+# Terminal will reload original commands
+
+# 7. Verify original behavior
+/[command] [test-args]
+
+# 8. Document issue
+# Create rollback report: devforgeai/specs/enhancements/[COMMAND]-rollback-report.md
+```
+
+### Root Cause Analysis
+
+After rollback, investigate:
+- [ ] What failed? (skill invocation, subagent, parsing)
+- [ ] Why failed? (missing context, wrong tool access, logic error)
+- [ ] Test gaps? (which test case missed the issue)
+- [ ] Fix approach? (update subagent, skill, or command)
+- [ ] Prevention? (add to testing checklist)
+
+---
+
+## Best Practices
+
+### Do's ✅
+
+1. **Start with analysis** - Understand current structure before refactoring
+2. **Create backup** - Always preserve original command
+3. **Test comprehensively** - 30+ test cases (unit, integration, regression)
+4. **Document decisions** - Create analysis document explaining "why"
+5. **Measure tokens** - Verify efficiency improvements
+6. **Use proven pattern** - Follow /qa and /dev examples
+7. **Create guardrails** - Reference files for subagents
+8. **Keep it lean** - Target 150-300 lines for commands
+
+### Don'ts ❌
+
+1. **Don't skip analysis** - Refactoring without understanding causes issues
+2. **Don't skip backups** - Always preserve original
+3. **Don't skip testing** - Behavior changes must be caught before deployment
+4. **Don't over-optimize** - Commands at 80-90% budget may not need refactoring yet
+5. **Don't create silos** - Subagents must be framework-aware
+6. **Don't duplicate** - If logic exists in skill, don't put it in command
+7. **Don't guess** - Use AskUserQuestion if uncertain about extraction strategy
+8. **Don't rush** - Refactoring takes 4-6 hours for good reason
+
+---
+
+## Case Studies
+
+### Case Study 1: /dev Command Refactoring (2025-11-05)
+
+**Before:**
+- Lines: 860
+- Characters: 38K (253% over budget)
+- Issues: Git validation, tech detection, complex DoD validation all in command
+
+**Refactoring:**
+- Created: git-validator subagent
+- Created: tech-stack-detector subagent
+- Moved: All TDD logic to skill
+- Simplified: DoD validation to three-layer approach
+
+**After:**
+- Lines: 513 (40% reduction)
+- Characters: 13K (within budget, 84% usage)
+- Benefits: Clearer, delegated validation, framework-aware subagents
+
+**Lessons Learned:**
+- Subagents for pre-flight validation work well
+- Framework-aware subagents prevent silos
+- 40% reduction achievable while improving clarity
+
+### Case Study 2: /qa Command Refactoring (2025-11-05)
+
+**Before:**
+- Lines: 692
+- Characters: 31K (206% over budget)
+- Issues: Report parsing, display templates, deferral branching all in command
+
+**Refactoring:**
+- Created: qa-result-interpreter subagent
+- Created: qa-result-formatting-guide.md reference
+- Moved: Result interpretation to subagent
+- Simplified: Command to pure orchestration
+
+**After:**
+- Lines: 295 (57% reduction)
+- Characters: 8K (within budget, 53% usage)
+- Benefits: 66% token savings, clean separation, framework guardrails
+
+**Lessons Learned:**
+- Result interpretation is excellent subagent use case
+- Reference files critical for framework constraints
+- Display template generation belongs in subagent, not command
+- 57% reduction achievable with better architecture
+
+### Case Study 3: /create-sprint Command Refactoring (2025-11-05)
+
+**Before:**
+- Lines: 497
+- Characters: 12,525 (84% of budget)
+- Issues: All sprint planning logic inline, no skill invocation, approaching budget limit
+
+**Refactoring:**
+- Created: sprint-planner subagent (467 lines)
+- Created: sprint-planning-guide.md reference (391 lines)
+- Added: Phase 3 to devforgeai-orchestration skill (289 lines)
+- Moved: Sprint discovery, capacity validation, file generation to subagent
+
+**After:**
+- Lines: 250 (estimated final, 50% reduction)
+- Characters: ~8,000 (53% of budget)
+- Benefits: Token efficient (58% savings), framework-aware, budget compliant
+
+**Lessons Learned:**
+- User interaction belongs in command (11 AskUserQuestion instances preserved)
+- Skill can coordinate complex workflows (Phase 3: Sprint Planning)
+- Subagents excellent for document generation (sprint file + story updates)
+- Reference files prevent autonomous behavior (capacity guidelines, status transitions)
+- 50% reduction achievable while maintaining all features
+
+**Implementation Time:** 73 minutes (34% faster than planned)
+
+---
+
+### Case Study 4: /create-epic Command Refactoring (2025-11-06)
+
+**Before:**
+- Lines: 526
+- Characters: 14,309 (95% of budget)
+- Issues: All business logic in command, no skill invocation, direct subagent invocation, approaching budget limit
+
+**Refactoring:**
+- Enhanced: devforgeai-orchestration skill with epic creation workflow (+1,424 lines, 8 phases)
+- Created: 3 reference files (feature-decomposition-patterns, technical-assessment-guide, epic-validation-checklist - 2,550 lines total)
+- Created: Educational reference (epic-creation-guide.md - 748 lines)
+- Moved: All business logic to skill (epic discovery, context gathering, feature decomposition, technical assessment, file creation, validation)
+- Simplified: Command to pure orchestration (argument validation, markers, skill invocation, display)
+
+**After:**
+- Lines: 392 (25% reduction)
+- Characters: 11,270 (75% of budget)
+- Benefits: Budget compliant (95% → 75%), skills-first architecture restored, 80% token reduction
+
+**Lessons Learned:**
+- Mode detection in skill enables multi-purpose orchestration (epic, sprint, story modes)
+- Reference files essential for framework-aware subagents (3 files guide requirements-analyst, architect-reviewer)
+- Educational content belongs in reference docs, not commands
+- Two-pass trimming necessary (first pass 104%, second pass 75%)
+- Existing subagents sufficient (no new subagents needed)
+- Self-healing validation improves UX (auto-corrects missing dates, IDs, defaults)
+- Context file integration critical (greenfield vs brownfield detection)
+
+**Implementation Time:** ~3 hours (skill enhancement 2h, command refactoring 1h)
+
+---
+
+### Case Study 4: /orchestrate Command Refactoring (2025-11-06)
+
+**Before:**
+- Lines: 599
+- Characters: 15,012 (100% of budget, 12 chars over limit)
+- Issues: Business logic in command (checkpoint detection 47 lines, QA retry loop 134 lines, finalization 53 lines), orchestration skill missing 2 integrations
+
+**Refactoring:**
+- agent-generator analysis: NO new subagents needed (extract to skill directly)
+- Extracted: Phase 0 (checkpoint detection), Phase 3.5 (QA retry loop), Phase 6 (finalization) to devforgeai-orchestration skill
+- Added to skill: 3 missing integrations (devforgeai-ideation, devforgeai-ui-generator, devforgeai-story-creation)
+- Skill enhancement: +898 lines (2,351 → 3,249)
+- Command simplification: Lean structure with delegation only
+
+**After:**
+- Lines: 527 (12% reduction)
+- Characters: 14,422 (4% reduction, 96% of budget)
+- Benefits: Budget compliant, 100% skill coverage, business logic in proper layer
+
+**Lessons Learned:**
+- Not every refactoring needs subagents (coordination logic stays in skill)
+- Bi-directional knowledge sync critical (orchestration was unaware of ideation, ui-generator)
+- Skill enhancement enables command refactoring (do skill first)
+- Documentation balance (trim examples but keep usability)
+- Modest reduction still achieves compliance (under limit = success)
+
+**Implementation Time:** 3 hours (2h skill enhancement, 1h command refactoring)
+
+---
+
+## Framework Evolution
+
+### Command Character Budget Trend
+
+**Historical:**
+- Phase 1 (Oct 2025): Commands created, no budget awareness
+- Phase 2 (Oct 2025): Commands grew organically, some exceeded 30K
+- Phase 3 (Nov 2025): /dev refactored (860 → 513 lines)
+- Phase 4 (Nov 2025): /qa refactored (692 → 295 lines)
+- Phase 5 (Nov 2025): /create-sprint refactored (497 → 250 lines)
+- **Phase 6 (Nov 2025): /create-epic refactored (526 → 392 lines) ← Current**
+- Phase 7 (Future): Remaining 4 commands refactored
+
+### Pattern Maturity
+
+**Lessons from 4 refactorings:**
+1. Lean orchestration is achievable (25-57% reduction proven across all 4)
+2. Subagents essential for context isolation (35-40K tokens moved to isolated contexts)
+3. Reference files critical for framework constraints (prevents autonomous behavior, guides subagents)
+4. Testing prevents regressions (30+ test cases standard, 100% pass rate)
+5. Token efficiency improves significantly (58-80% savings in main conversation)
+6. User interaction stays in command (AskUserQuestion preserved where needed)
+7. Implementation time improving (73 min for /create-sprint, 180 min for /create-epic with skill enhancement)
+8. Educational content belongs in reference docs (not commands) - enables further size reduction
+9. Two-pass trimming sometimes necessary (first pass may still be over budget)
+10. Mode detection enables multi-purpose skills (orchestration handles epic, sprint, story modes)
+
+**Next Evolution:**
+- Apply pattern to remaining 4 over-budget commands (create-story, create-ui, release, orchestrate)
+- Establish automated budget monitoring (/audit-budget created ✅)
+- Target: 100% lean pattern compliance (all 11 commands)
+- Create command scaffolding tool
+- Build refactoring runbook (protocol serves as guide)
+
+---
+
+## Monitoring and Maintenance
+
+### Quarterly Review
+
+**Every 3 months, audit all commands:**
+
+```bash
+# Generate budget report
+for cmd in .claude/commands/*.md; do
+  chars=$(wc -c < "$cmd")
+  name=$(basename "$cmd" .md)
+  status="✅"
+  [ $chars -gt 15000 ] && status="❌ OVER"
+  [ $chars -gt 12000 ] && [ $chars -le 15000 ] && status="⚠️ HIGH"
+  echo "$name: $chars chars - $status"
+done | sort -t: -k2 -n
+
+# Identify refactoring candidates
+# Commands over 12K should be reviewed
+```
+
+**Review criteria:**
+- [ ] Any commands over 15K? (refactor immediately)
+- [ ] Any commands over 12K? (plan refactoring)
+- [ ] Command growth rate (comparing to previous quarter)
+- [ ] New commands following pattern? (lean by design)
+- [ ] Token efficiency maintained? (monitor main conversation usage)
+
+### Continuous Improvement
+
+**Add to refactoring checklist when patterns emerge:**
+- New anti-patterns discovered
+- Additional test cases needed
+- New subagent creation triggers
+- Reference file enhancements
+
+---
+
+## Quick Reference
+
+### Command Checklist
+
+Before deploying a new or updated command:
+- [ ] Lines: 150-300 (target)
+- [ ] Characters: <12K (target) or <15K (max)
+- [ ] Phases: 3-5 (lean workflow)
+- [ ] Business logic: None (delegated to skill)
+- [ ] Display templates: None (generated by skill/subagent)
+- [ ] Error handling: Minimal (3-5 types)
+- [ ] Documentation: Concise (integration notes only)
+
+### Refactoring Triggers
+
+Refactor when:
+- [ ] Command >15K characters (MUST)
+- [ ] Command >12K characters (SHOULD)
+- [ ] Command has business logic (validation, calculations)
+- [ ] Command has display templates (>50 lines)
+- [ ] Command reads files it didn't create (duplication)
+- [ ] Command has complex error matrix (>50 lines)
+
+### Pattern Application
+
+1. Analyze: Count lines per phase, identify logic
+2. Extract: Move business logic to skill, templates to subagent
+3. Test: 30+ cases (unit, integration, regression)
+4. Deploy: Backup, refactor, verify, monitor
+5. Document: Analysis, summary, checklist
+
+---
+
+## Appendix A: Command Budget Analysis (2025-11-05)
+
+### Current Status
+
+| Command | Lines | Chars | Budget % | Status | Priority |
+|---------|-------|-------|----------|--------|----------|
+| test-slashcommand-isolation | 31 | 987 | 7% | ✅ | — |
+| test-skill-context | 57 | 1,570 | 10% | ✅ | — |
+| test-arg-validation | 180 | 4,151 | 28% | ✅ | — |
+| **qa** | **295** | **7,205** | **48%** | ✅ | ✅ **Reference** |
+| **create-sprint** | **250** | **~8,000** | **53%** | ✅ | ✅ **Reference** |
+| ideate | 410 | 11,717 | 78% | ⚠️ | ✅ Refactored |
+| create-context | 420 | 12,631 | 84% | ⚠️ | 🟡 Monitor |
+| **dev** | **513** | **12,630** | **84%** | ⚠️ | ✅ **Refactored** |
+| audit-deferrals | 452 | 13,088 | 87% | ⚠️ | 🟡 Monitor |
+| create-epic | 526 | 14,309 | 95% | ⚠️ | 🟡 Watch |
+| **orchestrate** | **599** | **15,012** | **100%** | ❌ | 🔴 **MEDIUM** |
+| **release** | **655** | **18,166** | **121%** | ❌ | 🔴 **HIGH** |
+| **create-ui** | **614** | **18,908** | **126%** | ❌ | 🔴 **HIGH** |
+| **create-story** | **857** | **23,006** | **153%** | ❌ | 🔴 **CRITICAL** |
+
+**Summary:**
+- ✅ Compliant: 5 commands (2 references: qa, create-sprint; 3 test commands)
+- ⚠️ High: 5 commands (78-95% of budget, includes 2 refactored: dev, ideate)
+- ❌ Over: 4 commands (100-153% over budget, down from 5)
+- ✅ Refactored: 5 commands (dev, qa, ideate, create-sprint, create-story [pending])
+
+**Refactoring Priority Queue (Updated):**
+1. create-story (23K, 153%) - CRITICAL
+2. create-ui (19K, 126%) - HIGH
+3. release (18K, 121%) - HIGH
+4. orchestrate (15K, 100%) - MEDIUM
+
+---
+
+## Appendix B: Token Efficiency Comparison
+
+### /dev Command (Refactored 2025-11-05)
+
+**Before:**
+- Command: 860 lines, 38K chars
+- Main conversation: ~15K tokens
+- Skill: ~85K tokens (isolated)
+
+**After:**
+- Command: 513 lines, 13K chars
+- Main conversation: ~5K tokens
+- Skill: ~85K tokens (isolated)
+- Subagents: git-validator ~5K, tech-stack-detector ~10K (isolated)
+
+**Savings:** 67% reduction in main conversation (15K → 5K)
+
+### /qa Command (Refactored 2025-11-05)
+
+**Before:**
+- Command: 692 lines, 31K chars
+- Main conversation: ~8K tokens
+- Skill: ~65K tokens (isolated)
+
+**After:**
+- Command: 295 lines, 8K chars
+- Main conversation: ~2.7K tokens
+- Skill: ~65K tokens (isolated)
+- Subagent: qa-result-interpreter ~8K (isolated)
+
+**Savings:** 66% reduction in main conversation (8K → 2.7K)
+
+### /create-sprint Command (Refactored 2025-11-05)
+
+**Before:**
+- Command: 497 lines, 12,525 chars
+- Main conversation: ~12K tokens
+- Skill: N/A (no invocation)
+
+**After:**
+- Command: 250 lines (est), ~8,000 chars
+- Main conversation: ~5K tokens
+- Skill (Phase 3): ~40K tokens (isolated)
+- Subagent: sprint-planner ~35K (isolated)
+
+**Savings:** 58% reduction in main conversation (12K → 5K)
+
+### Pattern Consistency
+
+All three refactorings achieved:
+- ✅ 40-57% line count reduction (dev: 40%, qa: 57%, create-sprint: 50%)
+- ✅ 36-74% character reduction (dev: 66%, qa: 74%, create-sprint: 36%)
+- ✅ 58-67% token efficiency improvement (dev: 67%, qa: 66%, create-sprint: 58%)
+- ✅ Budget compliance (<15K chars)
+- ✅ 100% backward compatibility
+
+**Projected for remaining commands:**
+If all 4 remaining over-budget commands refactored:
+- Total character savings: ~45,000 chars
+- Total token savings: ~20,000 tokens (main conversation)
+- Budget violations: 0 (100% compliance)
+
+---
+
+## Appendix C: Reference File Patterns
+
+### Effective Reference Files
+
+**qa-result-formatting-guide.md** (250 lines):
+- DevForgeAI context (workflow, gates)
+- Framework constraints (coverage, violations, deferrals)
+- Display guidelines (templates, tone, emoji)
+- Integration points (context files, related components)
+
+**Key Success Factor:** Makes implicit constraints explicit
+
+### Reference File Checklist
+
+- [ ] Purpose clearly stated (prevent what behavior?)
+- [ ] Framework context provided (workflow states, quality gates)
+- [ ] Constraints documented (immutable rules with rationale)
+- [ ] Guidelines specific (how to do task within constraints)
+- [ ] Examples included (concrete cases from framework)
+- [ ] Integration points (what to reference, when to invoke others)
+- [ ] Error scenarios (how to handle gracefully)
+- [ ] Testing checklist (validate framework compliance)
+
+**Target:** 200-400 lines, framework-specific
+
+---
+
+## Related Documentation
+
+**Core Principles:**
+- `.ai_docs/claude-skills.md` - Skills architecture and progressive disclosure
+- `.ai_docs/Terminal/slash-commands-best-practices.md` - Command design patterns
+- `.ai_docs/Terminal/sub-agents.md` - Subagent architecture and context isolation
+
+**Implementation Examples:**
+- `.claude/commands/dev.md` - Reference implementation (refactored)
+- `.claude/commands/qa.md` - Reference implementation (refactored)
+- `.claude/commands/create-sprint.md` - Reference implementation (refactored)
+- `.claude/agents/qa-result-interpreter.md` - Subagent example
+- `.claude/agents/sprint-planner.md` - Subagent example
+- `.claude/skills/devforgeai-qa/references/qa-result-formatting-guide.md` - Reference file example
+- `.claude/skills/devforgeai-orchestration/references/sprint-planning-guide.md` - Reference file example
+
+**Refactoring Documentation:**
+- `devforgeai/specs/enhancements/QA-COMMAND-REFACTORING-ANALYSIS.md` - Deep analysis
+- `devforgeai/specs/enhancements/QA-COMMAND-REFACTORING-SUMMARY.md` - Architecture overview
+- `devforgeai/specs/enhancements/QA-COMMAND-REFACTORING-CHECKLIST.md` - Testing strategy
+- `devforgeai/specs/enhancements/CREATE-SPRINT-REFACTORING-PLAN.md` - Refactoring plan
+- `devforgeai/specs/enhancements/CREATE-SPRINT-REFACTORING-SUMMARY.md` - Implementation summary
+
+---
+
+## Version History
+
+**v1.0 (2025-11-05):**
+- Initial protocol document
+- Based on /dev and /qa refactorings
+- Establishes lean orchestration as standard pattern
+- Documents character budget management
+- Provides refactoring methodology
+- Includes 5-command priority queue
+
+**v1.1 (2025-11-05):**
+- Added Case Study 3: /create-sprint refactoring
+- Updated command status tables (5 refactored, 4 over-budget remaining)
+- Updated priority queue (5 → 4 commands)
+- Added sprint-planner subagent documentation
+- Updated Pattern Maturity section (3 refactorings complete)
+
+**v1.2 (2025-11-06):**
+- Added Case Study 4: /create-epic refactoring (526 → 392 lines, 25% reduction)
+- Enhanced devforgeai-orchestration skill with epic creation workflow (+1,424 lines, 8 phases)
+- Created 3 new reference files (feature-decomposition-patterns, technical-assessment-guide, epic-validation-checklist - 2,550 lines)
+- Created educational reference (epic-creation-guide.md - 748 lines)
+- Updated command status tables (6 refactored, 4 over-budget remaining, 3 compliant)
+- Updated Pattern Maturity section (4 refactorings complete, 10 lessons learned)
+- Added create-epic as reference implementation (75% budget)
+- Documented two-pass trimming technique (educational content externalization)
+- Revised token efficiency projections
+
+**Future versions:**
+- v1.2: Add automated budget monitoring tools (partially done: /audit-budget exists)
+- v1.3: Command scaffolding templates
+- v1.4: Refactoring runbook automation
+
+---
+
+**This protocol is a living document. Update as new patterns emerge and refactorings are completed.**

@@ -1,0 +1,8 @@
+{
+  "version": "1.0.1",
+  "released_at": "2025-11-20T00:00:00Z",
+  "schema_version": "1.0",
+  "description": "DevForgeAI Framework - Spec-Driven Development with Zero Technical Debt",
+  "homepage": "https://github.com/bankielewicz/DevForgeAI",
+  "license": "MIT"
+}

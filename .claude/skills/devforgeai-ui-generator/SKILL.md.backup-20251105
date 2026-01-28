@@ -1,0 +1,740 @@
+---
+name: devforgeai-ui-generator
+description: This skill generates front-end UI specifications and code for Web, GUI, or Terminal interfaces within the DevForgeAI framework. It validates context files, respects architectural constraints, and interactively guides users through technology and styling decisions. Use when stories require UI components or when generating visual specifications from requirements.
+license: Complete terms in LICENSE.txt
+---
+
+# DevForgeAI UI Generator Skill
+
+This skill generates front-end user interface specifications and code by interactively guiding users through technology and styling decisions while enforcing DevForgeAI architectural constraints.
+
+---
+
+## CRITICAL: Extracting Parameters from Conversation Context
+
+**IMPORTANT:** Skills CANNOT accept runtime parameters. All information must be extracted from conversation context.
+
+### How Slash Commands Pass "Parameters" to Skills
+
+When `/create-ui` command invokes this skill, it provides context in two modes:
+
+**Story Mode:**
+1. Loads story file via @file reference: `@devforgeai/specs/Stories/STORY-XXX.story.md`
+2. States: "Story ID: STORY-XXX" and "Mode: story"
+3. Invokes: `Skill(command="devforgeai-ui-generator")`
+
+**Standalone Mode:**
+1. States: "Component description: Login form with validation" and "Mode: standalone"
+2. Invokes: `Skill(command="devforgeai-ui-generator")`
+
+**You must detect which mode and extract appropriate parameters from conversation.**
+
+### Mode Detection
+
+**Check conversation for indicators:**
+```
+IF conversation contains YAML frontmatter with "id: STORY-XXX":
+  MODE = "story"
+  Extract story ID from frontmatter
+
+ELSE IF conversation contains "devforgeai/specs/Stories/STORY-XXX":
+  MODE = "story"
+  Extract story ID from file path
+
+ELSE IF conversation contains "Component description:":
+  MODE = "standalone"
+  Extract description from statement
+
+ELSE IF conversation contains "Mode: story":
+  MODE = "story"
+  Search for story ID in conversation
+
+ELSE IF conversation contains "Mode: standalone":
+  MODE = "standalone"
+  Search for component description
+
+ELSE:
+  # Cannot determine - ask user
+  AskUserQuestion:
+  Question: "Should I generate UI for a story or standalone component?"
+  Header: "UI Generation Mode"
+  Options:
+    - "Story-based (use acceptance criteria from story)"
+    - "Standalone (I'll describe the component)"
+  multiSelect: false
+```
+
+### Story ID Extraction (Story Mode)
+
+**Methods:** Same as other skills (YAML frontmatter, file reference, explicit statement)
+
+### Component Description Extraction (Standalone Mode)
+
+**Look for description in conversation:**
+```
+Search for patterns:
+  - "Component description: [text]" → DESCRIPTION = [text]
+  - "Create UI for: [text]" → DESCRIPTION = [text]
+  - User's original argument captured in conversation
+```
+
+### Validation Before Proceeding
+
+Before starting UI generation, verify:
+- [ ] Mode determined (story or standalone)
+- [ ] If story mode: Story ID extracted, story content available
+- [ ] If standalone mode: Component description extracted
+- [ ] Ready to proceed with UI generation phases
+
+**If extraction fails:**
+```
+HALT with error:
+"Cannot determine UI generation mode from conversation context.
+
+Expected to find:
+  - Story mode: Story file loaded OR 'Story ID: STORY-XXX' stated
+  - Standalone mode: 'Component description: [text]' stated
+
+Please ensure context is provided via slash command or state explicitly."
+```
+
+---
+
+## When to Use
+
+Use this skill when:
+- A story requires UI components or front-end implementation
+- Generating a "visual spec" or "mockup-as-code" from requirements
+- Creating front-end code for web (React, Blazor, ASP.NET), GUI (Tkinter, WPF), or Terminal (ASCII)
+- Translating acceptance criteria into tangible UI components
+- The user explicitly requests UI generation or mockup creation
+
+**Workflow Integration:**
+- Invoke **after** `devforgeai-architecture` (requires context files)
+- Invoke **during** or **before** `devforgeai-development` (generates specs for TDD)
+- Can be invoked by `devforgeai-orchestration` when story contains UI requirements
+
+## Core Workflow
+
+Follow this 6-phase workflow sequentially. Do not skip phases unless explicitly justified.
+
+### Phase 1: Context Validation
+
+**Objective:** Ensure DevForgeAI context files exist and are valid before proceeding.
+
+**Steps:**
+
+1. **Check Context Files:** Use Glob to verify all 6 required context files exist:
+   ```
+   Glob(pattern="devforgeai/specs/context/*.md")
+   ```
+   Required files:
+   - `tech-stack.md`
+   - `source-tree.md`
+   - `dependencies.md`
+   - `coding-standards.md`
+   - `architecture-constraints.md`
+   - `anti-patterns.md`
+
+2. **Validate Context:** Run the validation script:
+   ```
+   Bash(command="python .claude/skills/devforgeai-ui-generator/scripts/validate_context.py")
+   ```
+
+3. **Handle Missing Context:**
+   - If context files missing → HALT and inform user:
+     > "Context files are missing. Please invoke `devforgeai-architecture` skill first to create the required context files."
+   - If validation fails → HALT and report specific issues
+
+4. **Load Context Files:** Use Read tool to load critical context:
+   ```
+   Read(file_path="devforgeai/specs/context/tech-stack.md")
+   Read(file_path="devforgeai/specs/context/source-tree.md")
+   Read(file_path="devforgeai/specs/context/dependencies.md")
+   ```
+
+5. **Extract Constraints:**
+   - Parse `tech-stack.md` for approved UI frameworks/libraries
+   - Parse `source-tree.md` for correct output locations
+   - Parse `dependencies.md` for approved package versions
+
+**Output:** Context validated, constraints loaded into memory.
+
+---
+
+### Phase 2: Story Analysis (Optional)
+
+**Objective:** Extract UI requirements from story file if provided.
+
+**Steps:**
+
+1. **Check for Story Parameter:** Determine if user provided a story ID or path.
+
+2. **Locate Story File:**
+   - If story ID provided (e.g., `STORY-001`):
+     ```
+     Read(file_path="devforgeai/specs/Stories/{STORY-ID}.story.md")
+     ```
+   - If no story provided, skip to Phase 3.
+
+3. **Extract UI Requirements:**
+   - Parse **Acceptance Criteria** section (Given/When/Then format)
+   - Parse **Technical Specification** section for UI details
+   - Parse **Non-Functional Requirements** for UI performance/accessibility requirements
+   - Identify components mentioned (e.g., "login form", "dashboard", "data table")
+
+4. **Summarize Requirements:** Create a brief summary of:
+   - Components needed
+   - User interactions required
+   - Data displayed/collected
+   - Accessibility requirements
+
+**Output:** UI requirements summary (or skip if no story provided).
+
+---
+
+### Phase 3: Interactive Discovery
+
+**Objective:** Guide user through UI type, technology stack, and styling decisions using AskUserQuestion.
+
+**Important:** Respect context files at all times. If user requests technology not in `tech-stack.md`, use AskUserQuestion to resolve conflict.
+
+**Step 3.1: Determine UI Type**
+
+Use AskUserQuestion to ask:
+
+```
+AskUserQuestion(
+  questions: [{
+    question: "What type of UI are we building?",
+    header: "UI Type",
+    multiSelect: false,
+    options: [
+      {
+        label: "Web UI",
+        description: "Browser-based interface (React, Blazor, ASP.NET, HTML)"
+      },
+      {
+        label: "Native GUI",
+        description: "Desktop application (WPF, Tkinter, .NET MAUI)"
+      },
+      {
+        label: "Terminal UI",
+        description: "Command-line interface with formatted text/ASCII art"
+      }
+    ]
+  }]
+)
+```
+
+**Step 3.2: Define Technology & Style**
+
+Based on the answer from Step 3.1, ask a follow-up question.
+
+**If Web UI selected:**
+
+```
+AskUserQuestion(
+  questions: [
+    {
+      question: "What web technology should be used for this UI?",
+      header: "Web Tech",
+      multiSelect: false,
+      options: [
+        { label: "React", description: "Modern component-based framework" },
+        { label: "Blazor Server", description: "C# server-side rendering" },
+        { label: "Blazor WASM", description: "C# client-side WebAssembly" },
+        { label: "ASP.NET MVC", description: "Server-side MVC views" },
+        { label: "Plain HTML", description: "Static HTML/CSS/JS" }
+      ]
+    },
+    {
+      question: "What styling approach should be used?",
+      header: "Styling",
+      multiSelect: false,
+      options: [
+        { label: "Tailwind CSS", description: "Utility-first CSS framework" },
+        { label: "Bootstrap", description: "Component library with pre-built styles" },
+        { label: "Plain CSS", description: "Custom CSS from scratch" },
+        { label: "CSS Modules", description: "Scoped CSS per component" }
+      ]
+    },
+    {
+      question: "What theme/color scheme should be applied?",
+      header: "Theme",
+      multiSelect: false,
+      options: [
+        { label: "Dark Mode", description: "Dark background, light text" },
+        { label: "Light Mode", description: "Light background, dark text" },
+        { label: "Minimalist", description: "Clean, simple design with minimal colors" },
+        { label: "Vibrant", description: "Bold colors and gradients" }
+      ]
+    }
+  ]
+)
+```
+
+**If Native GUI selected:**
+
+```
+AskUserQuestion(
+  questions: [{
+    question: "What native GUI technology stack should be used?",
+    header: "GUI Tech",
+    multiSelect: false,
+    options: [
+      { label: "C# WPF", description: "Windows Presentation Foundation (XAML)" },
+      { label: "Python Tkinter", description: "Python's standard GUI library" },
+      { label: "C# .NET MAUI", description: "Cross-platform .NET UI framework" },
+      { label: "Python PyQt", description: "Python bindings for Qt framework" }
+    ]
+  }]
+)
+```
+
+**If Terminal UI selected:**
+
+```
+AskUserQuestion(
+  questions: [{
+    question: "What formatting style should be used for the terminal UI?",
+    header: "TUI Format",
+    multiSelect: false,
+    options: [
+      { label: "Box Drawing", description: "Unicode box-drawing characters for tables" },
+      { label: "Simple ASCII", description: "Plain dashes and pipes" },
+      { label: "Color Coded", description: "ANSI color codes for emphasis" },
+      { label: "Rich Tables", description: "Python rich library for advanced formatting" }
+    ]
+  }]
+)
+```
+
+**Step 3.3: Validate Against Context**
+
+After receiving user's technology choices:
+
+1. **Check tech-stack.md:** Verify chosen technology is approved.
+2. **If mismatch detected:**
+   ```
+   AskUserQuestion(
+     questions: [{
+       question: "You selected [CHOSEN_TECH], but tech-stack.md specifies [APPROVED_TECH]. Which should be used?",
+       header: "Tech Conflict",
+       multiSelect: false,
+       options: [
+         { label: "Use [CHOSEN_TECH]", description: "Update tech-stack.md and create ADR" },
+         { label: "Use [APPROVED_TECH]", description: "Follow existing standard" }
+       ]
+     }]
+   )
+   ```
+
+**Step 3.4: Define Components**
+
+Based on story requirements (if available) or user prompt, propose components:
+
+```
+AskUserQuestion(
+  questions: [{
+    question: "Based on the requirements, I suggest building these components: [LIST]. What elements should each component include?",
+    header: "Components",
+    multiSelect: false,
+    options: [
+      { label: "Use suggested components", description: "Build: [COMPONENT_LIST]" },
+      { label: "Modify components", description: "Specify custom components" },
+      { label: "Add more components", description: "Extend the suggested list" }
+    ]
+  }]
+)
+```
+
+If user selects "Modify" or "Add more", ask follow-up:
+```
+AskUserQuestion(
+  questions: [{
+    question: "Please describe the components you want to build (e.g., 'LoginForm: email input, password input, submit button')",
+    header: "Custom Components",
+    multiSelect: false,
+    options: [
+      { label: "Provide description", description: "I'll specify component details in text" }
+    ]
+  }]
+)
+```
+
+**Output:** Complete technology and component specification.
+
+---
+
+### Phase 4: Template & Best Practices Loading
+
+**Objective:** Load appropriate templates and best practices based on user's technology choices.
+
+**Steps:**
+
+1. **Determine Template Files:**
+   - Map user's technology choice to template file:
+     - React → `assets/web-template.jsx`
+     - Blazor → `assets/web-template.blazor.razor`
+     - ASP.NET MVC → `assets/web-template.aspnet.cshtml`
+     - Plain HTML → `assets/web-template.html`
+     - Python Tkinter → `assets/gui-template.py`
+     - C# WPF → `assets/gui-template.wpf.xaml`
+     - Terminal UI → `assets/tui-template.py`
+
+2. **Load Template:** Use Read tool:
+   ```
+   Read(file_path=".claude/skills/devforgeai-ui-generator/assets/{template-file}")
+   ```
+
+3. **Load Best Practices:** Use Read tool based on UI type:
+   ```
+   Read(file_path=".claude/skills/devforgeai-ui-generator/references/web_best_practices.md")
+   # or gui_best_practices.md or tui_best_practices.md
+   ```
+
+4. **Load Integration Guide:**
+   ```
+   Read(file_path=".claude/skills/devforgeai-ui-generator/references/devforgeai-integration-guide.md")
+   ```
+
+**Output:** Templates and best practices loaded into context.
+
+---
+
+### Phase 5: Code Generation
+
+**Objective:** Generate UI component code respecting all constraints and best practices.
+
+**Steps:**
+
+1. **Ensure Output Directory:** Run script to create output directory:
+   ```
+   Bash(command="python .claude/skills/devforgeai-ui-generator/scripts/ensure_spec_dir.py")
+   ```
+
+2. **Determine Output Location:**
+   - Parse `source-tree.md` for correct UI component location
+   - Default: `devforgeai/specs/ui/` (if not specified in source-tree.md)
+   - Follow any project-specific structure defined in source-tree.md
+
+3. **Generate Component Code:**
+   - Start with loaded template
+   - Apply user's styling choices
+   - Implement component structure from Phase 3
+   - Follow best practices from Phase 4
+   - Respect `coding-standards.md` conventions (indentation, naming, etc.)
+   - Add accessibility attributes (ARIA roles, labels, alt text)
+   - Include comments explaining key sections
+
+4. **Apply Anti-Pattern Prevention:**
+   - Check `anti-patterns.md` for forbidden patterns
+   - Avoid hardcoded values (use configuration/props)
+   - Ensure proper separation of concerns
+   - Follow dependency injection patterns if applicable
+
+5. **Confirm Filename:**
+   ```
+   AskUserQuestion(
+     questions: [{
+       question: "I have generated the code for [COMPONENT_NAME]. What filename should I use?",
+       header: "Filename",
+       multiSelect: false,
+       options: [
+         { label: "Use default", description: "Save as: devforgeai/specs/ui/[COMPONENT_NAME].[ext]" },
+         { label: "Custom path", description: "Specify a different filename/location" }
+       ]
+     }]
+   )
+   ```
+
+6. **Write File:** Use Write tool:
+   ```
+   Write(file_path="{confirmed-path}", content="{generated-code}")
+   ```
+
+7. **Confirm Completion:** Inform user:
+   > "✅ Generated [COMPONENT_NAME] and saved to [FILE_PATH]"
+
+**Output:** UI component code written to file.
+
+---
+
+### Phase 6: Documentation & Story Update
+
+**Objective:** Document the generated UI and update story file if applicable.
+
+**Steps:**
+
+1. **Generate UI Spec Summary:**
+   - Create a summary document listing:
+     - Components generated
+     - Technology stack used
+     - File locations
+     - Dependencies required
+     - Integration instructions
+
+2. **Write Summary File:**
+   ```
+   Write(
+     file_path="devforgeai/specs/ui/UI-SPEC-SUMMARY.md",
+     content="{ui-spec-summary}"
+   )
+   ```
+
+3. **Update Story File (if story provided):**
+   - Use Edit tool to add reference to generated UI components:
+   ```
+   Edit(
+     file_path="devforgeai/specs/Stories/{STORY-ID}.story.md",
+     old_string="## Technical Specification",
+     new_string="## Technical Specification\n\n### UI Components\n- Generated: [COMPONENT_LIST]\n- Location: devforgeai/specs/ui/\n- See: devforgeai/specs/ui/UI-SPEC-SUMMARY.md\n"
+   )
+   ```
+
+4. **Report Completion:**
+   > "✅ UI generation complete!\n
+   > - Components: [LIST]\n
+   > - Location: devforgeai/specs/ui/\n
+   > - Summary: devforgeai/specs/ui/UI-SPEC-SUMMARY.md"
+
+5. **Ask for Additional Components:**
+   ```
+   AskUserQuestion(
+     questions: [{
+       question: "Would you like to generate another UI component?",
+       header: "Continue",
+       multiSelect: false,
+       options: [
+         { label: "Yes", description: "Generate another component" },
+         { label: "No", description: "Finish UI generation" }
+       ]
+     }]
+   )
+   ```
+
+   - If "Yes" → Return to Phase 3, Step 3.4
+   - If "No" → End skill execution
+
+**Output:** Documentation complete, story updated (if applicable).
+
+---
+
+## Integration with Other DevForgeAI Skills
+
+### devforgeai-architecture
+- **Dependency:** Requires context files created by architecture skill
+- **Flow:** architecture → ui-generator
+
+### devforgeai-development
+- **Integration:** UI specs serve as input for TDD implementation
+- **Flow:** ui-generator → development (tests written for UI components)
+
+### devforgeai-orchestration
+- **Invocation:** Orchestration can invoke ui-generator when story has UI requirements
+- **Flow:** orchestration detects UI story → invokes ui-generator → proceeds to development
+
+### devforgeai-qa
+- **Validation:** QA validates generated UI against acceptance criteria
+- **Flow:** development → qa (checks UI implementation matches spec)
+
+---
+
+## Bundled Resources
+
+### Scripts
+
+**`scripts/ensure_spec_dir.py`**
+- Creates `devforgeai/specs/ui/` directory if it doesn't exist
+- Used in Phase 5 before writing generated code
+
+**`scripts/validate_context.py`**
+- Validates all 6 context files exist and are non-empty
+- Checks for placeholder content (TODO, TBD)
+- Used in Phase 1 for context validation
+
+### References
+
+**`references/devforgeai-integration-guide.md`**
+- Detailed guide on integrating with DevForgeAI workflow
+- Context file requirements and how to respect them
+- Common integration patterns
+
+**`references/web_best_practices.md`**
+- Semantic HTML guidelines
+- Accessibility (ARIA roles, alt text, keyboard navigation)
+- Form validation patterns
+- Responsive design principles
+
+**`references/gui_best_practices.md`**
+- Layout organization (logical grouping)
+- Component naming conventions
+- Tab order and keyboard shortcuts
+- Platform-specific guidelines (WPF, Tkinter)
+
+**`references/tui_best_practices.md`**
+- Column alignment and formatting
+- Box-drawing characters for tables
+- ANSI color usage for readability
+- Terminal width considerations
+
+### Assets (Templates)
+
+**`assets/web-template.html`**
+- Boilerplate HTML5 structure
+- Semantic tags and accessibility attributes
+
+**`assets/web-template.jsx`**
+- React functional component template
+- PropTypes/TypeScript interface placeholder
+
+**`assets/web-template.blazor.razor`**
+- Blazor component with @page directive
+- @code block structure
+
+**`assets/web-template.aspnet.cshtml`**
+- ASP.NET Core MVC View template
+- @model declaration and sections
+
+**`assets/gui-template.py`**
+- Python Tkinter application boilerplate
+- Main window setup and event loop
+
+**`assets/gui-template.wpf.xaml`**
+- WPF Window with Grid layout
+- Namespace declarations
+
+**`assets/tui-template.py`**
+- Python function for formatted terminal output
+- Table rendering with column alignment
+
+---
+
+## Usage Examples
+
+### Example 1: Web UI from Story
+
+```
+User: "Generate UI for STORY-042 which requires a login form"
+
+Skill executes:
+1. Validates context files ✓
+2. Reads STORY-042.story.md
+3. Asks: "What type of UI?" → User selects "Web UI"
+4. Asks: "Web technology?" → User selects "React"
+5. Asks: "Styling?" → User selects "Tailwind CSS"
+6. Asks: "Theme?" → User selects "Dark Mode"
+7. Generates LoginForm.jsx with email/password fields
+8. Saves to devforgeai/specs/ui/LoginForm.jsx
+9. Updates STORY-042.story.md with UI reference
+```
+
+### Example 2: Native GUI without Story
+
+```
+User: "Create a settings dialog for the application"
+
+Skill executes:
+1. Validates context files ✓
+2. (No story provided, skip Phase 2)
+3. Asks: "What type of UI?" → User selects "Native GUI"
+4. Asks: "GUI technology?" → User selects "C# WPF"
+5. Asks: "Components?" → User describes "Tabs for General, Advanced, About"
+6. Generates SettingsDialog.xaml with TabControl
+7. Saves to devforgeai/specs/ui/SettingsDialog.xaml
+8. Creates UI-SPEC-SUMMARY.md
+```
+
+### Example 3: Terminal UI for Data Display
+
+```
+User: "Generate a terminal table to display server status"
+
+Skill executes:
+1. Validates context files ✓
+2. (No story provided)
+3. Asks: "What type of UI?" → User selects "Terminal UI"
+4. Asks: "Formatting style?" → User selects "Box Drawing"
+5. Asks: "Components?" → "Status table: server name, uptime, CPU, memory"
+6. Generates format_server_status.py with box-drawing table
+7. Saves to devforgeai/specs/ui/format_server_status.py
+```
+
+---
+
+## Quality Standards
+
+Generated UI code must:
+- ✅ Follow `coding-standards.md` conventions
+- ✅ Respect `tech-stack.md` approved technologies
+- ✅ Place files according to `source-tree.md` structure
+- ✅ Use dependencies from `dependencies.md` only
+- ✅ Avoid patterns listed in `anti-patterns.md`
+- ✅ Include accessibility attributes (ARIA, alt text)
+- ✅ Follow best practices from references/
+- ✅ Be properly commented and documented
+- ✅ Match story acceptance criteria (if story provided)
+
+---
+
+## Error Handling
+
+**Context files missing:**
+- HALT immediately
+- Inform user to run `devforgeai-architecture` first
+
+**Technology conflict (user choice vs tech-stack.md):**
+- Use AskUserQuestion to resolve
+- If user wants new tech → guide them to create ADR
+- If keeping existing → use approved tech
+
+**Invalid story file:**
+- Warn user but continue (skip Phase 2)
+- Proceed with interactive discovery
+
+**Write permission errors:**
+- Report error with specific path
+- Suggest checking directory permissions
+- Ask user for alternative output location
+
+---
+
+## Token Efficiency
+
+**Use native tools exclusively for file operations:**
+- ✅ Read(file_path=...) for reading files
+- ✅ Write(file_path=...) for creating files
+- ✅ Edit(file_path=...) for modifying files
+- ✅ Glob(pattern=...) for finding files
+- ✅ Grep(pattern=...) for searching content
+- ❌ Never use `cat`, `grep`, `find`, `sed`, `echo` via Bash
+
+**Load references progressively:**
+- Load only the best practices file relevant to UI type
+- Don't load all reference files upfront
+- Load integration guide only when needed
+
+**Estimated token usage per execution:**
+- Phase 1 (Context Validation): ~8,000 tokens
+- Phase 2 (Story Analysis): ~5,000 tokens (if story provided)
+- Phase 3 (Interactive Discovery): ~3,000 tokens
+- Phase 4 (Template Loading): ~4,000 tokens
+- Phase 5 (Code Generation): ~10,000 tokens
+- Phase 6 (Documentation): ~5,000 tokens
+- **Total: ~35,000 tokens per component** (efficient single-session execution)
+
+---
+
+## Summary
+
+The `devforgeai-ui-generator` skill provides an interactive, constraint-aware UI generation workflow that:
+- Validates DevForgeAI context files before proceeding
+- Respects architectural constraints (tech-stack, source-tree, dependencies)
+- Guides users through technology and styling decisions
+- Generates production-ready UI component code
+- Integrates seamlessly with other DevForgeAI skills
+- Updates story documentation automatically
+- Follows token-efficient native tool usage patterns
+
+Invoke this skill when UI components are needed, and let it guide you through a structured, context-aware generation process.

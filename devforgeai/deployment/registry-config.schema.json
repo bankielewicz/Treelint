@@ -1,0 +1,246 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://devforgeai.dev/schemas/registry-config.schema.json",
+  "title": "DevForgeAI Registry Configuration",
+  "description": "Schema for registry-config.yaml - configures package publishing to multiple registries (STORY-245)",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "defaults": {
+      "type": "object",
+      "description": "Default settings applied to all registries",
+      "properties": {
+        "skip-existing": {
+          "type": "boolean",
+          "default": true,
+          "description": "Skip publishing if version already exists"
+        },
+        "dry-run": {
+          "type": "boolean",
+          "default": false,
+          "description": "Validate without actually publishing"
+        }
+      },
+      "additionalProperties": true
+    },
+    "registries": {
+      "type": "object",
+      "description": "Registry-specific configurations",
+      "additionalProperties": false,
+      "properties": {
+        "npm": {
+          "$ref": "#/$defs/npmRegistry"
+        },
+        "pypi": {
+          "$ref": "#/$defs/pypiRegistry"
+        },
+        "nuget": {
+          "$ref": "#/$defs/nugetRegistry"
+        },
+        "docker": {
+          "$ref": "#/$defs/dockerRegistry"
+        },
+        "github": {
+          "$ref": "#/$defs/githubRegistry"
+        },
+        "crates": {
+          "$ref": "#/$defs/cratesRegistry"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "credentialConfig": {
+      "type": "object",
+      "description": "Credential environment variable mapping",
+      "properties": {
+        "token_var": {
+          "type": "string",
+          "description": "Environment variable name for API token"
+        },
+        "username_var": {
+          "type": "string",
+          "description": "Environment variable name for username"
+        },
+        "password_var": {
+          "type": "string",
+          "description": "Environment variable name for password"
+        }
+      },
+      "additionalProperties": false
+    },
+    "baseRegistry": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether this registry is enabled for publishing"
+        },
+        "skip-existing": {
+          "type": "boolean",
+          "description": "Override default skip-existing setting"
+        },
+        "credentials": {
+          "$ref": "#/$defs/credentialConfig"
+        }
+      }
+    },
+    "npmRegistry": {
+      "allOf": [
+        { "$ref": "#/$defs/baseRegistry" },
+        {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "registry": {
+              "type": "string",
+              "format": "uri",
+              "default": "https://registry.npmjs.org",
+              "description": "npm registry URL"
+            },
+            "access": {
+              "type": "string",
+              "enum": ["public", "restricted"],
+              "default": "public",
+              "description": "Package access level"
+            },
+            "skip-existing": { "type": "boolean" },
+            "credentials": { "$ref": "#/$defs/credentialConfig" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "pypiRegistry": {
+      "allOf": [
+        { "$ref": "#/$defs/baseRegistry" },
+        {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "repository": {
+              "type": "string",
+              "default": "pypi",
+              "description": "PyPI repository (pypi, testpypi, or custom URL)"
+            },
+            "skip-existing": { "type": "boolean" },
+            "credentials": { "$ref": "#/$defs/credentialConfig" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "nugetRegistry": {
+      "allOf": [
+        { "$ref": "#/$defs/baseRegistry" },
+        {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "source": {
+              "type": "string",
+              "format": "uri",
+              "default": "https://api.nuget.org/v3/index.json",
+              "description": "NuGet source URL"
+            },
+            "skip-duplicate": {
+              "type": "boolean",
+              "default": true,
+              "description": "Skip if version already exists on NuGet"
+            },
+            "skip-existing": { "type": "boolean" },
+            "credentials": { "$ref": "#/$defs/credentialConfig" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "dockerRegistry": {
+      "allOf": [
+        { "$ref": "#/$defs/baseRegistry" },
+        {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "registry": {
+              "type": "string",
+              "default": "docker.io",
+              "description": "Docker registry hostname"
+            },
+            "repository": {
+              "type": "string",
+              "description": "Docker repository name (org/repo)"
+            },
+            "tags": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": ["latest"],
+              "description": "Tags to push (supports {{version}} placeholder)"
+            },
+            "skip-existing": { "type": "boolean" },
+            "credentials": { "$ref": "#/$defs/credentialConfig" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "githubRegistry": {
+      "allOf": [
+        { "$ref": "#/$defs/baseRegistry" },
+        {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "packages": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable GitHub Packages (npm.pkg.github.com)"
+            },
+            "container": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable GitHub Container Registry (ghcr.io)"
+            },
+            "registry": {
+              "type": "string",
+              "description": "Custom GitHub registry URL"
+            },
+            "container_registry": {
+              "type": "string",
+              "default": "ghcr.io",
+              "description": "GitHub Container Registry hostname"
+            },
+            "skip-existing": { "type": "boolean" },
+            "credentials": { "$ref": "#/$defs/credentialConfig" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "cratesRegistry": {
+      "allOf": [
+        { "$ref": "#/$defs/baseRegistry" },
+        {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "allow-dirty": {
+              "type": "boolean",
+              "default": false,
+              "description": "Allow publishing with uncommitted changes"
+            },
+            "registry": {
+              "type": "string",
+              "default": "https://crates.io",
+              "description": "Cargo registry URL"
+            },
+            "skip-existing": { "type": "boolean" },
+            "credentials": { "$ref": "#/$defs/credentialConfig" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

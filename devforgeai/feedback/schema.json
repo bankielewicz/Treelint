@@ -1,0 +1,179 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DevForgeAI Feedback Session Schema",
+  "description": "Structured schema for retrospective feedback collection",
+  "type": "object",
+  "required": ["feedback_id", "timestamp", "story_id", "workflow_type", "success_status"],
+  "properties": {
+    "feedback_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this feedback session"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of feedback submission"
+    },
+    "story_id": {
+      "type": "string",
+      "pattern": "^STORY-[0-9]+$",
+      "description": "Story ID associated with operation"
+    },
+    "epic_id": {
+      "type": "string",
+      "pattern": "^EPIC-[0-9]+$",
+      "description": "Epic ID (optional, derived from story)"
+    },
+    "workflow_type": {
+      "type": "string",
+      "enum": ["dev", "qa", "orchestrate", "release", "ideate", "create-story", "create-epic", "create-sprint"],
+      "description": "Type of workflow that triggered feedback"
+    },
+    "success_status": {
+      "type": "string",
+      "enum": ["success", "failed", "partial"],
+      "description": "Outcome of the operation"
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["question_id", "question_text", "response_type"],
+        "properties": {
+          "question_id": {
+            "type": "string",
+            "description": "Unique identifier for the question"
+          },
+          "question_text": {
+            "type": "string",
+            "description": "Text of the question presented to user"
+          },
+          "response_type": {
+            "type": "string",
+            "enum": ["rating", "multiple_choice", "open_text"],
+            "description": "Type of response expected"
+          },
+          "response": {
+            "oneOf": [
+              {"type": "string"},
+              {"type": "integer"},
+              {"type": "null"}
+            ],
+            "description": "User's response to the question"
+          },
+          "skip": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether user skipped this question"
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "duration_seconds": {
+          "type": "integer",
+          "description": "Time spent on feedback session"
+        },
+        "total_questions": {
+          "type": "integer",
+          "description": "Total number of questions offered"
+        },
+        "answered": {
+          "type": "integer",
+          "description": "Number of questions answered"
+        },
+        "skipped": {
+          "type": "integer",
+          "description": "Number of questions skipped"
+        }
+      }
+    },
+    "ai_analysis": {
+      "type": "object",
+      "description": "AI-generated architectural analysis and recommendations",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether AI analysis was performed for this session"
+        },
+        "what_worked_well": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Framework aspects that worked effectively during workflow"
+        },
+        "areas_for_improvement": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Identified opportunities for framework enhancement"
+        },
+        "recommendations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string",
+                "description": "Specific, actionable recommendation"
+              },
+              "affected_files": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Files that would need modification"
+              },
+              "implementation_notes": {
+                "type": "string",
+                "description": "How to implement within Claude Code Terminal"
+              },
+              "priority": {
+                "type": "string",
+                "enum": ["low", "medium", "high"],
+                "description": "Implementation priority"
+              },
+              "feasible_in_claude_code": {
+                "type": "boolean",
+                "default": true,
+                "description": "Whether implementable within Claude Code Terminal constraints"
+              }
+            }
+          },
+          "description": "Structured recommendations for framework improvements"
+        },
+        "patterns_observed": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Positive patterns observed during workflow"
+        },
+        "anti_patterns_detected": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Anti-patterns or issues detected during workflow"
+        },
+        "constraint_analysis": {
+          "type": "string",
+          "description": "Analysis of how well context files supported the workflow"
+        },
+        "feasibility": {
+          "type": "object",
+          "properties": {
+            "implementable_in_claude_code": {
+              "type": "boolean",
+              "default": true
+            },
+            "requires_changes_to": {
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "complexity": {
+              "type": "string",
+              "enum": ["low", "medium", "high"]
+            }
+          }
+        }
+      }
+    }
+  }
+}

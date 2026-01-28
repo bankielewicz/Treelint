@@ -1,0 +1,32 @@
+# Import Metadata Template
+# Place in each project subdirectory under devforgeai/qa/imports/
+# Example: devforgeai/qa/imports/treelint/metadata.yaml
+
+# Project Information
+project:
+  name: "{PROJECT_NAME}"
+  version: "{VERSION}"
+  repository: "{REPO_URL}"  # Optional
+
+# Import Details
+import:
+  date: "{YYYY-MM-DD}"
+  imported_by: "{USER_OR_SYSTEM}"
+  source_path: "{ORIGINAL_PATH}"  # Original location in source project
+
+# Gap Files Included
+files:
+  - name: "{STORY_ID}-gaps.json"
+    qa_date: "{QA_RUN_DATE}"
+    qa_mode: "deep"  # or "light"
+
+# Notes
+notes: |
+  {Any relevant context about these imports}
+  {Why they were imported}
+  {Special handling requirements}
+
+# Processing Status
+status: "pending"  # pending | processed | archived
+processed_date: null
+stories_created: []

@@ -1,0 +1,41 @@
+DevForgeAI Orchestration Skill - Baseline Test Cases
+Created: 2025-01-06
+Pre-Refactoring Baseline
+
+Test Case 1: Epic Creation Mode
+- Context markers: **Command:** create-epic, **Epic name:** {name}
+- Expected: Phase 4A workflow executes
+- Expected: requirements-analyst subagent invoked
+- Expected: architect-reviewer subagent invoked
+- Expected: Epic file created in devforgeai/specs/Epics/
+
+Test Case 2: Sprint Planning Mode
+- Context markers: **Command:** create-sprint, **Sprint Name:** {name}, **Selected Stories:** {ids}
+- Expected: Phase 3 workflow executes
+- Expected: sprint-planner subagent invoked
+- Expected: Sprint file created in devforgeai/specs/Sprints/
+- Expected: Story statuses updated to "Ready for Dev"
+
+Test Case 3: Story Management Mode (Default)
+- Context markers: **Story ID:** STORY-001
+- Expected: Checkpoint detection executed
+- Expected: Story validation performed
+- Expected: Skill invocation coordinated based on status
+- Expected: Quality gates enforced
+
+Test Case 4: QA Retry Loop
+- Scenario: QA fails with deferral violations
+- Expected: Max 3 retry attempts
+- Expected: QA Attempt entries in workflow history
+- Expected: Follow-up story creation offered
+
+Test Case 5: Quality Gate Enforcement
+- Scenario: Story attempts to transition without meeting gate requirements
+- Expected: Transition blocked
+- Expected: Clear error message with requirements
+- Expected: No status change until requirements met
+
+Baseline Metrics:
+- SKILL.md: 3,249 lines
+- Token load on activation: ~26,000 tokens (estimated)
+- Reference files: 10 files, 7,664 lines

@@ -1,0 +1,31 @@
+{
+  "version": "1.0",
+  "description": "Index of AI architectural analysis sessions",
+  "last_updated": "2026-01-11T12:30:00Z",
+  "sessions": [
+    {
+      "id": "STORY-200-dev-2026-01-11",
+      "story_id": "STORY-200",
+      "workflow": "dev",
+      "timestamp": "2026-01-11T00:00:00Z",
+      "file": "STORY-200/2026-01-11-ai-analysis.json",
+      "recommendations_count": 4,
+      "high_priority_count": 0
+    },
+    {
+      "id": "STORY-200-qa-2026-01-11",
+      "story_id": "STORY-200",
+      "workflow": "qa",
+      "timestamp": "2026-01-11T12:30:00Z",
+      "file": "STORY-200/2026-01-11-qa-analysis.json",
+      "recommendations_count": 4,
+      "high_priority_count": 1
+    }
+  ],
+  "aggregated": {
+    "total_analyses": 2,
+    "patterns_detected": 8,
+    "recommendations_generated": 8,
+    "high_priority_recommendations": 1
+  }
+}

@@ -1,0 +1,46 @@
+---
+template-id: command-failed
+operation-type: command
+success-status: failed
+version: "1.0"
+description: "Template for failed command execution"
+---
+
+# Template: Command Failure Retrospective
+
+This template collects feedback when a command fails or encounters errors.
+
+## Field Mappings
+
+field-mappings:
+  what-happened:
+    question-id: "cmd_failed_01"
+    section: "## What Happened"
+
+  root-cause:
+    question-id: "cmd_failed_02"
+    section: "## Root Cause Analysis"
+
+  blockers:
+    question-id: "cmd_failed_03"
+    section: "## Blockers Encountered"
+
+  recovery:
+    question-id: "cmd_failed_04"
+    section: "## Recovery Steps Taken"
+
+  prevention:
+    question-id: "cmd_failed_05"
+    section: "## How to Prevent Next Time"
+
+## Template Sections
+
+- # Failure Retrospective: {operation}
+- ## What Happened
+- ## Root Cause Analysis
+- ## Blockers Encountered
+- ## Recovery Steps Taken
+- ## How to Prevent Next Time
+- ## Context (auto-populated)
+- ## User Sentiment (auto-populated)
+- ## Actionable Insights (auto-extracted)

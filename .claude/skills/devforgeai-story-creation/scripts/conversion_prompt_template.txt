@@ -1,0 +1,471 @@
+You are a technical specification parser for the DevForgeAI framework.
+
+TASK: Convert freeform technical specification to structured YAML v2.0 format.
+
+INPUT (Freeform Text):
+```
+{freeform_text}
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SCHEMA REFERENCE (v2.0 Format)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Component Types (7 types):
+
+1. Service - Hosted services, application services with lifecycle (OnStart/OnStop/Initialize)
+2. Worker - Background tasks, polling loops, scheduled jobs (continuous execution, while loops)
+3. Configuration - Config files (appsettings.json, .env, config.yaml, environment variables)
+4. Logging - Log configuration (Serilog, NLog, log4net, log sinks, log files)
+5. Repository - Data access layer (CRUD methods, database queries, Dapper, EF Core)
+6. API - HTTP endpoints (GET/POST/PUT/PATCH/DELETE, /api/ paths, request/response schemas)
+7. DataModel - Database entities, tables, DTOs, domain objects
+
+YAML Structure:
+```yaml
+technical_specification:
+  format_version: "2.0"
+
+  components:
+    - type: "Service|Worker|Configuration|Logging|Repository|API|DataModel"
+      name: "[ComponentName]"
+      file_path: "src/[inferred-path]/[file]"
+      # Type-specific fields (see examples below)
+      requirements:
+        - id: "[TYPE-001]"  # SVC-001, WKR-001, API-001, REPO-001, CFG-001, LOG-001, DM-001
+          description: "[What must be implemented]"
+          testable: true
+          test_requirement: "Test: [Specific action and expected outcome]"
+          priority: "Critical|High|Medium|Low"
+
+  business_rules:  # Optional
+    - id: "BR-001"
+      rule: "[Business rule description]"
+      trigger: "[When evaluated]"
+      validation: "[How to validate]"
+      error_handling: "[What happens if violated]"
+      test_requirement: "Test: [How to test this rule]"
+      priority: "Critical|High|Medium|Low"
+
+  non_functional_requirements:  # Optional
+    - id: "NFR-001"
+      category: "Performance|Security|Scalability|Reliability|Usability|Maintainability"
+      requirement: "[NFR description]"
+      metric: "[Measurable target - MUST include numbers/thresholds]"
+      test_requirement: "Test: [How to verify this NFR]"
+      priority: "Critical|High|Medium|Low"
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+COMPONENT CLASSIFICATION RULES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Worker:
+  KEYWORDS: polling, scheduled, background, continuous loop, ExecuteAsync, while True, timer
+  PATTERN: "[Name]Worker", "background task", "polls every X seconds"
+  EXAMPLE INPUT: "AlertDetectionWorker polls database every 30 seconds"
+  EXAMPLE OUTPUT:
+    - type: "Worker"
+      name: "AlertDetectionWorker"
+      file_path: "src/Workers/AlertDetectionWorker.cs"
+      polling_interval_ms: 30000
+      interface: "BackgroundService"
+      requirements:
+        - id: "WKR-001"
+          description: "Must run continuous polling loop with 30s interval"
+          test_requirement: "Test: Worker polls at 30s intervals until CancellationToken signals stop"
+          priority: "Critical"
+
+Service:
+  KEYWORDS: OnStart, OnStop, lifecycle, hosted service, IHostedService, coordinates, manages
+  PATTERN: "[Name]Service", "coordinates", "manages lifecycle"
+  EXAMPLE INPUT: "AlertingService coordinates workers with OnStart/OnStop methods"
+  EXAMPLE OUTPUT:
+    - type: "Service"
+      name: "AlertingService"
+      file_path: "src/Services/AlertingService.cs"
+      interface: "IHostedService"
+      lifecycle: "Singleton"
+      dependencies:
+        - "IAlertDetectionService"
+        - "IEmailService"
+      requirements:
+        - id: "SVC-001"
+          description: "Must implement OnStart/OnStop lifecycle methods"
+          test_requirement: "Test: OnStart transitions service to Running state within 5s"
+          priority: "Critical"
+
+Configuration:
+  KEYWORDS: appsettings, config, .env, environment variable, configuration key
+  PATTERN: "appsettings.json", "config file", "must contain [KeyName]"
+  EXAMPLE INPUT: "appsettings.json must contain ConnectionStrings.OmniWatchDb"
+  EXAMPLE OUTPUT:
+    - type: "Configuration"
+      name: "appsettings.json"
+      file_path: "src/appsettings.json"
+      required_keys:
+        - key: "ConnectionStrings.OmniWatchDb"
+          type: "string"
+          required: true
+          example: "Server=localhost;Database=OmniWatch;Trusted_Connection=true;"
+          test_requirement: "Test: Configuration loads ConnectionStrings.OmniWatchDb without exception"
+
+Logging:
+  KEYWORDS: Serilog, NLog, log file, log sink, logging, EventLog, database log
+  PATTERN: "configure Serilog", "log to file/database/EventLog"
+  EXAMPLE INPUT: "Configure Serilog with File, EventLog, Database sinks"
+  EXAMPLE OUTPUT:
+    - type: "Logging"
+      name: "Serilog"
+      file_path: "src/Program.cs"
+      sinks:
+        - name: "File"
+          path: "logs/app-.txt"
+          test_requirement: "Test: Log file created in logs/ directory with date suffix"
+        - name: "EventLog"
+          source: "Application"
+          test_requirement: "Test: Entry written to Windows Event Log"
+        - name: "Database"
+          table: "Logs"
+          test_requirement: "Test: Log entry written to Logs table"
+
+Repository:
+  KEYWORDS: repository, data access, CRUD, GetById, Create, Update, Delete, Dapper, EF Core, queries
+  PATTERN: "[Name]Repository", "implements GetById/Create/Update/Delete"
+  EXAMPLE INPUT: "AlertRepository implements CRUD using Dapper with parameterized queries"
+  EXAMPLE OUTPUT:
+    - type: "Repository"
+      name: "AlertRepository"
+      file_path: "src/Infrastructure/Repositories/AlertRepository.cs"
+      interface: "IAlertRepository"
+      data_access: "Dapper"
+      entity: "Alert"
+      table: "dbo.Alerts"
+      requirements:
+        - id: "REPO-001"
+          description: "Must use parameterized queries to prevent SQL injection"
+          test_requirement: "Test: Query uses @parameters, not string concatenation"
+          priority: "Critical"
+
+API:
+  KEYWORDS: GET, POST, PUT, PATCH, DELETE, /api/, endpoint, HTTP, REST, request, response
+  PATTERN: "POST /api/users", "GET /api/[resource]", "endpoint"
+  EXAMPLE INPUT: "POST /api/users creates new user with email validation"
+  EXAMPLE OUTPUT:
+    - type: "API"
+      name: "CreateUser"
+      endpoint: "/api/users"
+      method: "POST"
+      authentication:
+        required: true
+        method: "Bearer Token"
+      requirements:
+        - id: "API-001"
+          description: "Must validate email format and uniqueness"
+          test_requirement: "Test: Duplicate email returns 400 with 'Email already exists' error"
+          priority: "Critical"
+
+DataModel:
+  KEYWORDS: table, entity, model, DTO, database, columns, fields, properties
+  PATTERN: "[Name] table", "[Name] entity", "database schema"
+  EXAMPLE INPUT: "Alert table with Id, Severity, Message, CreatedAt columns"
+  EXAMPLE OUTPUT:
+    - type: "DataModel"
+      name: "Alert"
+      table: "dbo.Alerts"
+      purpose: "Represents alert instance"
+      fields:
+        - name: "Id"
+          type: "UUID"
+          constraints: "Primary Key, Auto-generated"
+          description: "Unique identifier"
+        - name: "Severity"
+          type: "Enum"
+          constraints: "Required, Values: Info|Warning|Error"
+          description: "Alert severity level"
+          test_requirement: "Test: Invalid severity throws ArgumentException"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INSTRUCTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 1: READ CAREFULLY
+Read the freeform text completely. Understand what's being built.
+
+STEP 2: IDENTIFY COMPONENTS
+Look for mentions of:
+- Class names (AlertDetectionWorker, AlertingService, UserRepository)
+- Files (appsettings.json, Program.cs)
+- Database tables (Alerts table, Users entity)
+- API endpoints (POST /api/users, GET /api/orders)
+- Background tasks (polling, scheduled jobs)
+- Logging setup (Serilog, log files)
+
+STEP 3: CLASSIFY EACH COMPONENT
+For each component found, determine its type using classification rules above:
+
+- Does it poll/loop/schedule? → Worker
+- Does it have OnStart/OnStop? → Service
+- Is it a config file? → Configuration
+- Is it logging setup? → Logging
+- Does it have CRUD methods? → Repository
+- Is it HTTP endpoint? → API
+- Is it database table/entity? → DataModel
+
+STEP 4: EXTRACT REQUIREMENTS
+For each component, identify what it MUST do:
+- Parse the freeform text for requirement statements
+- Look for "must", "should", "will", "needs to"
+- Convert to structured requirement with specific test assertion
+
+STEP 5: GENERATE TEST REQUIREMENTS
+Create SPECIFIC, ACTIONABLE test requirements (NOT generic):
+
+✅ GOOD (specific, testable):
+- "Test: Worker polls at 30s intervals until CancellationToken signals stop"
+- "Test: Invalid email throws ValidationException with message 'Invalid email format'"
+- "Test: Configuration loads ConnectionStrings.OmniWatchDb without exception"
+- "Test: Service starts within 5 seconds measured from OnStart call"
+- "Test: Repository query uses @parameters, not string concatenation (SQL injection prevention)"
+
+❌ BAD (vague, not testable):
+- "Test: Worker works correctly"
+- "Test: Validate email"
+- "Test: Check configuration"
+- "Test: Service should start"
+- "Test: Test the repository"
+
+EXTRACT SPECIFIC ASSERTIONS FROM THE FREEFORM TEXT.
+If text says "polls every 30 seconds", test should be "Test: Worker polls at 30s intervals"
+If text says "handle exceptions gracefully", test should be "Test: Exception in loop doesn't crash worker"
+
+STEP 6: INFER FILE PATHS
+If file path not explicit in freeform text, infer from standard project structure:
+- Workers: src/Workers/{Name}.cs
+- Services: src/Services/{Name}.cs
+- Repositories: src/Infrastructure/Repositories/{Name}.cs
+- APIs: src/API/Controllers/{Name}Controller.cs
+- DataModels: src/Domain/Entities/{Name}.cs
+- Configuration: src/appsettings.json or src/.env
+- Logging: src/Program.cs (usually configured in startup)
+
+STEP 7: EXTRACT BUSINESS RULES
+Look for validation logic, constraints, state transitions:
+- "If X then Y" statements
+- Validation rules ("must be", "cannot be")
+- State transition rules ("can only transition from A to B")
+- Each rule needs test_requirement
+
+STEP 8: EXTRACT NFRs
+Look for non-functional requirements:
+- Performance: "<5 seconds", ">1000 requests/second", "within 100ms"
+- Security: "encrypted", "authenticated", "authorized", "prevent SQL injection"
+- Scalability: "support 1000 users", "horizontal scaling"
+- Reliability: "99.9% uptime", "handle failures gracefully"
+
+CRITICAL: All NFR metrics MUST be measurable (contain numbers or thresholds).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+OUTPUT REQUIREMENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Return ONLY valid YAML (no explanations, no prose, no markdown code blocks around the YAML)
+2. Start with "technical_specification:" root key
+3. Include format_version: "2.0"
+4. All test_requirement fields MUST start with "Test: " prefix
+5. All IDs follow pattern: TYPE-001, TYPE-002, etc. (SVC-001, WKR-001, API-001, REPO-001, CFG-001, LOG-001, DM-001, BR-001, NFR-001)
+6. All NFR metrics must be measurable (contain numbers: "<5s", ">1000", "99.9%", "within 100ms")
+7. All component types must be one of the 7 valid types
+8. Every component with requirements array must have at least 1 requirement
+9. File paths should be realistic (src/[layer]/[component].cs or similar)
+10. Test requirements should be specific (extract details from freeform text)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EXAMPLES (Freeform → Structured)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+EXAMPLE 1 (Worker):
+
+INPUT: "AlertDetectionWorker will poll the database every 30 seconds for new alerts. It should inherit from BackgroundService and implement ExecuteAsync. The worker must handle exceptions gracefully and support cancellation tokens for clean shutdown."
+
+OUTPUT:
+```yaml
+technical_specification:
+  format_version: "2.0"
+  components:
+    - type: "Worker"
+      name: "AlertDetectionWorker"
+      file_path: "src/Workers/AlertDetectionWorker.cs"
+      interface: "BackgroundService"
+      polling_interval_ms: 30000
+      requirements:
+        - id: "WKR-001"
+          description: "Must run continuous polling loop with 30s interval and cancellation support"
+          testable: true
+          test_requirement: "Test: Worker polls at 30s intervals until CancellationToken signals stop"
+          priority: "Critical"
+        - id: "WKR-002"
+          description: "Must handle exceptions without stopping worker"
+          testable: true
+          test_requirement: "Test: Exception in poll iteration doesn't crash worker, logs error, continues"
+          priority: "High"
+```
+
+EXAMPLE 2 (Service + Configuration):
+
+INPUT: "AlertingService coordinates worker lifecycle with OnStart/OnStop methods. Configuration should be loaded from appsettings.json containing PollingIntervalSeconds (default 30) and ConnectionStrings.OmniWatchDb."
+
+OUTPUT:
+```yaml
+technical_specification:
+  format_version: "2.0"
+  components:
+    - type: "Service"
+      name: "AlertingService"
+      file_path: "src/Services/AlertingService.cs"
+      interface: "IHostedService"
+      lifecycle: "Singleton"
+      requirements:
+        - id: "SVC-001"
+          description: "Must implement OnStart/OnStop lifecycle methods"
+          testable: true
+          test_requirement: "Test: OnStart transitions service to Running state"
+          priority: "Critical"
+        - id: "SVC-002"
+          description: "Must coordinate worker lifecycle (start workers in OnStart, stop in OnStop)"
+          testable: true
+          test_requirement: "Test: Workers start when service starts, stop when service stops"
+          priority: "High"
+
+    - type: "Configuration"
+      name: "appsettings.json"
+      file_path: "src/appsettings.json"
+      required_keys:
+        - key: "PollingIntervalSeconds"
+          type: "int"
+          default: 30
+          required: false
+          test_requirement: "Test: PollingIntervalSeconds default is 30 when not specified"
+        - key: "ConnectionStrings.OmniWatchDb"
+          type: "string"
+          required: true
+          test_requirement: "Test: Configuration loads ConnectionStrings.OmniWatchDb without exception"
+```
+
+EXAMPLE 3 (Repository with business rule):
+
+INPUT: "AlertRepository implements GetById, Create, Update, Delete using Dapper. Must use parameterized queries to prevent SQL injection. Alert severity must be Info, Warning, or Error (no other values)."
+
+OUTPUT:
+```yaml
+technical_specification:
+  format_version: "2.0"
+  components:
+    - type: "Repository"
+      name: "AlertRepository"
+      file_path: "src/Infrastructure/Repositories/AlertRepository.cs"
+      interface: "IAlertRepository"
+      data_access: "Dapper"
+      entity: "Alert"
+      table: "dbo.Alerts"
+      requirements:
+        - id: "REPO-001"
+          description: "Must use parameterized queries to prevent SQL injection"
+          testable: true
+          test_requirement: "Test: Query uses @parameters, not string concatenation"
+          priority: "Critical"
+        - id: "REPO-002"
+          description: "Must implement GetById, Create, Update, Delete methods"
+          testable: true
+          test_requirement: "Test: All CRUD methods functional and return correct types"
+          priority: "High"
+
+  business_rules:
+    - id: "BR-001"
+      rule: "Alert severity must be Info, Warning, or Error (no other values allowed)"
+      validation: "Enum validation in AlertSeverity property"
+      error_handling: "Throw ArgumentException with message 'Invalid severity: {{value}}'"
+      test_requirement: "Test: Creating alert with severity 'Debug' throws ArgumentException"
+      priority: "Critical"
+```
+
+EXAMPLE 4 (API with NFR):
+
+INPUT: "POST /api/users creates new user account with email validation. Response time must be under 500ms at p95. Supports 1000 concurrent requests."
+
+OUTPUT:
+```yaml
+technical_specification:
+  format_version: "2.0"
+  components:
+    - type: "API"
+      name: "CreateUser"
+      endpoint: "/api/users"
+      method: "POST"
+      authentication:
+        required: true
+        method: "Bearer Token"
+      requirements:
+        - id: "API-001"
+          description: "Must validate email format before creating user"
+          testable: true
+          test_requirement: "Test: Invalid email format returns 400 with validation error"
+          priority: "Critical"
+        - id: "API-002"
+          description: "Must check email uniqueness before creation"
+          testable: true
+          test_requirement: "Test: Duplicate email returns 400 with 'Email already exists' error"
+          priority: "Critical"
+
+  non_functional_requirements:
+    - id: "NFR-001"
+      category: "Performance"
+      requirement: "Response time must be under 500ms at p95 percentile"
+      metric: "p95 latency < 500ms"
+      test_requirement: "Test: Load test with 100 concurrent requests, measure p95 latency < 500ms"
+      priority: "High"
+    - id: "NFR-002"
+      category: "Scalability"
+      requirement: "Must support 1000 concurrent requests without degradation"
+      metric: "1000 concurrent requests with <5% error rate"
+      test_requirement: "Test: Stress test with 1000 concurrent requests, verify error rate <5%"
+      priority: "High"
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+COMMON MISTAKES TO AVOID
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❌ WRONG: Classifying Worker as Service
+   Worker has continuous loop → type: "Worker" (NOT "Service")
+
+❌ WRONG: Generic test requirements
+   "Test: Verify it works" → Be specific: "Test: Worker polls at 30s intervals"
+
+❌ WRONG: Missing test requirements
+   Every requirement/key/sink/field MUST have test_requirement
+
+❌ WRONG: Non-measurable NFR metrics
+   "Fast performance" → Use numbers: "< 500ms response time"
+
+❌ WRONG: Invalid component types
+   "BackgroundTask" → Use "Worker" (one of 7 valid types)
+
+❌ WRONG: Adding explanations or prose
+   Return ONLY the YAML structure, no explanations
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+YOUR TASK NOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Convert the freeform text provided above to valid YAML matching the v2.0 schema.
+
+Remember:
+- Identify ALL components (don't miss any)
+- Classify correctly (use 7 valid types)
+- Generate SPECIFIC test requirements (extract details from text)
+- Include business rules if mentioned
+- Include NFRs with measurable metrics
+- Return ONLY YAML (no explanations)
+
+Return the YAML now:

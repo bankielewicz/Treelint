@@ -1,0 +1,832 @@
+# DevForgeAI Question Bank - RELEASE Operation Type
+# Comprehensive questions for deployment and production release workflows
+# 100+ questions covering passed, failed, and partial success scenarios
+
+operation_type: release
+
+# ============================================================================
+# PASSED OPERATION QUESTIONS (40 questions)
+# ============================================================================
+passed:
+  # Deployment Success Questions (15)
+  - id: "rel_pass_deploy_01"
+    priority: 1
+    category: "confidence"
+    text: "Deployment successful?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_deploy_02"
+    priority: 1
+    category: "confidence"
+    text: "All environments deployed?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_deploy_03"
+    priority: 2
+    category: "confidence"
+    text: "Smoke tests passed?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_deploy_04"
+    priority: 2
+    category: "confidence"
+    text: "Health checks passing?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_deploy_05"
+    priority: 1
+    category: "confidence"
+    text: "Production stable?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_deploy_06"
+    priority: 2
+    category: "confidence"
+    text: "Deployment time acceptable?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_deploy_07"
+    priority: 2
+    category: "confidence"
+    text: "Zero downtime achieved?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_deploy_08"
+    priority: 2
+    category: "confidence"
+    text: "Configuration changes applied?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_deploy_09"
+    priority: 2
+    category: "confidence"
+    text: "Database migrations successful?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_deploy_10"
+    priority: 3
+    category: "confidence"
+    text: "Load balancing working?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_deploy_11"
+    priority: 2
+    category: "confidence"
+    text: "CDN cache updated?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_deploy_12"
+    priority: 2
+    category: "confidence"
+    text: "API endpoints responding?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_deploy_13"
+    priority: 3
+    category: "confidence"
+    text: "Logging configured?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_deploy_14"
+    priority: 2
+    category: "confidence"
+    text: "Metrics collection active?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_deploy_15"
+    priority: 1
+    category: "confidence"
+    text: "Overall deployment confidence?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+  # User & Performance Impact (15)
+  - id: "rel_pass_impact_01"
+    priority: 1
+    category: "optimization"
+    text: "Any user-facing errors?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_impact_02"
+    priority: 1
+    category: "optimization"
+    text: "User feedback positive?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_impact_03"
+    priority: 2
+    category: "optimization"
+    text: "Performance impact acceptable?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_impact_04"
+    priority: 2
+    category: "optimization"
+    text: "Response times normal?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_impact_05"
+    priority: 2
+    category: "optimization"
+    text: "No unusual error rates?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_impact_06"
+    priority: 2
+    category: "optimization"
+    text: "Resource usage normal?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_impact_07"
+    priority: 3
+    category: "optimization"
+    text: "Did we achieve intended improvements?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_impact_08"
+    priority: 2
+    category: "optimization"
+    text: "Backward compatibility maintained?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_impact_09"
+    priority: 2
+    category: "optimization"
+    text: "Third-party integrations working?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_impact_10"
+    priority: 3
+    category: "optimization"
+    text: "Client applications updated?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_impact_11"
+    priority: 2
+    category: "optimization"
+    text: "Security scan passed?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_impact_12"
+    priority: 2
+    category: "optimization"
+    text: "Compliance requirements met?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_impact_13"
+    priority: 3
+    category: "optimization"
+    text: "Audit logs complete?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_impact_14"
+    priority: 2
+    category: "optimization"
+    text: "No data loss?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_impact_15"
+    priority: 1
+    category: "optimization"
+    text: "Documentation updated?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  # Next Steps & Future (10)
+  - id: "rel_pass_next_01"
+    priority: 1
+    category: "next-steps"
+    text: "Continue monitoring?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_next_02"
+    priority: 2
+    category: "next-steps"
+    text: "Can we release next feature?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_next_03"
+    priority: 2
+    category: "next-steps"
+    text: "Should we announce release?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_next_04"
+    priority: 3
+    category: "next-steps"
+    text: "Update release notes?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_next_05"
+    priority: 2
+    category: "next-steps"
+    text: "Schedule next release?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_next_06"
+    priority: 1
+    category: "next-steps"
+    text: "What's next priority?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_next_07"
+    priority: 3
+    category: "next-steps"
+    text: "Create retrospective?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_next_08"
+    priority: 2
+    category: "next-steps"
+    text: "Document lessons?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_next_09"
+    priority: 3
+    category: "next-steps"
+    text: "Update deployment procedures?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_pass_next_10"
+    priority: 2
+    category: "next-steps"
+    text: "Release process confidence?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+# ============================================================================
+# FAILED OPERATION QUESTIONS (35 questions)
+# ============================================================================
+failed:
+  # Deployment Failure Investigation (18)
+  - id: "rel_fail_inv_01"
+    priority: 1
+    category: "investigation"
+    text: "Deployment error?"
+    response_type: "open_text"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_fail_inv_02"
+    priority: 1
+    category: "investigation"
+    text: "Which environment failed?"
+    response_type: "multiple_choice"
+    options: ["Staging", "Production", "Both", "Other"]
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_fail_inv_03"
+    priority: 1
+    category: "investigation"
+    text: "Rollback needed?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_fail_inv_04"
+    priority: 2
+    category: "investigation"
+    text: "Can we recover?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_fail_inv_05"
+    priority: 2
+    category: "investigation"
+    text: "Are users affected?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_fail_inv_06"
+    priority: 1
+    category: "investigation"
+    text: "Smoke test failure reason?"
+    response_type: "open_text"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_fail_inv_07"
+    priority: 2
+    category: "investigation"
+    text: "Database migration failed?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_fail_inv_08"
+    priority: 2
+    category: "investigation"
+    text: "Configuration issue?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_fail_inv_09"
+    priority: 2
+    category: "investigation"
+    text: "Dependency problem?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_fail_inv_10"
+    priority: 2
+    category: "investigation"
+    text: "Infrastructure issue?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_fail_inv_11"
+    priority: 2
+    category: "investigation"
+    text: "Security issue?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_fail_inv_12"
+    priority: 2
+    category: "investigation"
+    text: "Third-party service down?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_fail_inv_13"
+    priority: 3
+    category: "investigation"
+    text: "Was the release correct?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_fail_inv_14"
+    priority: 2
+    category: "investigation"
+    text: "Error logs available?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_fail_inv_15"
+    priority: 2
+    category: "investigation"
+    text: "Is this reproducible?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_fail_inv_16"
+    priority: 3
+    category: "investigation"
+    text: "Was pre-release testing complete?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_fail_inv_17"
+    priority: 2
+    category: "investigation"
+    text: "Did staging tests pass?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_fail_inv_18"
+    priority: 2
+    category: "investigation"
+    text: "Is data corrupted?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  # Recovery & Resolution (10)
+  - id: "rel_fail_res_01"
+    priority: 1
+    category: "optimization"
+    text: "Rollback or recover?"
+    response_type: "multiple_choice"
+    options: ["Rollback", "Recover", "Fix forward", "Hold"]
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_fail_res_02"
+    priority: 1
+    category: "optimization"
+    text: "Timeline for resolution?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_fail_res_03"
+    priority: 2
+    category: "optimization"
+    text: "Do we need hotfix?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_fail_res_04"
+    priority: 2
+    category: "optimization"
+    text: "Should we restore from backup?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_fail_res_05"
+    priority: 2
+    category: "optimization"
+    text: "Notify customers?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_fail_res_06"
+    priority: 2
+    category: "optimization"
+    text: "Need manual intervention?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_fail_res_07"
+    priority: 3
+    category: "optimization"
+    text: "Create incident report?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_fail_res_08"
+    priority: 2
+    category: "optimization"
+    text: "Escalate to team?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_fail_res_09"
+    priority: 1
+    category: "optimization"
+    text: "Recovery confidence?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_fail_res_10"
+    priority: 2
+    category: "optimization"
+    text: "What would help?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  # Learning & Prevention (7)
+  - id: "rel_fail_learn_01"
+    priority: 2
+    category: "next-steps"
+    text: "How prevent this?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_fail_learn_02"
+    priority: 2
+    category: "next-steps"
+    text: "Add monitoring?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_fail_learn_03"
+    priority: 2
+    category: "next-steps"
+    text: "Improve testing?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_fail_learn_04"
+    priority: 3
+    category: "next-steps"
+    text: "Create ADR?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_fail_learn_05"
+    priority: 2
+    category: "next-steps"
+    text: "Update runbook?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_fail_learn_06"
+    priority: 2
+    category: "next-steps"
+    text: "Document lessons?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_fail_learn_07"
+    priority: 1
+    category: "next-steps"
+    text: "When retry?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+# ============================================================================
+# PARTIAL SUCCESS QUESTIONS (25 questions)
+# ============================================================================
+partial:
+  # Staged Rollout Investigation (12)
+  - id: "rel_partial_inv_01"
+    priority: 1
+    category: "investigation"
+    text: "Which environments deployed?"
+    response_type: "open_text"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_partial_inv_02"
+    priority: 1
+    category: "investigation"
+    text: "Where did it stop?"
+    response_type: "open_text"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_partial_inv_03"
+    priority: 2
+    category: "investigation"
+    text: "Is partial state safe?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_partial_inv_04"
+    priority: 2
+    category: "investigation"
+    text: "Can we continue to next phase?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_partial_inv_05"
+    priority: 1
+    category: "investigation"
+    text: "Are users affected?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_partial_inv_06"
+    priority: 2
+    category: "investigation"
+    text: "Is data consistent?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_partial_inv_07"
+    priority: 2
+    category: "investigation"
+    text: "Smoke tests for deployed portion?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_partial_inv_08"
+    priority: 2
+    category: "investigation"
+    text: "Can we rollback?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_partial_inv_09"
+    priority: 3
+    category: "investigation"
+    text: "Was this intentional rollout?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_partial_inv_10"
+    priority: 2
+    category: "investigation"
+    text: "Error logs available?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_partial_inv_11"
+    priority: 2
+    category: "investigation"
+    text: "Why did deployment stop?"
+    response_type: "open_text"
+    requires_context: true
+    first_time_only: false
+
+  - id: "rel_partial_inv_12"
+    priority: 2
+    category: "investigation"
+    text: "Is failure blocking?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  # Next Steps & Completion (13)
+  - id: "rel_partial_next_01"
+    priority: 1
+    category: "next-steps"
+    text: "Continue or rollback?"
+    response_type: "multiple_choice"
+    options: ["Continue", "Rollback", "Hold", "Manual fix"]
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_partial_next_02"
+    priority: 2
+    category: "next-steps"
+    text: "Timeline to complete?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_partial_next_03"
+    priority: 2
+    category: "next-steps"
+    text: "Can we release partial feature?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_partial_next_04"
+    priority: 2
+    category: "next-steps"
+    text: "Need manual steps?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_partial_next_05"
+    priority: 2
+    category: "next-steps"
+    text: "Notify stakeholders?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_partial_next_06"
+    priority: 1
+    category: "next-steps"
+    text: "Action to take?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_partial_next_07"
+    priority: 2
+    category: "next-steps"
+    text: "Create follow-up story?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_partial_next_08"
+    priority: 3
+    category: "next-steps"
+    text: "Update deployment playbook?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_partial_next_09"
+    priority: 2
+    category: "next-steps"
+    text: "Schedule completion?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_partial_next_10"
+    priority: 1
+    category: "next-steps"
+    text: "Confidence in completion?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_partial_next_11"
+    priority: 2
+    category: "next-steps"
+    text: "Need additional testing?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_partial_next_12"
+    priority: 2
+    category: "next-steps"
+    text: "Risk acceptable?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "rel_partial_next_13"
+    priority: 2
+    category: "next-steps"
+    text: "Escalate if needed?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false

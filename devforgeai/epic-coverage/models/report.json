@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "devforgeai-coverage-report-v1",
+  "title": "Coverage Report Schema",
+  "description": "Schema for epic coverage reporting output",
+  "type": "object",
+  "required": [
+    "summary",
+    "epics",
+    "actionable_next_steps",
+    "generated_at",
+    "format_version"
+  ],
+  "properties": {
+    "summary": {
+      "type": "object",
+      "required": [
+        "total_epics",
+        "total_features",
+        "overall_coverage_percent",
+        "missing_stories_count"
+      ],
+      "properties": {
+        "total_epics": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of epics with features"
+        },
+        "total_features": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of features across all epics"
+        },
+        "overall_coverage_percent": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Overall coverage percentage (null if no epics)"
+        },
+        "missing_stories_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of features without corresponding stories"
+        }
+      }
+    },
+    "epics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "epic_id",
+          "title",
+          "completion_percent",
+          "missing_features"
+        ],
+        "properties": {
+          "epic_id": {
+            "type": "string",
+            "pattern": "^EPIC-[0-9]{3}$",
+            "description": "Epic identifier"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Epic title"
+          },
+          "completion_percent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Completion percentage for this epic"
+          },
+          "missing_features": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of feature descriptions without corresponding stories"
+          }
+        }
+      }
+    },
+    "actionable_next_steps": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^/create-story.*"
+      },
+      "maxItems": 10,
+      "description": "Recommended /create-story commands (max 10)"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when report was generated"
+    },
+    "format_version": {
+      "type": "string",
+      "enum": [
+        "1.0"
+      ],
+      "description": "Schema version for future compatibility"
+    }
+  }
+}

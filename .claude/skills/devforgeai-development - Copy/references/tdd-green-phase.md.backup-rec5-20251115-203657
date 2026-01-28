@@ -1,0 +1,221 @@
+# Phase 2: Implementation (Green Phase)
+
+**Purpose:** Write minimal code to make failing tests pass.
+
+**Execution Order:** After Phase 1 (Red phase) - tests are failing
+
+**Expected Outcome:** All tests GREEN (passing), ready for refactoring
+
+**Token Cost:** ~900 tokens in skill context (~50,000 in isolated subagent context)
+
+---
+
+## Overview
+
+The Green phase focuses on making tests pass with minimal, clean code. No over-engineering allowed.
+
+**Core Principle:** Simplest code that works.
+
+---
+
+## Phase 2: Implementation (Green Phase)
+
+**Delegate implementation to backend-architect or frontend-developer subagent.**
+
+### Step 1: Determine Implementation Subagent [MANDATORY]
+
+```
+# Check story technical specification or framework type
+IF story involves UI/frontend work OR FRAMEWORK in ["React", "Vue", "Angular", "Blazor", "WPF"]:
+    IMPLEMENTATION_AGENT = "frontend-developer"
+
+ELIF story involves API/backend work OR FRAMEWORK in ["FastAPI", "Express", "ASP.NET Core", "Spring Boot"]:
+    IMPLEMENTATION_AGENT = "backend-architect"
+
+ELSE:
+    # Default to backend-architect for business logic
+    IMPLEMENTATION_AGENT = "backend-architect"
+```
+
+### Step 2: Invoke Implementation Subagent [MANDATORY]
+
+```
+Task(
+  subagent_type=IMPLEMENTATION_AGENT,
+  description="Implement minimal code to pass tests",
+  prompt="Implement code to make the failing tests pass (Green phase of TDD).
+
+  Story and tests are already available in conversation.
+
+  Context files to enforce:
+  - devforgeai/specs/context/tech-stack.md (locked technologies: {LANGUAGE}, {FRAMEWORK})
+  - devforgeai/specs/context/source-tree.md (file placement rules)
+  - devforgeai/specs/context/dependencies.md (approved packages only)
+  - devforgeai/specs/context/coding-standards.md (code patterns, naming conventions)
+  - devforgeai/specs/context/architecture-constraints.md (layer boundaries, DI patterns)
+  - devforgeai/specs/context/anti-patterns.md (forbidden patterns to avoid)
+
+  Implementation requirements:
+  1. Write MINIMAL code to pass tests (no over-engineering)
+  2. Follow coding-standards.md patterns
+  3. Respect architecture-constraints.md layer boundaries
+  4. Use dependencies.md packages ONLY (ask before adding new ones)
+  5. Avoid anti-patterns.md forbidden patterns
+  6. Use native tools (Read/Edit/Write, not Bash for files)
+
+  Test command: {TEST_COMMAND}
+
+  If new dependency needed:
+  - HALT and use AskUserQuestion to get approval
+  - Update dependencies.md after approval
+  - Create ADR if significant decision
+
+  Return:
+  - Implementation files created/modified
+  - Approach taken
+  - Any assumptions made
+  - Test run status (should be GREEN)"
+)
+```
+
+### Step 3: Parse Subagent Response [MANDATORY]
+
+```javascript
+result = extract_from_subagent_output(response)
+
+files_modified = result["files_modified"]
+approach = result["approach"]
+
+Display: "✓ Phase 2 (Green): Implementation by {IMPLEMENTATION_AGENT}"
+Display: "  - Files modified: {len(files_modified)}"
+
+FOR file in files_modified:
+    Display: "    • {file['path']}: {file['purpose']}"
+
+Display: "  - Approach: {approach}"
+```
+
+### Step 4: Verify Tests Pass (Green Phase) [MANDATORY]
+
+```
+Bash(command=TEST_COMMAND)
+
+IF all tests pass:
+    Display: "✓ GREEN phase confirmed - all tests passing"
+    Display: "  Ready for Phase 3 (Refactor)"
+
+ELIF some tests still failing:
+    Display: "⚠️ Warning: {failed_count} tests still failing"
+    Display: "  Re-invoking {IMPLEMENTATION_AGENT} to fix..."
+
+    # Re-invoke subagent with additional context about failures
+    # [Same Task call with failure details added to prompt]
+
+ELSE (tests error):
+    Display: "❌ ERROR: Test execution failed"
+    HALT development
+```
+
+---
+
+## Subagents Invoked
+
+**backend-architect OR frontend-developer:**
+- Implements minimal code to pass tests
+- Enforces all 6 context file constraints
+- Uses native tools (Edit/Write for file operations)
+- Avoids anti-patterns from anti-patterns.md
+- Follows coding-standards.md patterns
+
+---
+
+## Success Criteria
+
+Phase 2 succeeds when:
+- [ ] All tests pass (100% pass rate)
+- [ ] Minimal code written (no over-engineering)
+- [ ] All context file constraints enforced
+- [ ] No anti-patterns introduced
+- [ ] Test command executes successfully
+
+---
+
+## Common Issues
+
+**Issue 1: New dependency needed**
+- HALT development
+- Use AskUserQuestion to get user approval
+- Update dependencies.md after approval
+- Create ADR if significant technology decision
+
+**Issue 2: Tests still failing after implementation**
+- Re-invoke implementation subagent with failure details
+- May need to refine acceptance criteria
+- Check for missing test setup/teardown
+
+**Issue 3: Anti-pattern violation detected**
+- Refactor immediately (don't wait for Phase 3)
+- Follow anti-patterns.md guidance
+- Re-run tests to ensure still passing
+
+---
+
+## ✅ PHASE 2 COMPLETION CHECKPOINT
+
+**Before proceeding to Phase 3 (Refactor), verify ALL steps executed:**
+
+### Mandatory Steps Executed
+
+- [ ] **Step 1:** Implementation subagent determined (backend-architect OR frontend-developer)
+  - Verification: Correct agent selected based on story type (UI → frontend, API → backend)
+
+- [ ] **Step 2:** Implementation subagent invoked
+  - Verification: Minimal code written to pass tests
+  - Output: Files modified list displayed
+
+- [ ] **Step 3:** Implementation response parsed
+  - Verification: Approach and files displayed to user
+
+- [ ] **Step 4:** Tests verified GREEN (all passing)
+  - Verification: Executed {TEST_COMMAND}, all tests pass
+  - Output: Green phase confirmed message displayed
+
+### Success Criteria
+
+- [ ] All tests pass (100% pass rate)
+- [ ] Minimal code written (no over-engineering)
+- [ ] All context file constraints enforced
+- [ ] No anti-patterns introduced
+- [ ] Test command executes successfully
+- [ ] Ready for refactoring
+
+### Checkpoint Validation
+
+**IF ANY ITEM UNCHECKED:**
+```
+❌ PHASE 2 INCOMPLETE - Review missing steps above
+⚠️  DO NOT PROCEED TO PHASE 3 until all checkpoints pass
+
+Most commonly missed:
+  - Step 4 (Verify tests pass) ← Must confirm GREEN before refactoring
+  - Context file enforcement ← backend-architect should enforce, verify
+
+If tests still failing:
+  - Re-invoke implementation subagent with failure details
+  - Check acceptance criteria (may need clarification)
+  - Verify test setup/teardown correct
+```
+
+**IF ALL ITEMS CHECKED:**
+```
+✅ PHASE 2 COMPLETE - Implementation (Green Phase) Done
+
+Tests: All GREEN (passing)
+Code: Minimal implementation complete
+Context: All constraints enforced
+Anti-patterns: None introduced
+
+Ready to refactor and improve code quality.
+
+Next: Load tdd-refactor-phase.md and execute Phase 3 (Refactor Phase)
+```

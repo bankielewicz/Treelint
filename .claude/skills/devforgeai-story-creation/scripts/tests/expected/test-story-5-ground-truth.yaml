@@ -1,0 +1,111 @@
+# Ground Truth for Test Story 5 (Edge Case - Ambiguous/Vague Specification)
+# Expected: 4 generic components inferred from vague descriptions
+# Accuracy target: 70-85% (lower is acceptable given poor input quality)
+
+technical_specification:
+  format_version: "2.0"
+
+  components:
+    - type: "Worker"
+      name: "BackgroundProcessor"
+      file_path: "src/Workers/BackgroundProcessor.cs"
+      interface: "BackgroundService"
+      requirements:
+        - id: "WKR-001"
+          description: "Must run background process that checks for things periodically"
+          testable: true
+          test_requirement: "Test: Worker executes periodic checks at configured interval"
+          priority: "Medium"
+        - id: "WKR-002"
+          description: "Must handle errors gracefully without crashing"
+          testable: true
+          test_requirement: "Test: Exception in processing doesn't crash worker"
+          priority: "High"
+
+    - type: "Configuration"
+      name: "appsettings.json"
+      file_path: "src/appsettings.json"
+      required_keys:
+        - key: "ConnectionStrings.DefaultConnection"
+          type: "string"
+          required: true
+          test_requirement: "Test: Configuration loads connection details"
+        - key: "BackgroundProcessing.IntervalSeconds"
+          type: "int"
+          default: 60
+          required: false
+          test_requirement: "Test: Configuration loads timing interval setting"
+
+    - type: "Logging"
+      name: "FileAndEventLogger"
+      file_path: "src/Program.cs"
+      sinks:
+        - name: "File"
+          path: "logs/app-.txt"
+          test_requirement: "Test: Log file created in logs/ directory"
+        - name: "EventLog"
+          source: "Application"
+          test_requirement: "Test: Entries written to Windows Event Log"
+
+    - type: "DataModel"
+      name: "DataRecord"
+      table: "dbo.Records"
+      purpose: "Generic data storage"
+      fields:
+        - name: "Id"
+          type: "int"
+          constraints: "Primary Key, Identity"
+          description: "Unique identifier"
+        - name: "Data"
+          type: "nvarchar(max)"
+          constraints: "Required"
+          description: "Stored data"
+        - name: "CreatedAt"
+          type: "datetime2"
+          constraints: "Required, Auto-generated"
+          description: "Creation timestamp"
+
+  business_rules:
+    - id: "BR-001"
+      rule: "System must follow best practices (unspecified)"
+      validation: "General validation"
+      test_requirement: "Test: Basic validation checks implemented"
+      priority: "Medium"
+
+  non_functional_requirements:
+    - id: "NFR-001"
+      category: "Performance"
+      requirement: "Performance should be acceptable"
+      metric: "Response time reasonable for user experience"
+      test_requirement: "Test: Verify operations complete in reasonable time"
+      priority: "Medium"
+
+    - id: "NFR-002"
+      category: "Reliability"
+      requirement: "System should be reliable and not crash"
+      metric: "Error recovery and graceful failure handling"
+      test_requirement: "Test: System recovers from errors without crashing"
+      priority: "High"
+
+    - id: "NFR-003"
+      category: "Security"
+      requirement: "Security is important, follow best practices"
+      metric: "Basic security measures implemented"
+      test_requirement: "Test: Security best practices followed (input validation, etc.)"
+      priority: "High"
+
+    - id: "NFR-004"
+      category: "Scalability"
+      requirement: "Resource usage shouldn't be excessive"
+      metric: "Reasonable resource consumption"
+      test_requirement: "Test: Monitor resource usage, verify within acceptable limits"
+      priority: "Medium"
+
+# Component Inventory
+# Expected: 4 generic components (Worker, Configuration, Logging, DataModel)
+# Expected: 1 generic business rule
+# Expected: 4 generic NFRs
+#
+# NOTE: This is intentionally vague/generic to test robustness
+# AI should infer reasonable components even with poor input
+# Accuracy 70-85% acceptable (quality reflects input quality)

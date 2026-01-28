@@ -1,0 +1,116 @@
+@model ComponentViewModel
+
+@{
+    ViewData["Title"] = "Component Title";
+}
+
+<div class="component-container">
+    <header class="component-header">
+        <h2>@ViewData["Title"]</h2>
+    </header>
+
+    <main class="component-main">
+        @if (ViewData["ErrorMessage"] != null)
+        {
+            <div class="alert alert-danger" role="alert">
+                @ViewData["ErrorMessage"]
+            </div>
+        }
+
+        @if (ViewData["SuccessMessage"] != null)
+        {
+            <div class="alert alert-success" role="alert">
+                @ViewData["SuccessMessage"]
+            </div>
+        }
+
+        <form asp-action="Submit" method="post" class="component-form">
+            @Html.AntiForgeryToken()
+
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="form-group">
+                <label asp-for="ExampleInput" class="control-label"></label>
+                <input asp-for="ExampleInput" class="form-control" placeholder="Enter value" />
+                <span asp-validation-for="ExampleInput" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="ExampleSelect" class="control-label"></label>
+                <select asp-for="ExampleSelect" class="form-control">
+                    <option value="">-- Select an option --</option>
+                    @if (Model?.Options != null)
+                    {
+                        @foreach (var option in Model.Options)
+                        {
+                            <option value="@option.Value">@option.Text</option>
+                        }
+                    }
+                </select>
+                <span asp-validation-for="ExampleSelect" class="text-danger"></span>
+            </div>
+
+            <div class="form-group form-check">
+                <input asp-for="ExampleCheckbox" class="form-check-input" type="checkbox" />
+                <label asp-for="ExampleCheckbox" class="form-check-label"></label>
+            </div>
+
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary">Submit</button>
+                <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </main>
+
+    @if (Model?.Data != null)
+    {
+        <footer class="component-footer">
+            <h3>Data</h3>
+            <dl class="row">
+                <dt class="col-sm-3">Example Property</dt>
+                <dd class="col-sm-9">@Model.Data.ExampleProperty</dd>
+            </dl>
+        </footer>
+    }
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+
+    <script>
+        // Component-specific JavaScript
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Component initialized');
+
+            // Add your client-side logic here
+        });
+    </script>
+}
+
+@section Styles {
+    <style>
+        /* Component-specific styles */
+        .component-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .component-header {
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 1rem;
+        }
+
+        .component-main {
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+    </style>
+}

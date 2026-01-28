@@ -1,0 +1,1416 @@
+---
+name: devforgeai-ideation
+description: Transform business ideas and problems into structured requirements through guided discovery, requirements elicitation, and feasibility analysis. Use when starting new projects (greenfield), planning features for existing systems (brownfield), or exploring solution spaces before architecture and development. Supports simple apps through multi-tier platforms via progressive complexity assessment.
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+  - AskUserQuestion
+  - WebFetch
+  - Bash(git:*)
+  - Skill
+  - TodoWrite
+---
+
+# DevForgeAI Ideation Skill
+
+Transform raw business ideas, problems, and opportunities into structured, actionable requirements that drive spec-driven development with zero technical debt.
+
+## Purpose
+
+This skill serves as the **entry point** for the entire DevForgeAI framework. Transform business ideas into structured requirements through systematic discovery, requirements elicitation, complexity assessment, and feasibility analysis.
+
+**Core Capabilities:**
+1. **Discovery & Exploration** - Understand problem space through structured questioning
+2. **Requirements Elicitation** - Extract functional and non-functional requirements
+3. **Complexity Assessment** - Determine appropriate architecture tier (Simple → Enterprise)
+4. **Epic/Feature Decomposition** - Break large ideas into manageable work units
+5. **Feasibility Analysis** - Assess technical, business, and resource constraints
+6. **Greenfield/Brownfield Support** - Handle both new projects and existing codebases
+
+## Core Philosophy
+
+**"Start with Why, Then What, Then How"**
+- **Why:** Business value, user needs, success metrics
+- **What:** Functional/non-functional requirements, constraints
+- **How:** Technical approach (delegated to architecture skill)
+
+**"Ask, Don't Assume"**
+- Use AskUserQuestion for ALL ambiguities
+- Never infer requirements from incomplete information
+- Validate assumptions explicitly
+
+**"Right-size the Solution"**
+- Progressive complexity assessment (simple → moderate → complex → enterprise)
+- Don't over-engineer simple problems
+- Don't under-architect complex platforms
+
+## When to Use This Skill
+
+### ✅ Trigger Scenarios
+
+- "I want to build a new application for [purpose]" (Greenfield)
+- "Add multi-factor authentication to our existing system" (Brownfield)
+- "Our current system has [problem], how can we fix it?" (Problem-solving)
+- "We want to migrate from [old tech] to [new tech]" (Strategic planning)
+
+### ❌ When NOT to Use
+
+- Implementation of well-defined stories (use devforgeai-development)
+- Architecture decisions with clear requirements (use devforgeai-architecture)
+- Code quality validation (use devforgeai-qa)
+- Deployment and release (use devforgeai-release)
+
+---
+
+## Ideation Workflow (6 Phases)
+
+### Phase 1: Discovery & Problem Understanding
+
+**Objective:** Understand the business context, problem space, and desired outcomes
+
+#### 1.1 Project Context Discovery
+
+Use AskUserQuestion to establish foundation:
+
+```
+Question: "What type of project is this?"
+Header: "Project type"
+Options:
+  - "Greenfield - New project/product from scratch"
+  - "Brownfield - Adding features to existing system"
+  - "Modernization - Replacing/upgrading legacy system"
+  - "Problem-solving - Fixing issues in current system"
+```
+
+#### 1.2 Existing System Analysis (Brownfield/Modernization Only)
+
+**Discover codebase structure:**
+```
+Glob(pattern="**/*.sln")          # .NET solutions
+Glob(pattern="**/package.json")   # Node.js projects
+Glob(pattern="**/requirements.txt") # Python projects
+```
+
+**Check for existing DevForgeAI context:**
+```
+Read(file_path="devforgeai/specs/context/tech-stack.md")
+Read(file_path="devforgeai/specs/context/source-tree.md")
+```
+
+**Analyze current architecture:**
+```
+Grep(pattern="class.*Controller", type="cs")
+Grep(pattern="interface I.*Repository", type="cs")
+```
+
+Document: technology stack, architecture patterns, database schema, pain points
+
+#### 1.3 Problem Space Exploration
+
+Use AskUserQuestion for open-ended discovery:
+
+```
+Question: "What business problem are you trying to solve?"
+Question: "Who are the primary users or beneficiaries?"
+Options:
+  - "End customers/consumers"
+  - "Internal employees"
+  - "Business partners/vendors"
+  - "Administrators/operators"
+multiSelect: true
+
+Question: "What is the primary goal or success metric?"
+Options:
+  - "Increase revenue/conversions"
+  - "Reduce costs/inefficiency"
+  - "Improve user experience"
+  - "Enable new capabilities"
+  - "Compliance/regulatory requirement"
+multiSelect: true
+```
+
+#### 1.4 Scope Boundary Definition
+
+```
+Question: "What is the initial scope for the MVP or first release?"
+Options:
+  - "Core feature only (single user flow)"
+  - "Core + 2-3 secondary features"
+  - "Full feature set (comprehensive solution)"
+  - "Not sure - need help defining MVP"
+```
+
+Document: In Scope (included), Out of Scope (excluded), Future Scope (deferred)
+
+---
+
+### Phase 2: Requirements Elicitation
+
+**Objective:** Extract functional and non-functional requirements systematically
+
+#### 2.1 Functional Requirements Discovery
+
+Use structured questioning to uncover features. Capture requirements as user stories:
+
+```markdown
+As a [user type],
+I want to [action/capability],
+So that [business value/benefit].
+```
+
+**Load domain-specific elicitation patterns:**
+```
+Read(file_path=".claude/skills/devforgeai-ideation/references/requirements-elicitation-guide.md")
+```
+
+This reference provides comprehensive probing questions for:
+- E-commerce platforms
+- SaaS applications
+- Fintech systems
+- Healthcare platforms
+- Content management
+- Workflow/automation tools
+
+**Example questioning approach:**
+```
+Question: "What [domain-specific] capabilities should the platform support?"
+Options: [Domain-specific feature list]
+multiSelect: true
+```
+
+#### 2.2 Data Requirements Discovery
+
+Identify core entities and relationships:
+
+```
+Question: "What are the main data entities this system will manage?"
+Options:
+  - "Users/Accounts"
+  - "Products/Inventory"
+  - "Orders/Transactions"
+  - "Content/Documents"
+  - "Events/Activities"
+multiSelect: true
+```
+
+Probe for attributes and document relationships (one-to-many, many-to-many, one-to-one)
+
+#### 2.3 Integration Requirements
+
+```
+Question: "Does this system need to integrate with external services?"
+Options:
+  - "Payment gateway (Stripe, PayPal, etc.)"
+  - "Email service (SendGrid, AWS SES, etc.)"
+  - "Authentication provider (Auth0, OAuth, etc.)"
+  - "Cloud storage (S3, Azure Blob, etc.)"
+  - "Analytics (Google Analytics, Mixpanel, etc.)"
+  - "No external integrations"
+multiSelect: true
+```
+
+#### 2.4 Non-Functional Requirements (NFRs)
+
+**Performance:**
+```
+Question: "What are the performance requirements?"
+Options:
+  - "High performance (<100ms response time, >10k concurrent users)"
+  - "Standard performance (<500ms response time, 1k-10k users)"
+  - "Moderate performance (<2s response time, <1k users)"
+  - "Performance not critical (internal tool, low usage)"
+```
+
+**Security:**
+```
+Question: "What security requirements apply?"
+Options:
+  - "Authentication required (user login)"
+  - "Authorization/role-based access control"
+  - "Data encryption (at rest and in transit)"
+  - "Compliance (GDPR, HIPAA, SOC2, PCI-DSS)"
+  - "Audit logging"
+  - "Standard security practices"
+multiSelect: true
+```
+
+**Scalability:**
+```
+Question: "What scalability is needed?"
+Options:
+  - "Small scale (100s of users, single server)"
+  - "Medium scale (1000s of users, horizontal scaling)"
+  - "Large scale (10k+ concurrent users, multi-region)"
+  - "Massive scale (millions of users, global CDN)"
+```
+
+**Availability:**
+```
+Question: "What availability is required?"
+Options:
+  - "High availability (99.9% uptime, 24/7 monitoring)"
+  - "Business hours only (99% uptime during work hours)"
+  - "Best effort (no SLA)"
+```
+
+---
+
+### Phase 3: Complexity Assessment & Architecture Planning
+
+**Objective:** Assess solution complexity and determine appropriate architecture tier
+
+#### 3.1 Complexity Scoring
+
+Load comprehensive assessment matrix:
+```
+Read(file_path=".claude/skills/devforgeai-ideation/references/complexity-assessment-matrix.md")
+```
+
+**Score across 4 dimensions (0-60 total):**
+
+**Functional Complexity (0-20 points):**
+- User roles: 1-2 (Low=5), 3-5 (Medium=10), 6+ (High=15)
+- Core entities: 1-3 (Low=5), 4-10 (Medium=10), 11+ (High=15)
+- Integrations: 0-1 (Low=3), 2-4 (Medium=7), 5+ (High=10)
+- Workflow complexity: Linear (Low=3), Branching (Medium=7), State machines (High=10)
+
+**Technical Complexity (0-20 points):**
+- Data volume: <10k (Low=5), 10k-1M (Medium=10), >1M (High=15)
+- Concurrency: <100 (Low=5), 100-10k (Medium=10), >10k (High=15)
+- Real-time requirements: None (Low=3), Polling (Medium=7), WebSockets/Events (High=10)
+
+**Team/Organizational Complexity (0-10 points):**
+- Team size: 1-3 (Low=3), 4-10 (Medium=6), 11+ (High=10)
+- Team distribution: Co-located (Low=2), Remote (Medium=5), Multi-timezone (High=8)
+
+**Non-Functional Complexity (0-10 points):**
+- Performance: Moderate (Low=3), Standard (Medium=6), High (High=10)
+- Compliance: None (Low=0), Standard (Medium=5), Strict (High=10)
+
+#### 3.2 Architecture Tier Recommendation
+
+**Tier 1: Simple Application (0-15 points)**
+- Architecture: Monolithic
+- Layers: 2-3 (API, Business Logic, Data)
+- Database: Single database
+- Deployment: Single server or serverless
+- Example: Todo app, blog, portfolio site
+
+**Tier 2: Moderate Application (16-30 points)**
+- Architecture: Modular Monolith
+- Layers: 3-4 (API, Application, Domain, Infrastructure)
+- Database: Primary + read replicas
+- Deployment: Load-balanced multi-instance
+- Example: E-commerce site, SaaS tool
+
+**Tier 3: Complex Platform (31-45 points)**
+- Architecture: Microservices or Clean Architecture
+- Layers: 4-5 with domain separation
+- Database: Polyglot persistence
+- Deployment: Kubernetes, service mesh
+- Example: Multi-tenant SaaS, marketplace
+
+**Tier 4: Enterprise Platform (46-60 points)**
+- Architecture: Distributed microservices with event-driven patterns
+- Layers: 5+ with DDD
+- Database: Polyglot + event sourcing + CQRS
+- Deployment: Multi-region, auto-scaling
+- Example: Global fintech, streaming service
+
+**Validate recommendation:**
+```
+Question: "Based on requirements, this appears to be [Tier] with complexity score [X]. Does this match expectations?"
+Options:
+  - "Yes, that's correct"
+  - "No, it should be simpler (explain why)"
+  - "No, it should be more complex (explain why)"
+```
+
+---
+
+### Phase 4: Epic & Feature Decomposition
+
+**Objective:** Break down solution into manageable work units
+
+#### 4.1 Epic Identification
+
+Group features into business-value themes.
+
+**Epic Definition:**
+- High-level business capability
+- Spans multiple sprints (4-8 weeks)
+- Delivers measurable business value
+- Prioritized independently
+
+**Load domain patterns for decomposition guidance:**
+```
+Read(file_path=".claude/skills/devforgeai-ideation/references/domain-specific-patterns.md")
+```
+
+**Example decomposition (E-commerce):**
+- Epic 1: User Management
+- Epic 2: Product Catalog
+- Epic 3: Shopping & Checkout
+- Epic 4: Order Management
+- Epic 5: Admin Dashboard
+
+**Prioritize epics:**
+```
+Question: "Which epics should be prioritized for initial implementation?"
+Options:
+  - "Epic 1: [Name] (Est: [X] story points)"
+  - "Epic 2: [Name] (Est: [X] story points)"
+  - "Epic 3: [Name] (Est: [X] story points)"
+multiSelect: true
+```
+
+#### 4.2 Feature Breakdown
+
+For each epic, identify features (user-facing capabilities).
+
+Example - Epic: "User Management"
+- Feature 1: User Registration
+- Feature 2: User Login/Authentication
+- Feature 3: Profile Management
+- Feature 4: Password Reset
+
+#### 4.3 Story Decomposition (High-Level)
+
+For priority features, outline stories (atomic units of work, 1-3 days each).
+
+Example - Feature: "User Registration"
+- Story 1: Registration form with email/password
+- Story 2: Email verification workflow
+- Story 3: Registration validation rules
+
+**Note:** Detailed story creation happens in devforgeai-orchestration skill
+
+---
+
+### Phase 5: Feasibility & Constraints Analysis
+
+**Objective:** Identify technical, business, and resource constraints
+
+#### 5.1 Technical Feasibility
+
+Load feasibility framework:
+```
+Read(file_path=".claude/skills/devforgeai-ideation/references/feasibility-analysis-framework.md")
+```
+
+**Assess technical risks:**
+```
+Question: "Are there any technical constraints or concerns?"
+Options:
+  - "Must integrate with legacy systems"
+  - "Must support offline functionality"
+  - "Must work on low-bandwidth networks"
+  - "Requires real-time data synchronization"
+  - "Requires complex algorithms/ML"
+  - "No major technical constraints"
+multiSelect: true
+```
+
+Document each: nature, impact on architecture, mitigation, risk level
+
+#### 5.2 Business Constraints
+
+**Budget & Resources:**
+```
+Question: "What are the budget and resource constraints?"
+Options:
+  - "Limited budget - minimize cloud/licensing costs"
+  - "Limited team - simple, maintainable architecture"
+  - "Time-constrained - MVP in [X weeks/months]"
+  - "No major resource constraints"
+multiSelect: true
+```
+
+**Timeline:**
+```
+Question: "What is the target timeline?"
+Options:
+  - "Urgent - MVP in 4-6 weeks"
+  - "Standard - MVP in 2-3 months"
+  - "Flexible - 4-6 months or longer"
+```
+
+#### 5.3 Risk Assessment
+
+Identify risks (technical, business, team). For each: Probability, Impact, Mitigation
+
+---
+
+### Phase 6: Requirements Documentation & Handoff
+
+**Objective:** Generate structured requirements documents for downstream skills
+
+#### 6.1 Generate Epic Document(s)
+
+**Track epic creation with TodoWrite:**
+```
+At start of epic generation, create todos for each epic:
+TodoWrite([
+  "Create EPIC-001: [name]",
+  "Create EPIC-002: [name]",
+  ...
+  "Create EPIC-N: [name]",
+])
+
+Mark each epic as completed after creating the file.
+```
+
+Create epic documents in `devforgeai/specs/Epics/EPIC-NNN-[name].epic.md` with:
+- YAML frontmatter (id, title, status, dates, points)
+- Business goal and success metrics
+- Features breakdown
+- Requirements (functional, NFRs, data, integrations)
+- Architecture considerations (tier, pattern, constraints)
+- Risks and next steps
+
+**CRITICAL: Verify all planned epics are created**
+
+Before proceeding to Phase 6.2:
+```
+# Count planned epics (from decomposition phase)
+planned_epics = [count from Phase 4 decomposition]
+
+# Count created epic files
+created_epic_files = Glob(pattern="devforgeai/specs/Epics/EPIC-*.epic.md")
+created_count = len(created_epic_files)
+
+# Verification gate
+if created_count < planned_epics:
+    # HALT - Incomplete work detected
+    missing_count = planned_epics - created_count
+
+    ERROR: Only {created_count}/{planned_epics} epics created
+
+    Missing epics: Review Phase 4 decomposition and create remaining epic documents
+
+    DO NOT PROCEED to Phase 6.2 until all epics are created and verified.
+
+else:
+    # All epics created, safe to proceed
+    ✓ All {planned_epics} epics created and verified
+    → Proceed to Phase 6.2
+```
+
+#### 6.2 Generate Requirements Specification
+
+Create requirements spec in `devforgeai/specs/requirements/[project]-requirements.md` with:
+- Project context (type, complexity, timeline)
+- Problem statement and solution overview
+- User roles and personas
+- Complete requirements (functional, NFRs, data model, integrations)
+- Architecture recommendations
+- Risks, assumptions, success criteria
+
+#### 6.3 Transition to Architecture Skill
+
+**Check if architecture context exists:**
+```
+Glob(pattern="devforgeai/specs/context/*.md")
+```
+
+**If context files don't exist:**
+```
+Report: """
+✅ Requirements documentation complete
+
+Generated Documents:
+- [N] Epic documents in devforgeai/specs/Epics/
+- Requirements specification in devforgeai/specs/requirements/
+
+Next Steps:
+1. Invoking devforgeai-architecture skill to create context files
+2. After context creation, use devforgeai-orchestration to create Sprint 1
+"""
+
+Skill(command="devforgeai-architecture")
+```
+
+**If context files exist (brownfield):**
+```
+Read(file_path="devforgeai/specs/context/tech-stack.md")
+Read(file_path="devforgeai/specs/context/source-tree.md")
+
+# Validate requirements against existing constraints
+# Use AskUserQuestion to resolve any conflicts
+
+Report: """
+✅ Requirements documentation complete
+
+Context files exist. Requirements validated against constraints.
+
+Ready to proceed with:
+1. devforgeai-orchestration (create sprints/stories)
+2. devforgeai-development (implement features)
+"""
+```
+
+#### 6.4 Self-Validation
+
+**Objective:** Validate all generated artifacts meet quality standards before completing ideation phase
+
+**Load validation checklists:**
+```
+Read(file_path=".claude/skills/devforgeai-ideation/references/validation-checklists.md")
+```
+
+This reference provides comprehensive validation logic for:
+- Artifact creation (epic documents, requirements spec)
+- Epic content quality (frontmatter, business value, metrics, features)
+- Requirements specification quality (functional/non-functional requirements, data models)
+- Complexity assessment validation
+- Handoff readiness
+
+**Execute validation sequence:**
+
+**Step 1: Verify Artifact Creation**
+```
+# Check epic documents exist
+epic_files = Glob(pattern="devforgeai/specs/Epics/EPIC-*.epic.md")
+epic_count = len(epic_files)
+
+if epic_count == 0:
+    ERROR: No epic documents created
+    # Self-healing: Regenerate epics from Phase 4 plan
+    # Retry validation
+    # If still failing: Report to user
+
+# Check requirements spec exists
+req_files = Glob(pattern="devforgeai/specs/requirements/*.md")
+
+if len(req_files) == 0:
+    ERROR: No requirements specification created
+    # Self-healing: Regenerate requirements spec from Phase 2-5 data
+    # Retry validation
+    # If still failing: Report to user
+```
+
+**Step 2: Validate Epic Content Quality**
+```
+For each epic_file in epic_files:
+    # Read frontmatter only (first 15 lines)
+    Read(file_path=epic_file, limit=15)
+
+    Validate YAML frontmatter:
+    - [ ] id field matches filename
+    - [ ] title field present and non-empty
+    - [ ] business-value field quantified
+    - [ ] status field = "Backlog"
+    - [ ] priority field = High|Medium|Low
+    - [ ] created date in YYYY-MM-DD format
+
+    If validation fails:
+        # Self-healing: Fix epic frontmatter
+        # Retry validation
+        # If still failing after 1 retry: Report to user
+```
+
+**Step 3: Validate Requirements Specification Quality**
+```
+# Read requirements spec
+req_file = req_files[0]
+Read(file_path=req_file)
+
+Validate structure:
+- [ ] Project overview present (minimum 100 words)
+- [ ] Functional requirements categorized (minimum 5 requirements)
+- [ ] Non-functional requirements quantified (no vague terms like "fast", "scalable")
+- [ ] Data models documented (entities, attributes, relationships)
+- [ ] Integration requirements specified (protocols, formats, authentication)
+- [ ] Complexity assessment present with score 0-60
+- [ ] Architecture tier recommended
+
+If validation fails:
+    # Self-healing: Regenerate missing sections
+    # Retry validation
+    # If still failing after 1 retry: Report to user
+```
+
+**Step 4: Validate Complexity Assessment**
+```
+Extract complexity score from requirements spec:
+
+Validate:
+- [ ] Total score in range 0-60
+- [ ] Score breakdown present for all 4 dimensions:
+  - Functional: 0-20
+  - Technical: 0-20
+  - Team/Org: 0-10
+  - Non-Functional: 0-10
+- [ ] Architecture tier matches score:
+  - 0-15 = Simple
+  - 16-30 = Standard
+  - 31-45 = Advanced
+  - 46-60 = Enterprise
+- [ ] Technology recommendations present for tier
+
+If validation fails:
+    # Recalculate using complexity-assessment-matrix.md
+    # Update requirements spec
+    # Retry validation
+    # If still failing after 1 retry: Report to user
+```
+
+**Step 5: Validate Handoff Readiness**
+```
+Final checklist:
+- [ ] All planned epics created and validated
+- [ ] Requirements specification complete (no TBD/TODO)
+- [ ] Complexity assessment finalized
+- [ ] No ambiguities remain (all resolved via AskUserQuestion)
+- [ ] All assumptions documented with validation flags
+- [ ] Risks identified with mitigation strategies
+- [ ] Success metrics measurable (not vague)
+- [ ] Acceptance criteria testable (can verify pass/fail)
+
+If all validations pass:
+    ✅ Proceed to Phase 6.5 (Completion Report)
+else:
+    ⚠️ Address validation failures before proceeding
+```
+
+**Validation Success Criteria:**
+- Zero CRITICAL failures (missing artifacts, invalid structure)
+- Zero HIGH failures (vague requirements, untestable criteria)
+- MEDIUM/LOW failures documented with self-healing attempts
+
+**If validation succeeds:**
+- Proceed to Phase 6.5 (load output-templates.md, present summary)
+
+**If validation fails after self-healing:**
+- Report specific failures to user with remediation steps
+- Do NOT proceed to Phase 6.5 until issues resolved
+
+#### 6.5 Present Completion Summary
+
+**Load output templates:**
+```
+Read(file_path=".claude/skills/devforgeai-ideation/references/output-templates.md")
+```
+
+This reference provides standardized templates for presenting ideation results.
+
+**Generate completion summary:**
+
+Use the **Completion Summary Template** from output-templates.md:
+
+```markdown
+## ✅ Ideation Complete
+
+### Generated Artifacts
+
+**Epic Documents:**
+- EPIC-001: {Epic Title} ({Feature Count} features, {Story Points} points)
+[... list all epics ...]
+- Location: `devforgeai/specs/Epics/`
+
+**Requirements Specification:**
+- Location: `devforgeai/specs/requirements/{project-name}-requirements.md`
+- Functional Requirements: {count}
+- Non-Functional Requirements: {count}
+- Data Models: {count} entities
+- Integration Points: {count} external systems
+
+### Complexity Assessment
+
+**Total Score:** {score}/60
+**Architecture Tier:** {Simple|Standard|Advanced|Enterprise}
+
+**Score Breakdown:**
+- Functional Complexity: {score}/20
+- Technical Complexity: {score}/20
+- Team/Organizational Complexity: {score}/10
+- Non-Functional Complexity: {score}/10
+
+### Recommended Technology Stack
+
+Based on {tier} architecture tier:
+
+**Backend:** {recommendations from output-templates.md}
+**Frontend:** {recommendations from output-templates.md}
+**Database:** {recommendations from output-templates.md}
+**Infrastructure:** {recommendations from output-templates.md}
+
+### Next Steps
+
+1. **Review** generated epics and requirements specification
+2. **Validate** complexity assessment and architecture tier
+3. **Proceed** to architecture phase (`/create-context`)
+```
+
+**Present summary to user** (formatted markdown output)
+
+#### 6.6 Determine Next Action
+
+**Check for existing context files:**
+```
+context_files = Glob(pattern="devforgeai/specs/context/*.md")
+
+if len(context_files) == 6:
+    # Brownfield project with existing context
+    use_brownfield_template = True
+else:
+    # Greenfield project, need to create context
+    use_greenfield_template = False
+```
+
+**Greenfield Path (No Context Files):**
+```
+AskUserQuestion(
+  questions=[{
+    question: "Ideation phase complete. How would you like to proceed?",
+    header: "Next action",
+    options: [
+      {
+        label: "Create context files",
+        description: "Run /create-context to define tech stack and project structure (6 context files)"
+      },
+      {
+        label: "Review requirements first",
+        description: "I want to review/edit generated requirements before proceeding to architecture"
+      }
+    ],
+    multiSelect: false
+  }]
+)
+```
+
+**Brownfield Path (Context Files Exist):**
+```
+AskUserQuestion(
+  questions=[{
+    question: "Ideation complete. Context files detected. How would you like to proceed?",
+    header: "Next action",
+    options: [
+      {
+        label: "Proceed to orchestration",
+        description: "Create Sprint 1 with /create-sprint (existing context will be used)"
+      },
+      {
+        label: "Update context files",
+        description: "Run /create-context to update existing constraints (creates ADRs for changes)"
+      },
+      {
+        label: "Review requirements first",
+        description: "I want to review/edit generated requirements before proceeding"
+      }
+    ],
+    multiSelect: false
+  }]
+)
+```
+
+**Based on user response:**
+
+**"Create context files" or "Update context files":**
+```
+Report: """
+Next step: Run `/create-context [project-name]`
+
+The architecture skill will:
+1. Reference requirements spec and complexity tier
+2. Ask technology preference questions
+3. Generate/update 6 context files
+4. Create ADRs for technology decisions
+5. Validate requirements against constraints
+"""
+```
+
+**"Proceed to orchestration":**
+```
+Report: """
+Next step: Run `/create-sprint 1`
+
+The orchestration skill will:
+1. Use existing context files
+2. Reference epic documents
+3. Create Sprint 1 plan
+4. Generate stories from epic features
+5. Set up story workflow
+"""
+```
+
+**"Review requirements first":**
+```
+Report: """
+Review these files:
+- Epics: `devforgeai/specs/Epics/EPIC-*.epic.md`
+- Requirements: `devforgeai/specs/requirements/{project-name}-requirements.md`
+
+You can:
+- Manually edit files
+- Ask me to make specific changes
+- Run `/create-context` when ready to proceed
+"""
+```
+
+**Phase 6 Complete** - Ideation skill has successfully transformed business idea into structured requirements ready for architecture phase.
+
+---
+
+## AskUserQuestion Best Practices
+
+This skill relies heavily on AskUserQuestion to prevent ambiguity.
+
+### Key Patterns
+
+**Ambiguous Business Goal:**
+```
+Question: "What does 'faster' mean for this project?"
+Header: "Performance target"
+Options:
+  - "Page load <1 second (high performance)"
+  - "API response <500ms (standard performance)"
+  - "User-perceived speed (no specific metric)"
+```
+
+**MVP Scope Negotiation:**
+```
+Question: "Full feature set would take ~6 months. What's minimum for initial release?"
+Header: "MVP definition"
+Options:
+  - "Core workflow only (2-3 months)"
+  - "Core + 2 secondary features (3-4 months)"
+  - "Full feature set required (6+ months)"
+  - "Help me prioritize"
+```
+
+**Technology Preference:**
+```
+Question: "Does your team have experience with any of these technologies?"
+Header: "Team expertise"
+Options: [Technology options based on requirements]
+multiSelect: true
+```
+
+**Compliance Uncertainty:**
+```
+Question: "What type of data will this system handle?"
+Header: "Data sensitivity"
+Options:
+  - "Health information (HIPAA required)"
+  - "Payment data (PCI-DSS required)"
+  - "Personal data - EU users (GDPR required)"
+  - "Public/non-sensitive data"
+multiSelect: true
+```
+
+**For complete elicitation patterns, load:**
+```
+Read(file_path=".claude/skills/devforgeai-ideation/references/requirements-elicitation-guide.md")
+```
+
+---
+
+## Error Handling & Recovery
+
+This skill includes comprehensive error handling and self-healing capabilities to ensure robust ideation completion.
+
+### Incomplete User Answers
+
+**Problem:** User responses too vague or incomplete for requirements elicitation
+
+**Recovery Strategy:**
+
+1. **Ask Follow-Up Questions**
+   ```
+   If user answer is vague:
+       Load: Read(file_path=".claude/skills/devforgeai-ideation/references/requirements-elicitation-guide.md")
+
+       Use domain-specific probing questions:
+       - E-commerce: "What payment methods should be supported?"
+       - SaaS: "What user roles need different permissions?"
+       - Fintech: "What compliance standards apply (PCI-DSS, SOC2)?"
+   ```
+
+2. **Use AskUserQuestion with More Specific Options**
+   ```
+   Instead of: "What performance do you need?"
+   Ask: "What response time is acceptable?"
+   Options:
+     - "High performance (<100ms API response, >10k concurrent users)"
+     - "Standard performance (<500ms API response, 1k-10k users)"
+     - "Moderate performance (<2s response time, <1k users)"
+   ```
+
+3. **Provide Examples of Good Answers**
+   ```
+   Explain: "Instead of 'fast', specify: 'API responses under 500ms for 95th percentile'"
+   Explain: "Instead of 'secure', specify: 'OAuth2 authentication, RBAC authorization, AES-256 encryption'"
+   ```
+
+4. **Document Assumptions with Validation Flags**
+   ```
+   If user cannot provide specifics:
+       Document in requirements spec:
+
+       ASSUMPTION: Average order size is <100 line items
+       VALIDATION NEEDED: Confirm with stakeholders during architecture phase
+
+       ASSUMPTION: Users have modern browsers (Chrome/Firefox/Safari/Edge latest 2 versions)
+       VALIDATION NEEDED: Check analytics data for actual browser usage
+   ```
+
+**When to Use:**
+- User says "I don't know" or "not sure"
+- User gives vague answers ("fast", "scalable", "user-friendly")
+- User cannot quantify requirements
+
+### Artifact Generation Failures
+
+**Problem:** Epic or requirements file not created due to write errors, permissions, or path issues
+
+**Recovery Strategy:**
+
+1. **Check Directory Permissions**
+   ```
+   Try:
+       Write(file_path="devforgeai/specs/Epics/EPIC-001.epic.md", content="...")
+
+   Except write error:
+       # Ensure directories exist
+       Bash(mkdir -p devforgeai/specs/Epics/)
+       Bash(mkdir -p devforgeai/specs/requirements/)
+
+       # Retry write operation
+       Write(file_path="devforgeai/specs/Epics/EPIC-001.epic.md", content="...")
+   ```
+
+2. **Verify File System Paths**
+   ```
+   # Check if directories were created
+   Glob(pattern="devforgeai/specs/")
+   Glob(pattern="devforgeai/")
+
+   If directories don't exist:
+       ERROR: Cannot create artifact directories
+       Report to user: "File system permissions prevent directory creation. Please run:"
+       bash
+       mkdir -p devforgeai/specs/Epics
+       mkdir -p devforgeai/specs/requirements
+
+       Then retry /ideate command
+   ```
+
+3. **Retry with Error Handling**
+   ```
+   Max retries: 2
+
+   For each artifact:
+       attempt = 0
+       while attempt < 2:
+           try:
+               Write(file_path=artifact_path, content=artifact_content)
+               break
+           except:
+               attempt += 1
+               if attempt >= 2:
+                   Report error to user with manual creation instructions
+   ```
+
+4. **Provide Manual Creation Instructions**
+   ```
+   If persistent failure after retries:
+       Report: """
+       ERROR: Could not create {artifact_name} automatically
+
+       Manual creation steps:
+       1. Create file: {file_path}
+       2. Copy this content:
+          {content}
+       3. Save file
+       4. Re-run ideation skill or proceed to /create-context
+       """
+   ```
+
+**When to Use:**
+- Write() tool fails with permission error
+- Directories don't exist and cannot be created
+- File system issues (disk full, read-only filesystem)
+
+### Complexity Assessment Errors
+
+**Problem:** Complexity score invalid, out of range, or breakdown missing
+
+**Recovery Strategy:**
+
+1. **Recalculate Using Assessment Matrix**
+   ```
+   If complexity_score < 0 or complexity_score > 60:
+       ERROR: Invalid complexity score {complexity_score}
+
+       # Load assessment matrix
+       Read(file_path=".claude/skills/devforgeai-ideation/references/complexity-assessment-matrix.md")
+
+       # Recalculate all dimensions
+       functional_score = calculate_functional_complexity()  # 0-20
+       technical_score = calculate_technical_complexity()    # 0-20
+       team_org_score = calculate_team_complexity()          # 0-10
+       nfr_score = calculate_nfr_complexity()                # 0-10
+
+       total_score = functional + technical + team_org + nfr
+
+       # Validate totals
+       assert 0 <= total_score <= 60
+       assert functional <= 20
+       assert technical <= 20
+       assert team_org <= 10
+       assert nfr <= 10
+   ```
+
+2. **Verify All 4 Dimensions Scored**
+   ```
+   Required dimensions:
+   - [ ] Functional Complexity (0-20)
+   - [ ] Technical Complexity (0-20)
+   - [ ] Team/Organizational Complexity (0-10)
+   - [ ] Non-Functional Complexity (0-10)
+
+   If any dimension missing:
+       # Recalculate missing dimension using assessment matrix
+       # Use Phase 2-5 discovery data for inputs
+   ```
+
+3. **Update Requirements Spec with Corrected Assessment**
+   ```
+   # Read existing requirements spec
+   Read(file_path="devforgeai/specs/requirements/{project}-requirements.md")
+
+   # Find complexity assessment section
+   # Replace with corrected assessment
+   Edit(
+       file_path="devforgeai/specs/requirements/{project}-requirements.md",
+       old_string="## Complexity Assessment\n{old content}",
+       new_string="## Complexity Assessment\n\n**Total Score:** {corrected_score}/60\n..."
+   )
+   ```
+
+4. **Re-Validate Architecture Tier**
+   ```
+   # Ensure tier matches score
+   if score >= 0 and score <= 15:
+       tier = "Simple Application"
+   elif score >= 16 and score <= 30:
+       tier = "Standard Application"
+   elif score >= 31 and score <= 45:
+       tier = "Advanced Platform"
+   elif score >= 46 and score <= 60:
+       tier = "Enterprise Platform"
+
+   # Verify tier is documented in requirements spec
+   # Update technology recommendations for tier
+   ```
+
+**When to Use:**
+- Complexity score is 0 or >60
+- Score breakdown missing dimensions
+- Tier doesn't match score range
+- Technology recommendations missing
+
+### Validation Failures (Phase 6.4)
+
+**Problem:** Generated artifacts don't meet quality standards after self-validation
+
+**Recovery Strategy:**
+
+1. **Identify Specific Validation Failures**
+   ```
+   failures = []
+
+   # Check each validation category
+   if not epic_documents_valid:
+       failures.append("Epic documents: {specific_issue}")
+
+   if not requirements_spec_valid:
+       failures.append("Requirements spec: {specific_issue}")
+
+   if not complexity_assessment_valid:
+       failures.append("Complexity assessment: {specific_issue}")
+
+   # Categorize by severity
+   critical_failures = [f for f in failures if f.severity == "CRITICAL"]
+   high_failures = [f for f in failures if f.severity == "HIGH"]
+   ```
+
+2. **Regenerate Only Failing Sections**
+   ```
+   For each failure:
+       if failure.type == "missing_epic_frontmatter":
+           # Regenerate frontmatter only
+           Read(file_path=epic_file)
+           Edit(file_path=epic_file, old_string="{missing_frontmatter}", new_string="{corrected_frontmatter}")
+
+       elif failure.type == "vague_nfr":
+           # Regenerate specific NFR section
+           # Use Phase 2 NFR discovery data
+           # Quantify vague requirements
+
+       elif failure.type == "missing_data_models":
+           # Extract entities from functional requirements
+           # Generate data model documentation
+   ```
+
+3. **Re-Run Validation (Maximum 2 Attempts)**
+   ```
+   attempt = 0
+   max_attempts = 2
+
+   while attempt < max_attempts:
+       validation_result = run_validation_checklist()
+
+       if validation_result.all_passed:
+           ✓ Validation succeeded on attempt {attempt + 1}
+           break
+       else:
+           attempt += 1
+           if attempt < max_attempts:
+               # Self-heal and retry
+               self_heal(validation_result.failures)
+           else:
+               # Report to user after max attempts
+               report_validation_failures_to_user(validation_result.failures)
+   ```
+
+4. **Report to User for Manual Review**
+   ```
+   If validation fails after 2 attempts:
+       Report: """
+       ⚠️ Validation Issues Detected
+
+       The following artifacts need manual review:
+
+       CRITICAL Issues:
+       - {critical_issue_1}
+       - {critical_issue_2}
+
+       HIGH Issues:
+       - {high_issue_1}
+
+       Recommended Actions:
+       1. Review file: {file_path}
+       2. Address issues: {specific_guidance}
+       3. Re-run /ideate or proceed to /create-context (will re-validate)
+
+       Or ask me to fix specific issues.
+       """
+   ```
+
+**When to Use:**
+- Phase 6.4 validation detects quality issues
+- Epic frontmatter incomplete
+- Requirements too vague
+- Acceptance criteria not testable
+- Data models missing relationships
+
+### Brownfield Constraint Conflicts
+
+**Problem:** New requirements conflict with existing context files (brownfield projects)
+
+**Recovery Strategy:**
+
+1. **Detect Conflicts**
+   ```
+   # Read existing context
+   Read(file_path="devforgeai/specs/context/tech-stack.md")
+   Read(file_path="devforgeai/specs/context/architecture-constraints.md")
+
+   # Compare with new requirements
+   conflicts = []
+
+   if new_requirement.technology not in existing_tech_stack:
+       conflicts.append("Technology conflict: {new_tech} vs {existing_tech}")
+
+   if new_requirement.violates_architecture_constraints:
+       conflicts.append("Architecture conflict: {constraint_violated}")
+   ```
+
+2. **Use AskUserQuestion to Resolve Each Conflict**
+   ```
+   For each conflict:
+       AskUserQuestion(
+           question: "New requirement '{requirement}' conflicts with existing constraint '{constraint}'. How to resolve?",
+           header: "Conflict resolution",
+           options: [
+               {
+                   label: "Update constraint",
+                   description: "Modify existing constraint to accommodate new requirement (creates ADR)"
+               },
+               {
+                   label: "Modify requirement",
+                   description: "Adjust new requirement to fit existing constraints"
+               },
+               {
+                   label: "Mark as future scope",
+                   description: "Defer this requirement to future release"
+               }
+           ]
+       )
+   ```
+
+3. **Document Resolution in ADR**
+   ```
+   If user chooses "Update constraint":
+       # Create ADR documenting change
+       Write(
+           file_path="devforgeai/specs/adrs/ADR-{number}-{title}.md",
+           content="""
+           # ADR-{number}: {Decision Title}
+
+           ## Context
+           New requirement from ideation phase conflicts with existing constraint.
+
+           ## Decision
+           {Constraint change description}
+
+           ## Rationale
+           {Why this change is necessary}
+
+           ## Consequences
+           {Impact on existing codebase and future development}
+           """
+       )
+
+       # Update relevant context file
+       Edit(file_path="devforgeai/specs/context/{context-file}.md", ...)
+   ```
+
+4. **Update Requirements Spec with Resolved Conflicts**
+   ```
+   # Annotate requirements with resolution
+   **Requirement:** {requirement description}
+   **Conflict Resolution:** Updated {context_file} to accommodate (see ADR-{number})
+   ```
+
+**When to Use:**
+- Brownfield projects with existing context files
+- New requirements need different technology than existing stack
+- New architecture patterns conflict with current constraints
+- Compliance requirements change
+
+### Directory Structure Issues
+
+**Problem:** Expected directories don't exist or have wrong structure
+
+**Recovery Strategy:**
+
+1. **Create Required Directories**
+   ```
+   required_dirs = [
+       "devforgeai/specs/Epics/",
+       "devforgeai/specs/requirements/",
+       "devforgeai/specs/adrs/",
+       "devforgeai/specs/context/"
+   ]
+
+   for dir in required_dirs:
+       Bash(mkdir -p {dir})
+
+   # Verify creation
+   for dir in required_dirs:
+       check = Glob(pattern="{dir}")
+       if not check:
+           ERROR: Could not create directory {dir}
+   ```
+
+2. **Check Write Permissions**
+   ```
+   # Test write to each directory
+   for dir in required_dirs:
+       try:
+           Write(file_path="{dir}/.test", content="test")
+           # Clean up test file
+           Bash(rm {dir}/.test)
+       except:
+           ERROR: No write permission to {dir}
+           Report to user: "Please grant write permissions to {dir}"
+   ```
+
+**When to Use:**
+- First time running ideation skill
+- File system permissions issues
+- Project directory structure not initialized
+
+---
+
+## Integration with Other Skills
+
+### Flow to devforgeai-architecture
+
+Handoff: requirements spec, complexity tier, technology constraints, compliance
+Architecture skill creates 6 context files, makes technology decisions, documents ADRs
+
+### Flow to devforgeai-orchestration
+
+Handoff: epic documents, requirements spec, success metrics
+Orchestration skill creates Sprint 1, generates stories, manages workflow
+
+---
+
+## Success Criteria
+
+This skill succeeds when:
+
+- [ ] Business problem clearly articulated (measurable)
+- [ ] Requirements complete and unambiguous
+- [ ] All NFRs documented with specific targets
+- [ ] Complexity tier determined with rationale
+- [ ] Epics created with features breakdown
+- [ ] Risks and constraints identified
+- [ ] Requirements documents generated
+- [ ] No ambiguities remain (resolved via AskUserQuestion)
+- [ ] Ready for architecture skill (clear handoff)
+
+**Output Artifacts:**
+- 1+ Epic documents (`devforgeai/specs/Epics/`)
+- Requirements specification (`devforgeai/specs/requirements/`)
+- Complexity assessment report
+
+**Transition Point:**
+- Architecture context files created (or exist)
+- Orchestration can begin sprint planning
+- Development can start on first stories
+
+---
+
+## Reference Files
+
+Load these as needed during ideation:
+
+- **[Requirements Elicitation Guide](./references/requirements-elicitation-guide.md)** - Comprehensive probing questions by domain (e-commerce, SaaS, fintech, healthcare), user story templates, NFR checklists, interview techniques (723 lines)
+  - **When to load:** Phase 2 (Requirements Elicitation), Error Handling (Incomplete User Answers)
+
+- **[Complexity Assessment Matrix](./references/complexity-assessment-matrix.md)** - Detailed 0-60 scoring rubric across 4 dimensions with examples, architecture tier definitions, technology recommendations (700 lines)
+  - **When to load:** Phase 3 (Complexity Assessment), Error Handling (Complexity Assessment Errors)
+
+- **[Domain-Specific Patterns](./references/domain-specific-patterns.md)** - Common features, user flows, data models, and regulatory considerations for major domains (e-commerce, SaaS, fintech, healthcare, CMS, marketplaces, workflow tools) (975 lines)
+  - **When to load:** Phase 4 (Epic & Feature Decomposition)
+
+- **[Feasibility Analysis Framework](./references/feasibility-analysis-framework.md)** - Technical/business/resource feasibility checklists, risk assessment templates, MVP scoping techniques, decision frameworks (649 lines)
+  - **When to load:** Phase 5 (Feasibility & Constraints Analysis)
+
+- **[Validation Checklists](./references/validation-checklists.md)** - Comprehensive validation checklists for artifact quality, epic content, requirements specification, complexity assessment, and handoff readiness (569 lines) **[NEW]**
+  - **When to load:** Phase 6.4 (Self-Validation)
+
+- **[Output Templates](./references/output-templates.md)** - Standardized completion summary templates, technology recommendations by tier (Simple through Enterprise), next steps templates for greenfield/brownfield transitions (619 lines) **[NEW]**
+  - **When to load:** Phase 6.5 (Present Completion Summary)
+
+---
+
+## Best Practices
+
+- **Progressive Disclosure:** Start broad, narrow to specifics, ask 2-3 questions per interaction
+- **Validation:** Summarize after each phase, confirm correctness, allow correction
+- **Avoid Over-Engineering:** Match architecture to requirements, simpler is better
+- **Document Assumptions:** Flag guesses for validation during architecture phase
+- **Brownfield Respect:** Understand patterns before changes, propose incremental improvements
+
+---
+
+**The goal:** Transform business ideas into structured, actionable requirements with zero ambiguity, enabling downstream skills to implement with zero technical debt.

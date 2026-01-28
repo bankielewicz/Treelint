@@ -1,0 +1,74 @@
+# registry-config.yaml
+# DevForgeAI Registry Publishing Configuration
+# Schema: devforgeai/deployment/registry-config.schema.json
+# Documentation: STORY-245
+#
+# This file configures package publishing to multiple registries.
+# All settings are optional - defaults are used for missing values.
+
+# Default settings applied to all registries
+defaults:
+  skip-existing: true  # Skip if version already published (prevents version conflict errors)
+  dry-run: false       # Set true to validate without actually publishing
+
+# Registry-specific configurations
+registries:
+  # npm - Node Package Manager
+  npm:
+    enabled: true
+    registry: https://registry.npmjs.org
+    access: public  # public | restricted
+    # credentials:
+    #   token_var: NPM_TOKEN  # Default, override with custom env var name
+
+  # PyPI - Python Package Index
+  pypi:
+    enabled: true
+    repository: pypi  # pypi | testpypi | <custom-url>
+    skip-existing: true
+    # credentials:
+    #   username_var: TWINE_USERNAME  # Default
+    #   password_var: TWINE_PASSWORD  # Default
+
+  # NuGet - .NET Package Manager
+  nuget:
+    enabled: false  # Disabled by default - enable if publishing .NET packages
+    source: https://api.nuget.org/v3/index.json
+    skip-duplicate: true
+    # credentials:
+    #   token_var: NUGET_API_KEY  # Default
+
+  # Docker - Container Registry
+  docker:
+    enabled: true
+    registry: docker.io
+    repository: ""  # Set to your org/repo name (e.g., devforgeai/framework)
+    tags:
+      - latest
+      - "{{version}}"  # Placeholder replaced with actual version
+    # credentials:
+    #   username_var: DOCKER_USERNAME  # Default
+    #   password_var: DOCKER_PASSWORD  # Default
+
+  # GitHub Packages
+  github:
+    enabled: true
+    packages: true      # Enable npm/nuget packages (npm.pkg.github.com)
+    container: true     # Enable container registry (ghcr.io)
+    # credentials:
+    #   token_var: GITHUB_TOKEN  # Default
+
+  # crates.io - Rust Package Registry
+  crates:
+    enabled: false  # Disabled by default - enable if publishing Rust crates
+    allow-dirty: false  # Set true to publish with uncommitted changes
+    # credentials:
+    #   token_var: CARGO_REGISTRY_TOKEN  # Default
+
+# Example: Custom private registry configuration
+# registries:
+#   npm:
+#     enabled: true
+#     registry: https://npm.mycompany.com
+#     credentials:
+#       token_var: MY_PRIVATE_NPM_TOKEN

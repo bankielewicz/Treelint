@@ -1,0 +1,112 @@
+# DevForgeAI Feedback Question Bank
+# Questions are context-aware based on workflow type and success/failure status
+
+workflows:
+  dev:
+    success_questions:
+      - id: "dev_success_01"
+        text: "How confident do you feel about the TDD workflow?"
+        type: "rating"
+        scale: "1-5"
+      - id: "dev_success_02"
+        text: "Which phase was most challenging?"
+        type: "multiple_choice"
+        options: ["Red", "Green", "Refactor", "Integration"]
+      - id: "dev_success_03"
+        text: "What could we improve about the development workflow?"
+        type: "open_text"
+      - id: "dev_success_04"
+        text: "How well did the framework guide you through TDD?"
+        type: "rating"
+        scale: "1-5"
+
+    failure_questions:
+      - id: "dev_failure_01"
+        text: "What blocked you from completing the story?"
+        type: "open_text"
+      - id: "dev_failure_02"
+        text: "What would help you complete this in the future?"
+        type: "open_text"
+      - id: "dev_failure_03"
+        text: "How clear were the error messages?"
+        type: "rating"
+        scale: "1-5"
+
+  qa:
+    success_questions:
+      - id: "qa_success_01"
+        text: "How clear were the coverage metrics?"
+        type: "rating"
+        scale: "1-5"
+      - id: "qa_success_02"
+        text: "What could improve the validation process?"
+        type: "open_text"
+      - id: "qa_success_03"
+        text: "Were the quality thresholds reasonable?"
+        type: "multiple_choice"
+        options: ["Too strict", "Just right", "Too lenient"]
+
+    failure_questions:
+      - id: "qa_failure_01"
+        text: "What made the quality check fail?"
+        type: "open_text"
+      - id: "qa_failure_02"
+        text: "How can we make quality requirements clearer?"
+        type: "open_text"
+      - id: "qa_failure_03"
+        text: "How helpful were the failure messages?"
+        type: "rating"
+        scale: "1-5"
+
+  orchestrate:
+    success_questions:
+      - id: "orchestrate_success_01"
+        text: "How smooth was the full workflow integration?"
+        type: "rating"
+        scale: "1-5"
+      - id: "orchestrate_success_02"
+        text: "Which phase had the most friction?"
+        type: "multiple_choice"
+        options: ["Dev", "QA", "Release", "None"]
+      - id: "orchestrate_success_03"
+        text: "What could improve the orchestration workflow?"
+        type: "open_text"
+
+    failure_questions:
+      - id: "orchestrate_failure_01"
+        text: "At which phase did the workflow fail?"
+        type: "multiple_choice"
+        options: ["Dev", "QA", "Release"]
+      - id: "orchestrate_failure_02"
+        text: "What would have helped prevent this failure?"
+        type: "open_text"
+      - id: "orchestrate_failure_03"
+        text: "How well did the framework communicate the issue?"
+        type: "rating"
+        scale: "1-5"
+
+  release:
+    success_questions:
+      - id: "release_success_01"
+        text: "How confident are you in the deployment?"
+        type: "rating"
+        scale: "1-5"
+      - id: "release_success_02"
+        text: "What could improve the release process?"
+        type: "open_text"
+      - id: "release_success_03"
+        text: "How smooth was the deployment workflow?"
+        type: "rating"
+        scale: "1-5"
+
+    failure_questions:
+      - id: "release_failure_01"
+        text: "What caused the release to fail?"
+        type: "open_text"
+      - id: "release_failure_02"
+        text: "How can we make releases more reliable?"
+        type: "open_text"
+      - id: "release_failure_03"
+        text: "How helpful were the deployment error messages?"
+        type: "rating"
+        scale: "1-5"

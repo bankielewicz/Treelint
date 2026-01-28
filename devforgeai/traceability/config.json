@@ -1,0 +1,32 @@
+{
+  "version": "1.0.0",
+  "epic_id_pattern": "^EPIC-[0-9]{3}$",
+  "story_id_pattern": "^STORY-[0-9]{3}$",
+  "epics_dir": ".ai_docs/Epics",
+  "stories_dir": ".ai_docs/Stories",
+  "output_file": "devforgeai/traceability/requirements-matrix.json",
+  "file_patterns": {
+    "epic": "*.epic.md",
+    "story": "*.story.md"
+  },
+  "frontmatter_delimiters": {
+    "start": "---",
+    "end": "---"
+  },
+  "section_headers": {
+    "features": "## Features",
+    "stories": "## Stories"
+  },
+  "valid_statuses": [
+    "Backlog",
+    "Planning",
+    "Architecture",
+    "Ready for Dev",
+    "In Development",
+    "Dev Complete",
+    "QA In Progress",
+    "QA Approved",
+    "Releasing",
+    "Released"
+  ]
+}

@@ -1,0 +1,1840 @@
+---
+name: devforgeai-story-creation
+description: Create user stories with acceptance criteria, technical specifications, and UI specifications. Use when transforming feature descriptions into structured stories, generating stories from epic features, or creating follow-up stories for deferred work. Supports CRUD, authentication, workflow, and reporting story types with complete technical and UI specifications.
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+  - Task
+  - AskUserQuestion
+  - TodoWrite
+---
+
+# DevForgeAI Story Creation Skill
+
+Transform feature descriptions into structured, spec-driven user stories with complete acceptance criteria, technical specifications, and UI specifications.
+
+## Purpose
+
+This skill creates complete user story documents following DevForgeAI standards, ensuring zero ambiguity and enabling downstream TDD implementation without technical debt.
+
+**Core Capabilities:**
+1. **Story Discovery** - Generate sequential story IDs, gather epic/sprint context
+2. **Requirements Analysis** - Transform descriptions into structured user stories with testable acceptance criteria
+3. **Technical Specification** - Define API contracts, data models, and business rules
+4. **UI Specification** - Document components, layouts, interactions, and accessibility
+5. **Story File Creation** - Generate complete story documents with YAML frontmatter and markdown
+6. **Epic/Sprint Linking** - Update parent documents with story references
+7. **Self-Validation** - Verify story quality and completeness before finishing
+8. **Completion Reporting** - Present summary and guide user to next actions
+
+## Core Philosophy
+
+**"Spec-Driven Stories Enable Zero-Debt Development"**
+- Comprehensive specifications prevent ambiguity during implementation
+- Testable acceptance criteria enable TDD Red phase
+- Technical specifications define API contracts before coding
+- UI specifications provide mockups before frontend work
+
+**"Ask, Don't Assume"**
+- Use AskUserQuestion for ALL ambiguities
+- Never infer technical details from incomplete descriptions
+- Validate assumptions explicitly with users
+
+**"Quality at Creation, Not Later"**
+- Self-validation in Phase 7 ensures quality before completion
+- Measurable NFRs (not vague like "fast" or "scalable")
+- Testable acceptance criteria (can verify pass/fail)
+- Complete specifications (no TBD or TODO placeholders)
+
+## When to Use This Skill
+
+### ✅ Trigger Scenarios
+
+- User runs `/create-story [feature-description]` command
+- Orchestration skill creates stories from epic features
+- Development skill creates tracking stories for deferred DoD items
+- Sprint planning requires story generation
+- "Create a story for..." user requests
+
+### ❌ When NOT to Use
+
+- Story already exists (use orchestration skill for status updates)
+- Just updating existing story (use Edit tool directly)
+- Creating epics (use devforgeai-ideation skill)
+- Creating sprints (use orchestration skill)
+
+---
+
+## Story Creation Workflow (8 Phases)
+
+### Phase 1: Story Discovery & Context
+
+**Objective:** Generate story ID, gather context, collect metadata
+
+#### 1.1 Feature Description Capture
+
+**Extract feature description from conversation context:**
+
+Look for patterns in conversation:
+- "Feature:" or "Feature Description:"
+- $ARGUMENTS from /create-story command
+- User message describing feature
+
+**If description missing or vague:**
+```
+AskUserQuestion(
+  questions=[{
+    question: "Please describe the feature you want to create a story for",
+    header: "Feature description",
+    options: [
+      {
+        label: "CRUD operation",
+        description: "Create, read, update, or delete data (e.g., manage users, products)"
+      },
+      {
+        label: "Authentication/Authorization",
+        description: "Login, signup, permissions, access control"
+      },
+      {
+        label: "Workflow/Process",
+        description: "Multi-step process or state transitions (e.g., order processing)"
+      },
+      {
+        label: "Reporting/Analytics",
+        description: "Data visualization, reports, dashboards"
+      }
+    ],
+    multiSelect: false
+  }]
+)
+```
+
+Then ask: "Provide detailed description of the {feature_type} feature"
+
+**Minimum requirements:**
+- At least 10 words
+- Describes WHAT users will do (not HOW to implement)
+- Identifies WHO will use it (role/persona)
+
+#### 1.2 Generate Next Story ID
+
+**Find latest story:**
+```
+story_files = Glob(pattern="devforgeai/specs/Stories/STORY-*.story.md")
+
+# Parse story numbers from filenames
+# Example: STORY-042.story.md → 42
+story_numbers = [extract_number(filename) for filename in story_files]
+
+if story_numbers:
+    max_number = max(story_numbers)
+    next_number = max_number + 1
+else:
+    next_number = 1
+
+story_id = f"STORY-{next_number:03d}"  # STORY-001, STORY-002, etc.
+```
+
+**Track with TodoWrite:**
+```
+TodoWrite([
+  f"Create {story_id}: [feature description]"
+])
+```
+
+#### 1.3 Discover Epic Context
+
+**Find available epics:**
+```
+epic_files = Glob(pattern="devforgeai/specs/Epics/EPIC-*.epic.md")
+
+epic_options = []
+for epic_file in epic_files:
+    # Read frontmatter only (first 20 lines)
+    content = Read(file_path=epic_file, limit=20)
+
+    # Extract: id, title, status
+    epic_options.append({
+        "label": "{id}: {title}",
+        "description": "Status: {status}, Features: {feature_count}"
+    })
+```
+
+**Ask user for epic association:**
+```
+AskUserQuestion(
+  questions=[{
+    question: "Which epic does this story belong to?",
+    header: "Epic association",
+    options: epic_options + [
+      {
+        label: "None - standalone story",
+        description: "This story is not part of any epic"
+      }
+    ],
+    multiSelect: false
+  }]
+)
+```
+
+**Result:** epic_id (or null)
+
+#### 1.4 Discover Sprint Context
+
+**Find available sprints:**
+```
+sprint_files = Glob(pattern="devforgeai/specs/Sprints/Sprint-*.md")
+
+sprint_options = []
+for sprint_file in sprint_files:
+    content = Read(file_path=sprint_file, limit=30)
+
+    sprint_options.append({
+        "label": "{sprint_id}",
+        "description": "Dates: {start} - {end}, Capacity: {points} points"
+    })
+```
+
+**Ask user for sprint association:**
+```
+AskUserQuestion(
+  questions=[{
+    question: "Assign to sprint?",
+    header: "Sprint",
+    options: sprint_options + [
+      {
+        label: "Backlog",
+        description: "Not assigned to any sprint yet"
+      }
+    ],
+    multiSelect: false
+  }]
+)
+```
+
+**Result:** sprint_id (or "Backlog")
+
+#### 1.5 Collect Story Metadata
+
+**Ask for priority:**
+```
+AskUserQuestion(
+  questions=[{
+    question: "What is the priority of this story?",
+    header: "Priority",
+    options: [
+      {
+        label: "Critical",
+        description: "Blocking other work, must be done immediately"
+      },
+      {
+        label: "High",
+        description: "Important for upcoming release"
+      },
+      {
+        label: "Medium",
+        description: "Should be done soon"
+      },
+      {
+        label: "Low",
+        description: "Nice to have, can be deferred"
+      }
+    ],
+    multiSelect: false
+  }]
+)
+```
+
+**Ask for story points:**
+```
+AskUserQuestion(
+  questions=[{
+    question: "Estimate story complexity (Fibonacci scale)",
+    header: "Story points",
+    options: [
+      {
+        label: "1",
+        description: "Trivial - Few hours, minimal complexity"
+      },
+      {
+        label: "2",
+        description: "Simple - Half day, straightforward implementation"
+      },
+      {
+        label: "3",
+        description: "Standard - 1 day, moderate complexity"
+      },
+      {
+        label: "5",
+        description: "Complex - 2-3 days, multiple components"
+      },
+      {
+        label: "8",
+        description: "Very complex - 3-5 days, significant work"
+      },
+      {
+        label: "13",
+        description: "Extremely complex - Consider splitting story"
+      }
+    ],
+    multiSelect: false
+  }]
+)
+```
+
+**If user selects 13 points:**
+```
+WARNING: Story might be too large (13 points)
+
+Recommend splitting into smaller stories (3-5 points each)
+
+Proceed anyway or split?
+```
+
+**Metadata collected:**
+- story_id
+- epic_id (or null)
+- sprint_id (or "Backlog")
+- priority (Critical/High/Medium/Low)
+- points (1/2/3/5/8/13)
+
+---
+
+### Phase 2: Requirements Analysis
+
+**Objective:** Transform feature description into structured user story with acceptance criteria
+
+#### 2.1 Invoke Requirements Analyst Subagent
+
+**Prepare detailed prompt for subagent:**
+
+```
+Task(
+  subagent_type="requirements-analyst",
+  description="Generate user story",
+  prompt="""Transform feature description into structured user story for DevForgeAI framework.
+
+Feature Description: {feature_description}
+
+Story Context:
+- Story ID: {story_id}
+- Epic: {epic_id or 'None'}
+- Priority: {priority}
+- Points: {points}
+
+Generate:
+
+1. **User Story** (As a/I want/So that format)
+   - Role: Specific user type (not generic "user")
+   - Action: What the user wants to do
+   - Benefit: Why this matters (business value)
+
+2. **Acceptance Criteria** (Given/When/Then format, minimum 3)
+   - Happy path scenario
+   - Error/edge case scenarios
+   - Data validation scenarios
+   - Each criterion must be testable (can verify pass/fail)
+
+3. **Edge Cases** (minimum 2)
+   - Boundary conditions
+   - Error conditions
+   - Concurrent access scenarios
+   - Data corruption scenarios
+
+4. **Data Validation Rules**
+   - Input constraints
+   - Format requirements
+   - Business rule validations
+
+5. **Non-Functional Requirements**
+   - Performance: Response time targets (e.g., <500ms)
+   - Security: Authentication, authorization, encryption needs
+   - Usability: User experience requirements
+   - Scalability: Concurrent user targets
+
+DevForgeAI Standards:
+- No vague terms ("fast", "secure", "user-friendly" without metrics)
+- All NFRs must be measurable
+- All acceptance criteria must be testable
+- Follow spec-driven development principles
+
+Output Format: Markdown with clear sections
+"""
+)
+```
+
+**Expected subagent output:**
+- User story in proper format
+- 3+ acceptance criteria (Given/When/Then)
+- Edge cases list
+- Data validation rules
+- Quantified NFRs
+
+#### 2.2 Validate Subagent Output
+
+**Load acceptance criteria patterns for validation:**
+```
+Read(file_path=".claude/skills/devforgeai-story-creation/references/acceptance-criteria-patterns.md")
+```
+
+**Validation checks:**
+
+```
+Validate user story:
+- [ ] Follows "As a [role], I want [action], so that [benefit]" format
+- [ ] Role is specific (not "user", but "customer", "admin", "developer")
+- [ ] Action is clear and unambiguous
+- [ ] Benefit articulates business value
+
+Validate acceptance criteria:
+- [ ] Minimum 3 criteria
+- [ ] Each follows Given/When/Then structure
+- [ ] At least 1 happy path scenario
+- [ ] At least 1 error/edge case scenario
+- [ ] All criteria are testable (can write automated test)
+- [ ] No ambiguous language ("should", "might", "could")
+
+Validate NFRs:
+- [ ] Performance targets quantified (e.g., "<500ms response time")
+- [ ] Security requirements specific (e.g., "OAuth2 authentication, JWT tokens")
+- [ ] No vague terms without metrics
+
+If validation fails:
+    # Re-invoke requirements-analyst with specific feedback
+    # Or use AskUserQuestion to fill gaps
+```
+
+#### 2.3 Refine if Incomplete
+
+**If subagent output incomplete or vague:**
+
+```
+Use AskUserQuestion to clarify:
+
+Example: If NFR says "fast"
+Question: "What performance target is acceptable?"
+Options:
+  - "High performance (<100ms response, >10k concurrent users)"
+  - "Standard performance (<500ms response, 1k-10k users)"
+  - "Moderate performance (<2s response, <1k users)"
+
+Example: If acceptance criteria vague
+Question: "What specific behavior should be tested?"
+Options:
+  - Provide examples of good AC
+  - Ask for edge cases
+  - Request error scenarios
+```
+
+**Output from Phase 2:**
+- ✅ User story in proper format
+- ✅ 3+ testable acceptance criteria
+- ✅ Edge cases documented
+- ✅ Data validation rules defined
+- ✅ Measurable NFRs
+
+---
+
+### Phase 3: Technical Specification
+
+**Objective:** Define API contracts, data models, business rules, and dependencies
+
+#### 3.1 Detect API Requirements
+
+**Keyword analysis on feature description and acceptance criteria:**
+
+```
+api_keywords = ["API", "endpoint", "REST", "GraphQL", "request", "response",
+                "POST", "GET", "PUT", "DELETE", "fetch", "call"]
+
+requires_api = any(keyword in feature_description.upper() or
+                   keyword in ac_text.upper()
+                   for keyword in api_keywords)
+```
+
+**If API detected or uncertain:**
+```
+AskUserQuestion(
+  questions=[{
+    question: "Does this story require API endpoints?",
+    header: "API needed",
+    options: [
+      {
+        label: "Yes - backend API",
+        description: "HTTP endpoints for data operations"
+      },
+      {
+        label: "No - frontend only",
+        description: "No backend API needed"
+      },
+      {
+        label: "No - backend logic without HTTP API",
+        description: "Business logic but no HTTP endpoints"
+      }
+    ],
+    multiSelect: false
+  }]
+)
+```
+
+#### 3.2 Generate API Contracts (If Needed)
+
+**Invoke API designer subagent:**
+
+```
+if requires_api:
+    Task(
+      subagent_type="api-designer",
+      description="Design API contracts",
+      prompt="""Design API contracts for user story following DevForgeAI standards.
+
+User Story: {user_story}
+
+Acceptance Criteria:
+{acceptance_criteria_list}
+
+Generate API contracts in OpenAPI 3.0 style:
+
+1. **HTTP Method and Endpoint Path**
+   - RESTful conventions (nouns for resources, verbs for actions)
+   - Example: POST /api/users, GET /api/users/{id}
+
+2. **Request Schema**
+   - Headers (Content-Type, Authorization)
+   - Query parameters (with types and constraints)
+   - Request body (JSON schema with validation rules)
+
+3. **Response Schemas**
+   - Success responses (200, 201, 204)
+   - Error responses (400, 401, 403, 404, 422, 500)
+   - Include all fields with types
+
+4. **Authentication Requirements**
+   - Auth method (Bearer token, API key, OAuth2)
+   - Required scopes/permissions
+
+5. **Validation Rules**
+   - Input validation (required fields, formats, ranges)
+   - Business rule validation
+
+Context: DevForgeAI framework, tech-stack.md compliance required
+
+Output Format: Markdown with JSON schemas
+"""
+    )
+```
+
+**Validate API designer output:**
+```
+API contract must include:
+- [ ] HTTP method (GET, POST, PUT, DELETE, PATCH)
+- [ ] Endpoint path (RESTful naming)
+- [ ] Request schema (if POST/PUT/PATCH)
+- [ ] Success response schema (200, 201, etc.)
+- [ ] Error response schemas (400, 401, 403, 404, 500)
+- [ ] Status codes documented
+- [ ] Authentication requirements specified
+- [ ] Validation rules defined
+```
+
+**Load technical specification guide for templates:**
+```
+Read(file_path=".claude/skills/devforgeai-story-creation/references/technical-specification-guide.md")
+```
+
+#### 3.3 Define Data Models
+
+**Extract entities from user story and acceptance criteria:**
+
+```
+# Look for nouns in user story
+# Example: "As a customer, I want to view my orders"
+# Entities: Customer, Order
+
+entities = extract_entities(user_story, acceptance_criteria)
+
+For each entity:
+    Define:
+    - Entity name
+    - Purpose (brief description)
+    - Attributes (fields):
+      - Field name
+      - Data type (String, Integer, UUID, DateTime, Boolean, etc.)
+      - Constraints (Required, Unique, Min/Max length, Format)
+      - Default value (if applicable)
+    - Relationships:
+      - One-to-many (e.g., User has many Orders)
+      - Many-to-many (e.g., User belongs to many Roles)
+      - One-to-one (e.g., User has one Profile)
+    - Primary key
+    - Foreign keys
+    - Indexes (for performance)
+```
+
+**Example data model:**
+```
+Entity: User
+Purpose: Represents a registered user of the system
+
+Attributes:
+  - id: UUID, Required, Primary Key, Auto-generated
+  - email: String(255), Required, Unique, Email format validation
+  - password_hash: String(255), Required, Bcrypt hashed
+  - name: String(100), Required
+  - created_at: DateTime, Required, Auto-generated
+  - updated_at: DateTime, Required, Auto-updated
+
+Relationships:
+  - Has many: Orders (one-to-many)
+  - Belongs to many: Roles (many-to-many via UserRoles table)
+
+Indexes:
+  - email (unique index for fast lookup)
+```
+
+#### 3.4 Document Business Rules
+
+**Extract rules from acceptance criteria:**
+
+```
+Business rules define:
+- Validation logic (e.g., "Password must be 8+ chars with uppercase, lowercase, number, special char")
+- Calculation formulas (e.g., "Total price = sum(item.price * item.quantity) + shipping_cost")
+- State transition rules (e.g., "Order can only be cancelled if status is 'Pending' or 'Processing'")
+- Constraints (e.g., "Maximum 10 items per order")
+- Defaults (e.g., "New user role defaults to 'Customer'")
+```
+
+**Example:**
+```
+Business Rules:
+1. Password must be at least 8 characters with uppercase, lowercase, number, and special character
+2. Email verification token expires after 24 hours
+3. Verification email sent asynchronously (background job queue)
+4. Unverified users cannot log in (authentication check blocks unverified accounts)
+5. Email addresses are case-insensitive (stored as lowercase)
+```
+
+#### 3.5 Identify Dependencies
+
+**Extract from acceptance criteria and technical requirements:**
+
+```
+Dependencies include:
+- External services (payment gateway, email service, SMS provider)
+- Third-party APIs (maps, weather, social media)
+- Database requirements (PostgreSQL, Redis, MongoDB)
+- Infrastructure (S3 for file storage, CDN for assets)
+- Background job queue (Celery, Bull, Hangfire)
+```
+
+**For each dependency:**
+```
+Document:
+- Service name
+- Purpose (why needed)
+- Integration method (REST API, SDK, library)
+- Authentication (API key, OAuth)
+- SLA requirements (uptime, response time)
+- Fallback behavior (what if service unavailable)
+```
+
+**Example:**
+```
+Dependencies:
+1. Email Service: SendGrid or SMTP
+   - Purpose: Send verification emails
+   - Integration: SendGrid SDK or nodemailer
+   - Authentication: API Key
+   - SLA: 99.9% uptime, <30 second delivery
+   - Fallback: Queue for retry (max 3 attempts)
+
+2. Background Job Queue: Redis + Bull (Node.js) or Celery (Python)
+   - Purpose: Async email sending
+   - Integration: In-process queue
+   - SLA: Process within 60 seconds
+   - Fallback: Dead letter queue for failed jobs
+```
+
+**Output from Phase 3:**
+- ✅ API contracts (if applicable)
+- ✅ Data models with attributes, constraints, relationships
+- ✅ Business rules documented
+- ✅ Dependencies identified with integration details
+
+---
+
+### Phase 4: UI Specification
+
+**Objective:** Document UI components, layouts, interactions, and accessibility (if applicable)
+
+#### 4.1 Detect UI Requirements
+
+**Keyword analysis:**
+
+```
+ui_keywords = ["screen", "page", "form", "button", "display", "show", "view",
+               "modal", "dialog", "table", "chart", "dashboard", "input",
+               "dropdown", "checkbox", "click", "navigate"]
+
+requires_ui = any(keyword in feature_description.lower() or
+                  keyword in ac_text.lower()
+                  for keyword in ui_keywords)
+```
+
+**Confirm with user:**
+```
+AskUserQuestion(
+  questions=[{
+    question: "Does this story require UI components or user interface?",
+    header: "UI needed",
+    options: [
+      {
+        label: "Yes - web UI",
+        description: "Browser-based user interface (React, Vue, HTML)"
+      },
+      {
+        label: "Yes - desktop/mobile UI",
+        description: "Native application interface (WPF, MAUI, Flutter)"
+      },
+      {
+        label: "Yes - terminal UI",
+        description: "Command-line interface with formatted output"
+      },
+      {
+        label: "No - backend only",
+        description: "API or business logic without user interface"
+      }
+    ],
+    multiSelect: false
+  }]
+)
+```
+
+**If no UI needed:**
+- Skip Phase 4.2-4.6
+- Proceed to Phase 5
+
+#### 4.2 Document UI Components
+
+**Load UI specification guide:**
+```
+Read(file_path=".claude/skills/devforgeai-story-creation/references/ui-specification-guide.md")
+```
+
+**For each component identified in acceptance criteria:**
+
+```
+Component documentation:
+
+Component: {ComponentName}
+Type: [Form | Table | Modal | Card | Chart | Navigation | Layout]
+Purpose: {1-sentence description}
+
+Data Bindings:
+- Input: {state properties component reads}
+- Output: {events/callbacks component emits}
+- State: {local component state}
+
+Example:
+Component: RegistrationForm
+Type: Form
+Purpose: Collect user registration details (email, password, name)
+
+Data Bindings:
+- Input: None (initial render)
+- Output: onSubmit(RegistrationData), onCancel()
+- State: formData, validationErrors, isSubmitting
+```
+
+#### 4.3 Create ASCII Layout Mockup
+
+**Use box-drawing characters for visual layout:**
+
+```
++------------------------------------------+
+|           [Page Title/Header]            |
++------------------------------------------+
+| Section Label                            |
+| [ Input Field: Placeholder         ]    |
+| [ Dropdown: Select option         v]    |
+| [ ] Checkbox with label text            |
+|                                          |
+| [Button: Primary]  [Button: Secondary]  |
++------------------------------------------+
+| [ Data Table                          ] |
+| | Column 1 | Column 2 | Actions        ||
+| | Value A  | Value B  | [Edit] [Delete]||
+| | Value C  | Value D  | [Edit] [Delete]||
++------------------------------------------+
+```
+
+**Guidelines from ui-specification-guide.md:**
+- Use +-| for borders
+- Align elements consistently
+- Show interactive elements with brackets []
+- Indicate dropdowns with v
+- Show data tables with | separators
+- Label all sections clearly
+
+#### 4.4 Define Component Interfaces
+
+**If tech stack uses TypeScript/C#/typed language:**
+
+```
+Generate component interface/props:
+
+TypeScript Example:
+```typescript
+interface RegistrationFormProps {
+  onSubmit: (data: RegistrationData) => Promise<void>;
+  onCancel: () => void;
+  isLoading: boolean;
+  error: string | null;
+}
+
+interface RegistrationData {
+  email: string;
+  password: string;
+  name: string;
+  agreedToTerms: boolean;
+}
+```
+
+C# Example:
+```csharp
+public class RegistrationFormProps
+{
+    public Action<RegistrationData> OnSubmit { get; set; }
+    public Action OnCancel { get; set; }
+    public bool IsLoading { get; set; }
+    public string Error { get; set; }
+}
+
+public class RegistrationData
+{
+    public string Email { get; set; }
+    public string Password { get; set; }
+    public string Name { get; set; }
+    public bool AgreedToTerms { get; set; }
+}
+```
+```
+
+#### 4.5 Document User Interaction Flows
+
+**Step-by-step interaction sequences:**
+
+```
+User Interaction Flow:
+
+1. User navigates to [page/screen]
+2. [Initial state description]
+3. User [action 1] (e.g., clicks button, types text)
+4. System [response 1] (e.g., validates input, shows loading)
+5. User [action 2]
+6. System [response 2]
+7. Success path: [final outcome]
+8. Error path: [error handling, user can recover]
+
+Include:
+- User actions (clicks, types, selects, navigates)
+- System responses (validation, loading states, success/error messages)
+- State changes (form fields, data display, navigation)
+- Branching logic (if/else scenarios)
+
+Example:
+1. User navigates to /register
+2. Empty registration form displays
+3. User types email → Real-time validation (email format check)
+4. User types password → Strength indicator updates (weak/medium/strong)
+5. User types name → Validation (minimum 2 characters)
+6. User checks "I agree to Terms" checkbox
+7. User clicks "Create Account" button
+8. Loading state: Button shows spinner, form disabled
+9. Success: Redirect to /verify-email-sent page
+10. Error: Error message displays above form, form remains editable
+```
+
+#### 4.6 Specify Accessibility Requirements
+
+**Following WCAG 2.1 Level AA standards:**
+
+```
+Accessibility Requirements:
+
+**Keyboard Navigation:**
+- Tab order: {list elements in tab sequence}
+- Enter/Space: {actions triggered by Enter or Space keys}
+- Escape: {cancel/close actions}
+- Arrow keys: {navigation in lists/dropdowns}
+
+**Screen Reader Support:**
+- aria-label: {labels for icon-only buttons, form inputs}
+- aria-describedby: {field descriptions, error messages}
+- aria-live: {dynamic content announcements (polite, assertive)}
+- role: {semantic roles for custom components}
+- Example:
+  - aria-label="Email address" on email input
+  - aria-describedby="password-requirements" on password field
+  - aria-live="polite" on error messages
+
+**Focus Management:**
+- Visual focus indicators (outline, border change)
+- Focus trap in modals (focus stays in modal, Escape closes)
+- Auto-focus on first input when form loads
+- Focus on error message when validation fails
+
+**Color Contrast:**
+- Text on background: Minimum 4.5:1 contrast ratio
+- UI components: Minimum 3:1 contrast ratio
+- Error text: High contrast (e.g., #D32F2F on #FFFFFF = 7:1)
+- Success text: High contrast (e.g., #2E7D32 on #FFFFFF = 4.9:1)
+
+**Error Announcements:**
+- Screen reader announces validation errors
+- Error messages linked to form fields
+- Clear error recovery guidance
+```
+
+**Output from Phase 4:**
+- ✅ UI components documented (type, purpose, data bindings)
+- ✅ ASCII layout mockup created
+- ✅ Component interfaces defined (TypeScript/C#/etc.)
+- ✅ User interaction flows documented
+- ✅ Accessibility requirements specified (WCAG AA)
+
+**If no UI needed:**
+- Phase 4 outputs = null
+- Skip to Phase 5
+
+---
+
+### Phase 5: Story File Creation
+
+**Objective:** Generate complete story document with all sections
+
+#### 5.1 Load Story Template
+
+**Read template from assets:**
+```
+template = Read(file_path=".claude/skills/devforgeai-story-creation/assets/templates/story-template.md")
+```
+
+**Load structure guide:**
+```
+Read(file_path=".claude/skills/devforgeai-story-creation/references/story-structure-guide.md")
+```
+
+This reference provides:
+- YAML frontmatter field descriptions
+- Required vs optional sections
+- Section ordering requirements
+- Markdown formatting standards
+
+#### 5.2 Construct YAML Frontmatter
+
+**Build frontmatter with all metadata:**
+
+```yaml
+---
+id: {story_id}                     # STORY-001, STORY-002, etc.
+title: {brief_title}               # 5-10 words, descriptive
+epic: {epic_id or null}            # EPIC-001 or null
+sprint: {sprint_id or "Backlog"}   # SPRINT-001 or "Backlog"
+status: Backlog                    # Always "Backlog" initially
+priority: {Critical|High|Medium|Low}
+points: {1|2|3|5|8|13}
+created: {YYYY-MM-DD}              # Today's date
+updated: {YYYY-MM-DD}              # Same as created initially
+assigned_to: null                  # Not assigned yet
+tags: []                           # Empty initially, can add later
+---
+```
+
+**Generate brief title from feature description:**
+```
+# Example: "Add user registration with email verification"
+# Title: "User registration with email verification"
+
+# Keep under 80 characters
+# Remove filler words ("add", "implement", "create")
+# Use title case
+```
+
+#### 5.3 Build Markdown Sections
+
+**Section 1: User Story**
+```markdown
+## User Story
+
+As a {role},
+I want {action},
+So that {benefit}.
+```
+
+**Section 2: Acceptance Criteria**
+```markdown
+## Acceptance Criteria
+
+### AC1: {Criterion title}
+**Given** {context/precondition}
+**When** {action/trigger}
+**Then** {expected outcome}
+
+### AC2: {Criterion title}
+**Given** {context/precondition}
+**When** {action/trigger}
+**Then** {expected outcome}
+
+[... all acceptance criteria from Phase 2 ...]
+```
+
+**Section 3: Technical Specification**
+```markdown
+## Technical Specification
+
+### API Contracts
+
+{Include API contracts from Phase 3.2 if applicable}
+
+### Data Models
+
+{Include data models from Phase 3.3}
+
+### Business Rules
+
+{Include business rules from Phase 3.4}
+
+### Dependencies
+
+{Include dependencies from Phase 3.5}
+```
+
+**Section 4: UI Specification (if applicable)**
+```markdown
+## UI Specification
+
+### Components
+
+{Include component documentation from Phase 4.2}
+
+### Layout Mockup
+
+```
+{Include ASCII mockup from Phase 4.3}
+```
+
+### Component Interfaces
+
+{Include TypeScript/C# interfaces from Phase 4.4}
+
+### User Interactions
+
+{Include interaction flows from Phase 4.5}
+
+### Accessibility
+
+{Include accessibility requirements from Phase 4.6}
+```
+
+**Section 5: Non-Functional Requirements**
+```markdown
+## Non-Functional Requirements
+
+### Performance
+{Performance targets from Phase 2}
+
+### Security
+{Security requirements from Phase 2}
+
+### Usability
+{Usability requirements from Phase 2}
+
+### Scalability
+{Scalability targets from Phase 2}
+```
+
+**Section 6: Edge Cases & Error Handling**
+```markdown
+## Edge Cases & Error Handling
+
+{Include edge cases from Phase 2}
+
+Example format:
+1. **Case:** User closes browser during form submission
+   **Expected:** Transaction completes or rolls back, no partial state
+
+2. **Case:** Duplicate email registration attempt
+   **Expected:** Error message "Email already registered", suggest login
+```
+
+**Section 7: Definition of Done**
+```markdown
+## Definition of Done
+
+### Implementation
+- [ ] All acceptance criteria implemented
+- [ ] Unit tests written and passing (95% coverage for business logic)
+- [ ] Integration tests written and passing
+- [ ] API endpoints implemented (if applicable)
+- [ ] UI components implemented (if applicable)
+- [ ] Error handling implemented for all edge cases
+- [ ] Logging added for debugging
+
+### Code Quality
+- [ ] Code follows coding-standards.md
+- [ ] No violations of architecture-constraints.md
+- [ ] No anti-patterns from anti-patterns.md
+- [ ] Cyclomatic complexity <10 per method
+- [ ] Code review completed
+
+### Testing
+- [ ] All acceptance criteria have automated tests
+- [ ] Edge cases have tests
+- [ ] Test coverage meets thresholds (95%/85%/80%)
+- [ ] All tests passing (100% pass rate)
+
+### Documentation
+- [ ] Code comments for complex logic
+- [ ] API documentation generated (Swagger/OpenAPI)
+- [ ] README updated if needed
+
+### Security
+- [ ] Input validation implemented
+- [ ] Authentication/authorization implemented (if applicable)
+- [ ] No hardcoded secrets or credentials
+- [ ] Security scan passed (no CRITICAL or HIGH vulnerabilities)
+```
+
+**Section 8: Workflow History**
+```markdown
+## Workflow History
+
+- **{timestamp}** - Story created, status: Backlog
+```
+
+#### 5.4 Write Story File
+
+**Construct complete file:**
+```
+story_content = f"""---
+{frontmatter}
+---
+
+{user_story_section}
+
+{acceptance_criteria_section}
+
+{technical_specification_section}
+
+{ui_specification_section or ''}
+
+{nfr_section}
+
+{edge_cases_section}
+
+{definition_of_done_section}
+
+{workflow_history_section}
+"""
+```
+
+**Write to disk:**
+```
+# Ensure directory exists
+Bash(mkdir -p devforgeai/specs/Stories/)
+
+# Generate filename slug
+slug = slugify(title)  # "user-registration" from "User Registration"
+
+# Write file
+Write(
+  file_path=f"devforgeai/specs/Stories/{story_id}-{slug}.story.md",
+  content=story_content
+)
+```
+
+**Verify file creation:**
+```
+# Read back to confirm
+created_file = Read(file_path=f"devforgeai/specs/Stories/{story_id}-{slug}.story.md", limit=30)
+
+# Verify frontmatter parses correctly
+if not created_file.startswith("---"):
+    ERROR: Story file creation failed or corrupted
+```
+
+**Update TodoWrite:**
+```
+TodoWrite: Mark story creation as completed
+```
+
+**Output from Phase 5:**
+- ✅ Complete story file created at `devforgeai/specs/Stories/{STORY-ID}-{slug}.story.md`
+- ✅ All sections populated (user story, AC, tech spec, UI spec, NFRs, edge cases, DoD, history)
+- ✅ YAML frontmatter valid
+- ✅ File verified on disk
+
+---
+
+### Phase 6: Epic/Sprint Linking
+
+**Objective:** Update parent documents with story references
+
+#### 6.1 Update Epic File (If Associated)
+
+**If epic_id is not null:**
+
+```
+# Read epic file
+epic_file_path = f"devforgeai/specs/Epics/{epic_id}.epic.md"
+epic_content = Read(file_path=epic_file_path)
+
+# Find "Stories" section or create it
+if "## Stories" not in epic_content:
+    # Add Stories section before "## Workflow History" or at end
+    Edit(
+      file_path=epic_file_path,
+      old_string="## Workflow History",
+      new_string="""## Stories
+
+- [{story_id}] {story_title} - {status} ({points} points, Priority: {priority})
+
+## Workflow History"""
+    )
+else:
+    # Append to existing Stories section
+    Edit(
+      file_path=epic_file_path,
+      old_string="## Stories\n",
+      new_string=f"""## Stories
+
+- [{story_id}] {story_title} - {status} ({points} points, Priority: {priority})
+"""
+    )
+```
+
+**Update epic statistics:**
+```
+# Count total story points in epic
+# Update epic frontmatter or summary
+```
+
+#### 6.2 Update Sprint File (If Associated)
+
+**If sprint_id is not "Backlog":**
+
+```
+# Read sprint file
+sprint_file_path = f"devforgeai/specs/Sprints/{sprint_id}.md"
+sprint_content = Read(file_path=sprint_file_path)
+
+# Find "Sprint Backlog" section
+Edit(
+  file_path=sprint_file_path,
+  old_string="## Sprint Backlog\n",
+  new_string=f"""## Sprint Backlog
+
+- [{story_id}] {story_title} - {status} ({points} points, Priority: {priority})
+"""
+)
+
+# Update sprint capacity
+# Total points = sum of all story points in sprint
+```
+
+#### 6.3 Verify Linking
+
+**Validate updates:**
+```
+# Re-read epic file
+if epic_id:
+    epic_content = Read(file_path=epic_file_path)
+    if story_id not in epic_content:
+        ERROR: Epic linking failed
+        # Retry or report to user
+
+# Re-read sprint file
+if sprint_id != "Backlog":
+    sprint_content = Read(file_path=sprint_file_path)
+    if story_id not in sprint_content:
+        ERROR: Sprint linking failed
+        # Retry or report to user
+```
+
+**Output from Phase 6:**
+- ✅ Epic file updated with story reference (if applicable)
+- ✅ Sprint file updated with story reference (if applicable)
+- ✅ Story counts and points updated
+- ✅ Links verified functional
+
+---
+
+### Phase 7: Self-Validation
+
+**Objective:** Validate story document quality before completion
+
+**Load validation checklists:**
+```
+Read(file_path=".claude/skills/devforgeai-story-creation/references/validation-checklists.md")
+```
+
+This reference provides comprehensive validation logic for story quality assurance.
+
+#### 7.1 Validate YAML Frontmatter
+
+```
+Read created story file (first 15 lines for frontmatter)
+
+Required fields:
+- [ ] id: Matches filename
+- [ ] title: Present and descriptive (5-80 chars)
+- [ ] epic: Present (EPIC-XXX or null)
+- [ ] sprint: Present (SPRINT-XXX or "Backlog")
+- [ ] status: Set to "Backlog"
+- [ ] priority: One of Critical/High/Medium/Low
+- [ ] points: Fibonacci number (1/2/3/5/8/13)
+- [ ] created: Today's date (YYYY-MM-DD format)
+- [ ] updated: Same as created
+- [ ] assigned_to: null (unassigned initially)
+
+If validation fails:
+    # Self-healing: Regenerate frontmatter
+    # Edit story file to fix
+    # Retry validation
+```
+
+#### 7.2 Validate User Story Format
+
+```
+Read user story section
+
+Validation:
+- [ ] Starts with "As a"
+- [ ] Contains "I want"
+- [ ] Contains "So that"
+- [ ] Role is specific (not generic "user")
+- [ ] Action is clear and unambiguous
+- [ ] Benefit articulates business value
+
+If validation fails:
+    # Extract role, action, benefit from subagent output
+    # Regenerate user story section
+    # Edit story file
+    # Retry validation
+```
+
+#### 7.3 Validate Acceptance Criteria
+
+```
+Read acceptance criteria section
+
+Validation:
+- [ ] Minimum 3 acceptance criteria
+- [ ] Each has unique title/number (AC1, AC2, AC3, ...)
+- [ ] Each follows Given/When/Then structure
+- [ ] At least 1 happy path scenario
+- [ ] At least 1 error/edge case scenario
+- [ ] All criteria are testable (can write automated test)
+- [ ] No ambiguous language ("should", "might", "probably")
+- [ ] No vague terms ("fast", "easy", "intuitive" without definition)
+
+If validation fails:
+    # Identify which criteria are invalid
+    # Regenerate specific criteria
+    # Use acceptance-criteria-patterns.md for templates
+    # Edit story file
+    # Retry validation
+```
+
+#### 7.4 Validate Technical Specification
+
+```
+Validation:
+
+If API contracts present:
+- [ ] HTTP method specified (GET/POST/PUT/DELETE/PATCH)
+- [ ] Endpoint path follows RESTful conventions
+- [ ] Request schema includes all required fields
+- [ ] Success response (200/201) schema defined
+- [ ] Error responses (400/401/403/404/500) documented
+- [ ] Authentication requirements specified
+
+Data models:
+- [ ] At least 1 entity defined
+- [ ] Each entity has attributes with types
+- [ ] Constraints specified (Required, Unique, Length, Format)
+- [ ] Relationships documented (if applicable)
+- [ ] Primary key identified
+
+Business rules:
+- [ ] At least 1 rule documented (if business logic exists)
+- [ ] Rules are specific (not generic)
+- [ ] Validation logic clear
+
+Dependencies:
+- [ ] All external dependencies identified
+- [ ] Integration methods specified
+- [ ] Fallback behavior defined
+
+If validation fails:
+    # Identify gaps
+    # Regenerate missing sections
+    # Use technical-specification-guide.md for templates
+    # Edit story file
+    # Retry validation
+```
+
+#### 7.5 Validate Non-Functional Requirements
+
+```
+Validation:
+
+- [ ] Performance targets quantified (e.g., "<500ms response time")
+- [ ] Security requirements specific (e.g., "OAuth2 with JWT", not "secure")
+- [ ] Usability requirements clear (e.g., "Max 3 clicks to checkout")
+- [ ] Scalability targets measurable (e.g., "Support 10k concurrent users")
+- [ ] No vague terms without metrics
+
+If validation fails:
+    # Identify vague NFRs
+    # Use AskUserQuestion to quantify
+    # Edit story file
+    # Retry validation
+```
+
+#### 7.6 Validation Success Criteria
+
+**Before proceeding to Phase 8:**
+
+```
+All validations must pass:
+- ✅ YAML frontmatter complete and valid
+- ✅ User story follows format
+- ✅ 3+ testable acceptance criteria
+- ✅ Technical specification complete (if applicable)
+- ✅ UI specification complete (if applicable)
+- ✅ NFRs measurable (not vague)
+- ✅ Edge cases documented
+- ✅ Definition of Done present
+- ✅ File exists on disk
+
+If any CRITICAL failures (missing sections, invalid frontmatter):
+    # Self-healing: Regenerate and retry (max 2 attempts)
+    # If still failing: Report to user with specific issues
+
+If all validations pass:
+    ✅ Proceed to Phase 8
+```
+
+---
+
+### Phase 8: Completion Report
+
+**Objective:** Present story summary and guide user to next actions
+
+#### 8.1 Generate Completion Summary
+
+**Present to user:**
+
+```markdown
+## ✅ Story Created: {story_id}
+
+**Title:** {story_title}
+
+**Metadata:**
+- Epic: {epic_id and epic_title, or "None"}
+- Sprint: {sprint_id, or "Backlog"}
+- Priority: {priority}
+- Story Points: {points}
+- Status: Backlog
+
+**Specifications:**
+- Acceptance Criteria: {ac_count}
+- API Endpoints: {endpoint_count or "None"}
+- Data Models: {entity_count}
+- UI Components: {component_count or "None"}
+
+**File Location:**
+`devforgeai/specs/Stories/{story_id}-{slug}.story.md`
+
+**Story validated:**
+✓ User story format correct
+✓ Acceptance criteria testable
+✓ Technical specification complete
+✓ All NFRs measurable
+✓ Epic/sprint linked (if applicable)
+```
+
+#### 8.2 Determine Next Action
+
+**Ask user:**
+
+```
+AskUserQuestion(
+  questions=[{
+    question: "Story created successfully. What would you like to do next?",
+    header: "Next action",
+    options: [
+      {
+        label: "Create another story",
+        description: "Generate another story for a different feature"
+      },
+      {
+        label: "Start development",
+        description: "Run /dev {story_id} to implement this story with TDD"
+      },
+      {
+        label: "Add to sprint",
+        description: "Add this story to a sprint for planning"
+      },
+      {
+        label: "Review story file",
+        description: "I want to review/edit the generated story"
+      }
+    ],
+    multiSelect: false
+  }]
+)
+```
+
+**Based on response:**
+
+**"Create another story":**
+```
+Report: "Run `/create-story [feature-description]` to create another story"
+```
+
+**"Start development":**
+```
+Report: """
+Run: `/dev {story_id}`
+
+Prerequisites before running /dev:
+1. Context files must exist (run /create-context if needed)
+2. Story status should be "Ready for Dev" (currently: Backlog)
+
+The /dev command will:
+1. Execute TDD cycle (Red → Green → Refactor)
+2. Generate tests from acceptance criteria
+3. Implement code to pass tests
+4. Validate against context files
+5. Update story status to "Dev Complete"
+"""
+```
+
+**"Add to sprint":**
+```
+Report: """
+Run: `/create-sprint {number}` to add stories to a sprint
+
+Or manually:
+1. Edit sprint file: `devforgeai/specs/Sprints/SPRINT-XXX.md`
+2. Add story to Sprint Backlog section
+3. Update story status to "Ready for Dev" when sprint starts
+"""
+```
+
+**"Review story file":**
+```
+Report: """
+Story file: `devforgeai/specs/Stories/{story_id}-{slug}.story.md`
+
+You can:
+- Open in your editor to review/edit
+- Ask me to make specific changes
+- Run /dev when ready to implement
+"""
+```
+
+---
+
+## Error Handling & Recovery
+
+### Story ID Conflicts
+
+**Problem:** Story file already exists with generated ID
+
+**Recovery:**
+```
+while file_exists(f"devforgeai/specs/Stories/{story_id}-*.md"):
+    # Increment story number
+    story_number += 1
+    story_id = f"STORY-{story_number:03d}"
+
+# Use next available ID
+# Check for gaps in sequence (e.g., STORY-001, STORY-003 missing 002)
+# Fill gaps before incrementing
+```
+
+### Subagent Output Incomplete
+
+**Problem:** requirements-analyst or api-designer returns incomplete output
+
+**Recovery:**
+```
+# Identify missing elements
+missing_elements = validate_subagent_output(output)
+
+if missing_elements:
+    # Re-invoke with specific feedback
+    Task(
+      subagent_type="requirements-analyst",
+      prompt=f"Previous output missing: {missing_elements}. Please regenerate complete output including: {specific_requirements}"
+    )
+
+    # If still incomplete after retry:
+    Use AskUserQuestion to fill gaps manually
+```
+
+### Epic/Sprint Not Found
+
+**Problem:** User selects epic/sprint that doesn't exist
+
+**Recovery:**
+```
+# Refresh epic/sprint lists
+epic_files = Glob(pattern="devforgeai/specs/Epics/EPIC-*.epic.md")
+sprint_files = Glob(pattern="devforgeai/specs/Sprints/Sprint-*.md")
+
+# Present updated lists
+AskUserQuestion with refreshed options
+
+# Or allow user to proceed without association
+```
+
+### UI Specification Ambiguous
+
+**Problem:** UI requirements unclear, can't generate mockup
+
+**Recovery:**
+```
+Use AskUserQuestion for clarification:
+
+Question: "Describe the main UI components needed"
+Examples: "Login form with email/password", "Data table with search"
+
+Question: "What user actions are required?"
+Examples: "Submit form", "Click row to view details", "Filter by date"
+
+Question: "What accessibility level is required?"
+Options:
+  - "WCAG AA compliance (standard)"
+  - "WCAG AAA compliance (strict)"
+  - "Basic accessibility (keyboard + screen reader)"
+
+# Generate mockup from clarified requirements
+```
+
+### File Write Failures
+
+**Problem:** Cannot write story file (permissions, disk space)
+
+**Recovery:**
+```
+Try:
+    Write(file_path=story_path, content=story_content)
+Except write error:
+    # Ensure directory exists
+    Bash(mkdir -p devforgeai/specs/Stories/)
+
+    # Check write permissions
+    # Retry write
+
+    # If still failing:
+    Report: """
+    ERROR: Cannot write story file
+
+    Manual creation steps:
+    1. Create file: {story_path}
+    2. Copy this content:
+
+    {story_content}
+
+    3. Save file
+    """
+```
+
+### Validation Failures (Phase 7)
+
+**Problem:** Story quality validation fails
+
+**Recovery:**
+```
+Max retries: 2
+
+attempt = 0
+while attempt < 2:
+    validation_result = run_validation_checklist()
+
+    if validation_result.passed:
+        ✓ Validation succeeded
+        break
+    else:
+        # Self-healing
+        for failure in validation_result.failures:
+            if failure.severity == "CRITICAL":
+                # Regenerate failing section
+                # Edit story file
+            elif failure.severity == "HIGH":
+                # Fix if possible, else report
+
+        attempt += 1
+
+if attempt >= 2:
+    # Report failures to user
+    Report: """
+    ⚠️ Story validation issues detected
+
+    Issues:
+    {list failures}
+
+    Recommendations:
+    1. Review story file: {story_path}
+    2. Fix issues manually or ask me for specific changes
+    3. Validation will run again during /dev command
+    """
+```
+
+---
+
+## Integration with Other Skills
+
+### Flow from devforgeai-ideation
+
+**Handoff:** Epic documents with feature lists
+**Trigger:** User wants to create stories from epic features
+
+**Integration:**
+```
+Ideation creates epics → User runs /create-story for each feature → Story-creation generates stories
+```
+
+### Flow to devforgeai-development
+
+**Handoff:** Complete story document
+**Trigger:** User runs /dev {story_id}
+
+**Integration:**
+```
+Story-creation generates story → Development skill reads story → TDD implementation
+```
+
+**Development skill uses:**
+- Acceptance criteria → Test generation (Red phase)
+- Technical specification → Implementation guidance (Green phase)
+- UI specification → Frontend implementation
+- NFRs → Validation criteria (QA phase)
+
+### Flow from devforgeai-orchestration
+
+**Trigger:** Orchestration skill creates stories during sprint planning or epic decomposition
+
+**Integration:**
+```
+Orchestration skill invokes:
+Skill(command="devforgeai-story-creation")
+
+Story-creation skill reads conversation context for:
+- Feature description (from epic)
+- Epic/sprint association (from orchestration context)
+- Priority and points (from orchestration planning)
+```
+
+### Flow from devforgeai-development
+
+**Trigger:** Development skill creates tracking stories for deferred DoD items
+
+**Integration:**
+```
+Development skill detects deferral → Invokes story-creation skill → Tracking story generated
+
+Story-creation skill reads conversation context for:
+- Deferral description (what work was deferred)
+- Original story reference (links tracking story to original)
+- Technical details (from original story)
+```
+
+---
+
+## Success Criteria
+
+This skill succeeds when:
+
+- [ ] Story ID generated sequentially (no conflicts)
+- [ ] User story follows "As a/I want/So that" format
+- [ ] Minimum 3 acceptance criteria in Given/When/Then format
+- [ ] Technical specification complete (API contracts if applicable, data models, business rules)
+- [ ] UI specification complete (if UI story: components, mockup, interfaces, interactions, accessibility)
+- [ ] Non-functional requirements measurable (not vague)
+- [ ] Edge cases documented (minimum 2)
+- [ ] Definition of Done section present with checkboxes
+- [ ] Story file created at `devforgeai/specs/Stories/{STORY-ID}-{slug}.story.md`
+- [ ] YAML frontmatter valid and complete
+- [ ] Epic reference added (if applicable)
+- [ ] Sprint reference added (if applicable)
+- [ ] Workflow history initialized
+- [ ] All validations passed (Phase 7)
+- [ ] Completion summary presented to user
+- [ ] Next action guidance provided
+
+---
+
+## Reference Files
+
+Load these as needed during story creation:
+
+- **[Story Structure Guide](./references/story-structure-guide.md)** - YAML frontmatter fields, required sections, markdown formatting standards, section ordering (400 lines)
+  - **When to load:** Phase 5 (Story File Creation)
+
+- **[Acceptance Criteria Patterns](./references/acceptance-criteria-patterns.md)** - Given/When/Then examples by domain (CRUD, auth, workflow, reporting), edge case templates, testability guidelines (500 lines)
+  - **When to load:** Phase 2 (Requirements Analysis)
+
+- **[Technical Specification Guide](./references/technical-specification-guide.md)** - API contract templates (OpenAPI 3.0), data model patterns, business rule documentation, dependency specification (600 lines)
+  - **When to load:** Phase 3 (Technical Specification)
+
+- **[UI Specification Guide](./references/ui-specification-guide.md)** - ASCII mockup patterns, component interface examples, accessibility requirements (WCAG AA), interaction flow templates (700 lines)
+  - **When to load:** Phase 4 (UI Specification)
+
+- **[Validation Checklists](./references/validation-checklists.md)** - Story quality validation, completeness checks, self-healing procedures (400 lines)
+  - **When to load:** Phase 7 (Self-Validation)
+
+- **[Story Examples](./references/story-examples.md)** - Complete story examples by type (CRUD, authentication, workflow, reporting, integration) with best practice annotations (800 lines)
+  - **When to load:** Phase 2 (as reference for requirements-analyst subagent)
+
+---
+
+## Best Practices
+
+**Progressive Questioning:**
+- Ask 2-3 questions per interaction (avoid overwhelming user)
+- Build context incrementally (start broad, narrow to specifics)
+- Validate understanding before proceeding to next phase
+
+**Specification Completeness:**
+- No TBD or TODO placeholders (complete all sections)
+- No vague requirements (quantify all targets)
+- No ambiguous acceptance criteria (make testable)
+
+**Reusability:**
+- Generate stories that serve as implementation blueprints
+- Include enough detail for any developer to implement
+- Balance completeness with readability (not overwhelming)
+
+**Framework Integration:**
+- Respect context files (tech-stack.md, coding-standards.md, etc.)
+- Stories must be implementable within architectural constraints
+- Reference existing patterns and components where applicable
+
+**Quality Over Speed:**
+- Take time to generate complete specifications
+- Self-validate before finishing (Phase 7)
+- Better to ask clarifying questions than make assumptions
+
+---
+
+**The goal:** Create complete, unambiguous, spec-driven user stories that enable TDD implementation with zero technical debt.

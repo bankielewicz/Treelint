@@ -1,0 +1,2351 @@
+---
+name: devforgeai-orchestration
+description: Coordinates spec-driven development workflow from Epic → Sprint → Story → Architecture → Development → QA → Release. Manages story lifecycle, enforces quality gates, and orchestrates skill invocation. Use when starting epics/sprints, creating stories, managing workflow progression, or enforcing quality checkpoints.
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+  - AskUserQuestion
+  - Skill
+  - Task
+---
+
+# DevForgeAI Orchestration Skill
+
+Coordinate the complete spec-driven development lifecycle with automated skill orchestration and quality gate enforcement.
+
+## Purpose
+
+This skill is the **workflow coordinator** for the entire spec-driven development framework. It manages the progression of work from high-level business initiatives (Epics) through implementation (Stories) to production release.
+
+### Core Responsibilities
+
+1. **Project Management Integration** - Support Epic → Sprint → Story hierarchy with stories as atomic work units
+2. **Skill Coordination** - Auto-invoke architecture, development, QA, and release skills at appropriate workflow stages
+3. **State Management** - Track and validate story status across 11 workflow states with sequential progression
+4. **Quality Gate Enforcement** - Block transitions when quality standards not met (context validation, test passing, QA approval, release readiness)
+
+### Philosophy
+
+- **Epic → Sprint → Story decomposition** - Break large initiatives into manageable stories
+- **Story is atomic unit** - Each story is independently deliverable
+- **Quality over speed** - Never skip quality gates
+- **No workflow shortcuts** - Every stage must complete successfully
+- **Automated orchestration** - Skills invoke each other automatically
+- **Transparency** - Complete workflow history in story documents
+
+## When to Use This Skill
+
+**Use this skill when:**
+- Starting a new epic or sprint
+- Creating stories from requirements
+- Managing story workflow progression
+- Checking story status
+- Enforcing quality gates
+- Coordinating multi-story releases
+
+**Entry points:**
+```
+Skill(command="devforgeai-orchestration --create-epic --title='User Management'")
+Skill(command="devforgeai-orchestration --plan-sprint --epic=EPIC-001")
+Skill(command="devforgeai-orchestration --create-story --sprint=SPRINT-001")
+Skill(command="devforgeai-orchestration --story=STORY-001")
+Skill(command="devforgeai-orchestration --status=STORY-001")
+```
+
+---
+
+## Mode Detection
+
+This skill operates in multiple modes based on conversation context markers. The skill searches the conversation for explicit markers to determine which workflow to execute.
+
+### Epic Creation Mode
+
+**Triggered by:**
+- Context marker: `**Command:** create-epic`
+- Context marker: `**Epic name:** {name}` (required)
+
+**Entry point:** Phase 4A - Epic Creation Workflow (7-phase process)
+
+**Subagents used:**
+- requirements-analyst (feature decomposition, optional requirements spec)
+- architect-reviewer (technical assessment and complexity scoring)
+
+**Output:**
+- Epic document: `devforgeai/specs/Epics/{EPIC-ID}.epic.md`
+- Optional requirements spec: `devforgeai/specs/requirements/{EPIC-ID}-requirements.md`
+- Structured completion summary (JSON for command display)
+
+**Reference files loaded progressively:**
+- epic-management.md (Phases 1-2)
+- feature-decomposition-patterns.md (Phase 3)
+- technical-assessment-guide.md (Phase 4)
+- epic-template.md (Phase 5)
+- epic-validation-checklist.md (Phase 7)
+
+---
+
+### Sprint Planning Mode
+
+**Triggered by:**
+- Context marker: `**Command:** create-sprint` or `**Command:** plan-sprint`
+- Context marker: `**Sprint Name:** {name}` (required)
+- Context marker: `**Selected Stories:** {story-ids}` (required)
+
+**Entry point:** Phase 3A - Sprint Planning Workflow
+
+**Subagents used:**
+- sprint-planner (sprint creation and capacity validation)
+
+**Output:**
+- Sprint document: `devforgeai/specs/Sprints/Sprint-{N}.md`
+- Story status updates (Backlog → Ready for Dev)
+- Sprint summary for command display
+
+---
+
+### Story Management Mode
+
+**Triggered by:**
+- Context marker: `**Story ID:** STORY-NNN`
+- No other mode markers present
+
+**Entry point:** Phase 1 - Load and Validate Story (default mode)
+
+**Behavior:** Standard story lifecycle management and skill coordination
+
+---
+
+### Default Mode (No Mode Markers)
+
+**Behavior:** Analyze conversation context to infer intended operation
+
+**Fallback logic:**
+```
+IF "epic" OR "Epic" mentioned without mode marker:
+  Assume story management mode (link story to epic)
+
+IF "sprint" OR "Sprint" mentioned without mode marker:
+  Assume story management mode (link story to sprint)
+
+IF Story ID pattern detected (STORY-\d+):
+  Assume story management mode
+
+OTHERWISE:
+  HALT: "Cannot determine orchestration mode. Set context marker:
+         **Command:** create-epic|plan-sprint|manage-story
+         **Epic name:** {name} (if epic mode)
+         **Story ID:** {id} (if story mode)
+         **Sprint Name:** {name} (if sprint mode)"
+```
+
+---
+
+## Workflow States
+
+### 11 Story States (Brief Overview)
+
+```
+1. Backlog → 2. Architecture → 3. Ready for Dev → 4. In Development →
+5. Dev Complete → 6. QA In Progress → 7. QA Failed/QA Approved →
+8. Releasing → 9. Released
+(11. Blocked - can occur from any state)
+```
+
+**For detailed state definitions:** See `references/workflow-states.md`
+**For transition rules and validation:** See `references/state-transitions.md`
+
+---
+
+## Orchestration Workflow
+
+### Phase 1: Load and Validate Story
+
+#### Step 1: Load Story Document
+```
+Read(file_path="devforgeai/specs/Stories/{story_id}.story.md")
+
+Extract YAML frontmatter:
+  - id, title, epic, sprint
+  - status (current state)
+  - points, priority
+  - assigned_to, created
+
+Extract content sections:
+  - Acceptance criteria
+  - Technical specification
+  - NFRs
+  - Dependencies
+  - Workflow status
+```
+
+#### Step 2: Validate Current State
+```
+Check status is valid workflow state
+Verify prerequisites for requested transition
+
+For validation rules: See references/state-transitions.md
+```
+
+#### Step 3: Validate Quality Gates
+```
+Check gate requirements for current → next transition
+
+Gate 1: Context Validation (Architecture → Ready for Dev)
+Gate 2: Test Passing (Dev Complete → QA In Progress)
+Gate 3: QA Approval (QA Approved → Releasing)
+Gate 4: Release Readiness (Releasing → Released)
+
+For gate requirements: See references/quality-gates.md
+
+HALT if gate requirements not met
+```
+
+---
+
+### Phase 2: Orchestrate Skill Invocation
+
+#### Architecture Phase (Backlog → Ready for Dev)
+```
+Check for context files (devforgeai/specs/context/*.md)
+
+IF missing:
+    Invoke: Skill(command="devforgeai-architecture")
+    Wait for completion
+    Validate all 6 context files created
+    Update story status: Architecture → Ready for Dev
+
+For context validation gate details: See references/quality-gates.md
+```
+
+#### Development Phase (Ready for Dev → Dev Complete)
+```
+Invoke: Skill(command="devforgeai-development --story={story_id}")
+
+Development skill executes TDD workflow:
+  - Phase 1: Context Validation
+  - Phase 2: Test-First (Red)
+  - Phase 3: Implementation (Green) + light QA
+  - Phase 4: Refactor + light QA
+  - Phase 5: Integration + light QA
+  - Phase 6: Git workflow
+
+Update story status: In Development → Dev Complete
+Check workflow box: "Development phase complete"
+
+For test passing gate details: See references/quality-gates.md
+```
+
+#### QA Phase (Dev Complete → QA Approved/Failed)
+```
+Invoke: Skill(command="devforgeai-qa --mode=deep --story={story_id}")
+
+QA skill executes 5 phases:
+  - Phase 1: Test Coverage Analysis
+  - Phase 2: Anti-Pattern Detection
+  - Phase 3: Spec Compliance Validation
+  - Phase 4: Code Quality Metrics
+  - Phase 5: Generate QA Report
+
+Parse QA report:
+Read(file_path="devforgeai/qa/reports/{story_id}-qa-report.md")
+
+IF qa_status == "PASS":
+    Update status: QA In Progress → QA Approved
+    Check workflow box: "QA phase complete"
+    Append QA report section to story
+ELSE:
+    Update status: QA In Progress → QA Failed
+    Extract action items
+    Return to In Development
+
+For QA approval gate details: See references/quality-gates.md
+```
+
+#### Release Phase (QA Approved → Released)
+```
+Invoke: Skill(command="devforgeai-release --story={story_id}")
+
+Release skill executes deployment
+
+IF successful:
+    Update status: Releasing → Released
+    Check workflow box: "Released"
+    Append release info
+    Update sprint progress
+    Update epic progress
+
+For release readiness gate details: See references/quality-gates.md
+```
+
+---
+
+### Phase 3: Sprint Planning Workflow
+
+**Purpose:** Execute complete sprint planning with story selection, capacity validation, and sprint file creation.
+
+**Triggered when conversation contains:**
+- "Operation: plan-sprint"
+- Sprint planning parameters (sprint name, selected stories, duration, epic)
+
+**Prerequisites:**
+- At least 1 story in Backlog status
+- Valid epic linkage (optional but recommended)
+- Sprint name provided by user
+- Story selection completed (via command's AskUserQuestion)
+
+---
+
+#### Step 1: Extract Sprint Planning Context
+
+**Parse conversation for sprint parameters:**
+
+```
+SPRINT_NAME = extract from "Sprint Name: (.*)" pattern
+SELECTED_STORIES = extract from "Selected Stories: (.*)" pattern (comma-separated STORY-\d+ IDs)
+DURATION_DAYS = extract from "Duration: (\d+) days" pattern (default: 14)
+EPIC_ID = extract from "Epic: (.*)" pattern (optional)
+START_DATE = extract from "Start Date: (.*)" pattern (default: today)
+```
+
+**Validate extracted parameters:**
+
+```
+IF SPRINT_NAME is empty:
+    HALT: "Sprint name required. Set context marker: Sprint Name: {name}"
+
+IF SELECTED_STORIES is empty:
+    HALT: "No stories selected. Set context marker: Selected Stories: STORY-001, STORY-002"
+
+IF DURATION_DAYS not in [7, 14, 21] and not custom:
+    Use default: 14 days
+```
+
+**Validate stories exist and in correct status:**
+
+```
+FOR each story_id in SELECTED_STORIES:
+    Glob(pattern="devforgeai/specs/Stories/${story_id}*.story.md")
+
+    IF not found:
+        HALT: "Story ${story_id} does not exist"
+
+    Read YAML frontmatter
+
+    IF status != "Backlog":
+        HALT: "Story ${story_id} status is '${status}', not 'Backlog'. Only Backlog stories can be added to sprints."
+```
+
+---
+
+#### Step 2: Invoke sprint-planner Subagent
+
+**Purpose:** Execute sprint creation workflow in isolated context for token efficiency
+
+**Invocation:**
+
+```
+Task(
+  subagent_type="sprint-planner",
+  description="Create sprint with selected stories",
+  prompt="Execute complete sprint planning workflow:
+
+**Sprint Parameters:**
+- Sprint Name: ${SPRINT_NAME}
+- Selected Stories: ${SELECTED_STORIES}
+- Duration: ${DURATION_DAYS} days
+- Start Date: ${START_DATE}
+- Epic: ${EPIC_ID}
+
+**Workflow Steps:**
+
+1. **Sprint Discovery** - Glob existing sprints, parse numbers, calculate next sequential ID
+2. **Story Validation** - Read each selected story, verify Backlog status, extract metadata
+3. **Metrics Calculation** - Sum story points, calculate end date (start + duration), validate capacity
+4. **Sprint Document Generation** - Create YAML frontmatter + markdown sections (goals, stories, metrics)
+5. **Story Status Updates** - Edit each story: status Backlog → Ready for Dev, add sprint reference, workflow history
+6. **Summary Report** - Return structured JSON with sprint details and next steps
+
+**Framework Constraints:**
+
+Load reference file for sprint planning guidelines:
+Read(file_path=\".claude/skills/devforgeai-orchestration/references/sprint-planning-guide.md\")
+
+This provides:
+- Capacity thresholds (20-40 points for 2-week sprints)
+- Status transition rules (Backlog → Ready for Dev prerequisites)
+- Sprint file structure (YAML frontmatter, markdown sections)
+- Workflow history format
+- Integration patterns
+
+**Expected Output:**
+
+Return JSON with:
+{
+  \"sprint_id\": \"SPRINT-N\",
+  \"file_path\": \"devforgeai/specs/Sprints/Sprint-N.md\",
+  \"stories_updated\": [\"STORY-001\", \"STORY-002\", ...],
+  \"total_points\": 28,
+  \"capacity_status\": \"OPTIMAL|OVER|UNDER\",
+  \"start_date\": \"YYYY-MM-DD\",
+  \"end_date\": \"YYYY-MM-DD\",
+  \"epic\": \"EPIC-ID or Multiple or Standalone\",
+  \"next_steps\": [\"Action 1\", \"Action 2\", ...]
+}
+
+Execute sprint planning workflow following all DevForgeAI constraints."
+)
+```
+
+**Why use subagent:**
+- Token efficiency (35K tokens in isolated context vs main conversation)
+- Framework-aware (references sprint-planning-guide.md)
+- Reusable (can be invoked from multiple sources)
+- Comprehensive (handles all file operations and validation)
+
+---
+
+#### Step 3: Process Subagent Result
+
+**Parse returned JSON:**
+
+```
+result = subagent_output
+
+sprint_id = result["sprint_id"]
+file_path = result["file_path"]
+stories_updated = result["stories_updated"]
+total_points = result["total_points"]
+capacity_status = result["capacity_status"]
+start_date = result["start_date"]
+end_date = result["end_date"]
+epic = result["epic"]
+next_steps = result["next_steps"]
+```
+
+**Validate sprint creation:**
+
+```
+Read(file_path="${file_path}")
+
+Verify:
+- YAML frontmatter present and valid
+- Sprint ID matches expected pattern (SPRINT-\d+)
+- All selected stories listed
+- Capacity calculated correctly
+```
+
+**Verify story updates:**
+
+```
+FOR each story_id in stories_updated:
+    Read(file_path="devforgeai/specs/Stories/${story_id}.story.md")
+
+    Verify:
+    - status == "Ready for Dev"
+    - sprint == sprint_id
+    - Workflow history entry added with timestamp
+```
+
+---
+
+#### Step 4: Return Sprint Summary to Command
+
+**Format result for command display:**
+
+```
+✅ Sprint Created Successfully
+
+Sprint Details:
+  📋 ${sprint_id}: ${SPRINT_NAME}
+  📅 Duration: ${start_date} to ${end_date} (${DURATION_DAYS} days)
+  🎯 Epic: ${epic}
+  📊 Capacity: ${total_points} points (${capacity_status})
+  📝 Stories: ${stories_updated.length} stories selected
+
+Stories Added to Sprint:
+  ${FOR each story in stories_updated:
+    ✓ ${story}: ${title} (${points} points) - ${priority}
+  }
+
+Sprint File Created:
+  📁 ${file_path}
+
+Next Steps:
+  ${FOR each step in next_steps:
+    ${step}
+  }
+```
+
+---
+
+#### Error Handling: Sprint Planning
+
+**Error: No Backlog Stories**
+
+```
+IF subagent returns error.type == "NO_BACKLOG_STORIES":
+
+    Display:
+    ⚠️ No Stories Available for Sprint
+
+    Story Status Breakdown:
+      ${error.status_breakdown}
+
+    Recommendations:
+      1. Create new stories: /create-story
+      2. Check story statuses (may need to move back to Backlog)
+      3. Plan next epic: /create-epic
+
+    Cannot create sprint without Backlog stories.
+
+    HALT
+```
+
+**Error: Invalid Story Selection**
+
+```
+IF subagent returns error.type == "INVALID_STORIES":
+
+    Display:
+    ❌ Invalid Story Selection
+
+    Issues Found:
+      ${FOR each invalid in error.invalid_ids:
+        - ${invalid}: Does not exist
+      }
+      ${FOR each wrong in error.wrong_status:
+        - ${wrong.id}: Status is "${wrong.status}" (not Backlog)
+      }
+
+    Valid Stories Available:
+      ${error.valid_stories}
+
+    Please provide valid story IDs in Backlog status.
+
+    HALT
+```
+
+**Error: Capacity Validation Failed**
+
+```
+IF capacity_status == "OVER":
+
+    Display:
+    ⚠️ Sprint Over Capacity
+
+    Selected Stories: ${total_points} points
+    Recommended Maximum: 40 points
+    Overage: ${total_points - 40} points
+
+    Sprint created but consider:
+    - Removing lower priority stories
+    - Adjusting team capacity expectations
+    - Extending sprint duration
+```
+
+**Error: Sprint File Creation Failed**
+
+```
+IF subagent returns error.type == "FILE_WRITE_FAILED":
+
+    Display:
+    ❌ Sprint File Creation Failed
+
+    Cause: ${error.cause}
+
+    Recovery attempted: ${error.recovery_steps}
+
+    Status: ${error.recovery_success ? "Recovered" : "Failed"}
+
+    ${IF not recovered:
+        Manual action required:
+        ${error.manual_steps}
+    }
+
+    HALT
+```
+
+---
+
+### Phase 3A: Update Story Status
+
+#### Update Frontmatter
+```
+Edit(file_path="devforgeai/specs/Stories/{story_id}.story.md",
+     old_string="status: {old_status}",
+     new_string="status: {new_status}")
+```
+
+#### Update Workflow Checkboxes
+```
+Mark phase as complete: - [ ] → - [x]
+
+Checkboxes:
+- Architecture phase complete
+- Development phase complete
+- QA phase complete
+- Released
+```
+
+#### Append Workflow History
+```
+Add entry (format):
+### {timestamp} - {new_status}
+- **Previous Status:** {old_status}
+- **Action Taken:** {description}
+- **Result:** {summary}
+- **Next Steps:** {next_steps}
+
+For workflow history format and examples: See references/story-management.md
+```
+
+---
+
+### Phase 4: Epic and Sprint Management
+
+---
+
+### Phase 4A: Epic Creation Workflow (NEW IMPLEMENTATION)
+
+**Mode trigger:** `**Command:** create-epic` AND `**Epic name:** {name}`
+
+This 8-phase workflow creates comprehensive epic documents with feature decomposition, technical assessment, and self-validation.
+
+---
+
+#### Phase 1: Epic Discovery
+
+**Objective:** Generate unique epic ID and check for name conflicts
+
+**Step 1.1: Find Existing Epics**
+
+```
+epic_files = Glob(pattern="devforgeai/specs/Epics/*.epic.md")
+
+IF epic_files is empty:
+  next_epic_id = "EPIC-001"
+  epic_count = 0
+ELSE:
+  # Parse all epic IDs to find highest
+  epic_ids = []
+
+  FOR each epic_file in epic_files:
+    Read(file_path=epic_file)
+    Extract id from YAML frontmatter (pattern: "id: EPIC-(\d+)")
+    epic_ids.append(extracted_number)
+
+  highest_id = max(epic_ids)
+  next_epic_id = f"EPIC-{highest_id + 1:03d}"  # Zero-padded (EPIC-001, EPIC-002, etc.)
+  epic_count = len(epic_ids)
+```
+
+**Step 1.2: Check for Duplicate Epic Names**
+
+```
+epic_name = extract from conversation context "**Epic name:** (.*)" pattern
+
+# Search for existing epic with same title (case-insensitive)
+duplicates = Grep(
+  pattern=f"title: .*{epic_name}",
+  path="devforgeai/specs/Epics/",
+  output_mode="files_with_matches",
+  -i=true
+)
+
+IF duplicates found:
+  # Read duplicate epic to get ID and details
+  Read(file_path=duplicates[0])
+  Extract existing_epic_id, status, created_date from YAML
+
+  AskUserQuestion:
+    Question: f"Epic named '{epic_name}' already exists ({existing_epic_id}, created {created_date}). How to proceed?"
+    Header: "Duplicate epic name"
+    Options:
+      - label: f"Create new epic with same name ({next_epic_id})"
+        description: "Allow duplicate names (different IDs distinguish them)"
+      - label: f"Edit existing epic ({existing_epic_id})"
+        description: "Update the existing epic instead of creating new one"
+      - label: "Cancel and rename"
+        description: "Provide a different epic name"
+    multiSelect: false
+
+  IF user selects "Edit existing":
+    epic_id = existing_epic_id
+    mode = "update"
+    # Continue with editing existing epic (read current content, merge changes)
+
+  ELSE IF user selects "Cancel":
+    HALT: "Epic creation cancelled. Please provide a different epic name."
+
+  ELSE:
+    epic_id = next_epic_id
+    mode = "create"
+    # Continue with new epic creation
+ELSE:
+  epic_id = next_epic_id
+  mode = "create"
+```
+
+**Output:**
+- epic_id (EPIC-NNN)
+- mode (create or update)
+- epic_count (for summary reporting)
+
+**Reference:** Load `references/epic-management.md` (Section: Epic ID Generation and Duplicate Handling)
+
+---
+
+#### Phase 2: Epic Context Gathering
+
+**Objective:** Collect business context, goals, stakeholders, success criteria through interactive discovery
+
+**Load reference for context gathering patterns:**
+```
+Read(file_path=".claude/skills/devforgeai-orchestration/references/epic-management.md")
+# Focus on sections: Business Goal Definition, Stakeholder Identification, Success Metrics
+```
+
+**Step 2.1: Epic Goal and Type**
+
+```
+AskUserQuestion:
+  Question: "What is the primary goal of this epic?"
+  Header: "Epic Goal"
+  Options:
+    - label: "New feature development"
+      description: "Build new capabilities for users"
+    - label: "Technical improvement/refactoring"
+      description: "Improve code quality, architecture, or performance"
+    - label: "Bug fix/technical debt resolution"
+      description: "Address known issues or accumulated debt"
+    - label: "Infrastructure/DevOps enhancement"
+      description: "Improve deployment, monitoring, or operations"
+    - label: "Migration/modernization"
+      description: "Upgrade technologies or migrate systems"
+    - label: "Performance optimization"
+      description: "Improve speed, scalability, or resource usage"
+  multiSelect: false
+
+epic_goal = user_selection["label"]
+epic_goal_description = user_selection["description"]
+```
+
+**Step 2.2: Timeline, Priority, and Business Value**
+
+```
+AskUserQuestion:
+  Question: "What is the expected timeline, priority, and business value?"
+  Header: "Epic Planning"
+  Options:
+    Timeline:
+      - label: "1-2 sprints"
+        description: "Quick win or small enhancement (2-4 weeks)"
+      - label: "3-4 sprints"
+        description: "Medium initiative (6-8 weeks)"
+      - label: "5+ sprints"
+        description: "Large initiative (10+ weeks)"
+      - label: "Unknown"
+        description: "Timeline will be refined during decomposition"
+    Priority:
+      - label: "Critical"
+        description: "Urgent, blocks other work"
+      - label: "High"
+        description: "Important, should start soon"
+      - label: "Medium"
+        description: "Standard priority"
+      - label: "Low"
+        description: "Nice to have, can wait"
+    Business Value:
+      - label: "High"
+        description: "Significant revenue/user impact"
+      - label: "Medium"
+        description: "Moderate value"
+      - label: "Low"
+        description: "Minimal immediate value"
+  multiSelect: true  # User selects one from each category
+
+timeline = user_selection["Timeline"]["label"]
+priority = user_selection["Priority"]["label"]
+business_value = user_selection["Business Value"]["label"]
+```
+
+**Step 2.3: Stakeholder Identification**
+
+```
+AskUserQuestion:
+  Question: "Who are the key stakeholders for this epic?"
+  Header: "Stakeholders"
+  Options:
+    - label: "Default stakeholders (Product Owner, Tech Lead, QA Lead)"
+      description: "Use standard stakeholder set"
+    - label: "Custom stakeholders"
+      description: "I'll specify stakeholder names and roles"
+  multiSelect: false
+
+IF user selects "Custom stakeholders":
+  AskUserQuestion:
+    Question: "List stakeholders and their roles"
+    Header: "Custom Stakeholders"
+    Free-form: "Format: Role: Name (one per line)\nExample:\nProduct Owner: Jane Smith\nTech Lead: John Doe\nQA Lead: Sarah Johnson"
+
+  stakeholders = parse_stakeholder_input(user_input)
+ELSE:
+  stakeholders = [
+    {"role": "Product Owner", "name": "TBD", "responsibility": "Requirements, prioritization"},
+    {"role": "Tech Lead", "name": "TBD", "responsibility": "Architecture, implementation"},
+    {"role": "QA Lead", "name": "TBD", "responsibility": "Testing strategy"}
+  ]
+```
+
+**Step 2.4: Success Criteria Collection**
+
+```
+AskUserQuestion:
+  Question: "What defines success for this epic? Provide 3+ measurable outcomes."
+  Header: "Success Criteria"
+  Free-form: "List measurable outcomes (one per line):
+              - Reduce login time by 50%
+              - Support 10K concurrent users
+              - Achieve 99.9% uptime
+
+              Make criteria SMART:
+              - Specific (clear what to achieve)
+              - Measurable (quantifiable)
+              - Achievable (realistic)
+              - Relevant (aligns with business goals)
+              - Time-bound (when to achieve)"
+
+success_criteria_raw = user_input
+success_criteria_list = parse_criteria(success_criteria_raw)
+
+# Validate at least 3 criteria provided
+IF len(success_criteria_list) < 3:
+  WARN: "Best practice: Provide 3+ success criteria for clear epic scope"
+  # Continue anyway (will be flagged in validation phase)
+```
+
+**Output:**
+- epic_goal, epic_goal_description
+- timeline, priority, business_value
+- stakeholders (list with roles, names, responsibilities)
+- success_criteria_list (3+ measurable outcomes)
+
+**Reference:** epic-management.md sections loaded in Step 2.1
+
+---
+
+#### Phase 3: Feature Decomposition
+
+**Objective:** Break epic into 3-8 independently valuable features using requirements-analyst subagent
+
+**Load reference for decomposition patterns:**
+```
+Read(file_path=".claude/skills/devforgeai-orchestration/references/feature-decomposition-patterns.md")
+# 850 lines: Epic type patterns (CRUD, Auth, API, Reporting, Workflow, E-commerce)
+# Progressive disclosure: Loaded only in Phase 3
+```
+
+**Step 3.1: Invoke requirements-analyst Subagent**
+
+```
+Task(
+  subagent_type="requirements-analyst",
+  description="Decompose epic into features",
+  prompt=f"Decompose the epic '{epic_name}' into high-level features.
+
+**Epic Context:**
+- Epic ID: {epic_id}
+- Goal: {epic_goal} - {epic_goal_description}
+- Timeline: {timeline}
+- Priority: {priority}
+- Business Value: {business_value}
+- Success Criteria:
+  {for criterion in success_criteria_list:
+    - {criterion}
+  }
+
+**Instructions:**
+
+Use feature decomposition patterns from the reference file you'll load:
+Read(file_path=\".claude/skills/devforgeai-orchestration/references/feature-decomposition-patterns.md\")
+
+1. **Identify Epic Type:**
+   - Analyze epic goal and success criteria
+   - Match to decomposition pattern (CRUD, Auth, API, Reporting, Workflow, E-commerce)
+   - If no pattern matches: Use general decomposition principles
+
+2. **Apply Decomposition Pattern:**
+   - Generate 3-8 features following identified pattern
+   - Ensure features are:
+     ✓ Independently implementable (minimal dependencies)
+     ✓ Incrementally valuable (each delivers user benefit)
+     ✓ Testable and demonstrable (clear acceptance criteria)
+     ✓ Right-sized (1-2 sprints each)
+
+3. **Framework Integration:**
+   - Check if context files exist: Glob(pattern=\"devforgeai/specs/context/*.md\")
+   - IF exist:
+     - Read tech-stack.md: Validate technologies align with approved stack
+     - Read architecture-constraints.md: Ensure features respect layer boundaries
+     - Read anti-patterns.md: Avoid forbidden patterns in feature design
+   - IF NOT exist:
+     - Note: Greenfield mode, no constraints yet
+     - Features should be technology-agnostic where possible
+
+4. **Feature Specification:**
+   For each feature provide:
+   - **Feature name:** Clear, action-oriented, user-focused (e.g., \"User Registration with Email Verification\")
+   - **Description:** 1-2 sentences describing what user can do
+   - **Estimated complexity:** Simple (1 sprint), Moderate (1-2 sprints), Complex (2-3 sprints)
+   - **Dependencies:** Which features must complete first (or \"None\")
+   - **User value:** Specific benefit to end user
+   - **Estimated story points:** \"TBD during sprint planning\" (will be refined later)
+
+5. **Validate Decomposition:**
+   - Feature count: 3-8 (optimal range per reference patterns)
+   - Dependencies form valid DAG (no circular dependencies)
+   - At least one Simple feature (quick win for sprint 1)
+   - Features cover all success criteria
+
+**Output Format (Structured Markdown):**
+
+### Feature 1: {Feature Name}
+
+**Description:** {What user can do with this feature}
+
+**Complexity:** {Simple|Moderate|Complex}
+
+**Dependencies:** {None or list prerequisite features by name}
+
+**User Value:** {Specific benefit}
+
+**Estimated Story Points:** TBD during sprint planning
+
+---
+
+### Feature 2: {Feature Name}
+...
+
+**Return all features in this format for epic document inclusion.**"
+)
+```
+
+**Step 3.2: Review Generated Features**
+
+```
+features = subagent_output
+
+# Display features to user for review
+Display:
+  Features Generated: {len(features)} features
+
+  {FOR each feature in features:
+    ✨ {feature.name} - {feature.complexity}
+       {feature.description}
+       Dependencies: {feature.dependencies}
+       User Value: {feature.user_value}
+  }
+
+AskUserQuestion:
+  Question: "Review generated features. Accept or request modifications?"
+  Header: "Feature Review"
+  Options:
+    - label: "Accept all features"
+      description: "Proceed with these features to next phase"
+    - label: "Remove specific features"
+      description: "I'll identify which features to remove"
+    - label: "Add additional features"
+      description: "I'll describe additional features needed"
+    - label: "Modify feature descriptions"
+      description: "I'll provide updated descriptions"
+  multiSelect: false
+```
+
+**Step 3.3: Handle Modifications (If Requested)**
+
+```
+IF user selects "Remove specific features":
+  AskUserQuestion:
+    Question: "Which features should be removed?"
+    Header: "Remove Features"
+    Options:
+      {FOR each feature in features:
+        - label: feature.name
+          description: feature.description
+      }
+    multiSelect: true
+
+  removed_features = user_selection
+  features = [f for f in features if f.name not in removed_features]
+
+  # Re-display updated feature list
+  # Ask for confirmation: Accept or continue modifying
+
+ELSE IF user selects "Add additional features":
+  AskUserQuestion:
+    Question: "Describe additional features to add (one per line)"
+    Header: "Add Features"
+    Free-form: "Feature Name: Description
+                Example: Advanced Search: Allow users to filter by multiple criteria"
+
+  additional_features_raw = user_input
+
+  # Re-invoke requirements-analyst to formalize additional features
+  Task(
+    subagent_type="requirements-analyst",
+    description="Formalize additional features",
+    prompt=f"Formalize these additional features for epic '{epic_name}':
+
+    {additional_features_raw}
+
+    Use same format as original features:
+    - Feature name, description, complexity, dependencies, user value
+    - Integrate with existing features: {features}
+    - Validate dependencies (no circular deps)
+
+    Return in same structured markdown format."
+  )
+
+  new_features = subagent_output
+  features.extend(new_features)
+
+  # Re-display updated feature list
+  # Ask for confirmation
+
+ELSE IF user selects "Modify feature descriptions":
+  AskUserQuestion:
+    Question: "Provide updated feature descriptions"
+    Header: "Modify Features"
+    Free-form: "Format: Feature Name: New Description
+                Provide only features that need changes"
+
+  modifications = parse_modifications(user_input)
+
+  FOR each mod in modifications:
+    matching_feature = find_feature_by_name(features, mod.name)
+    IF matching_feature:
+      matching_feature.description = mod.new_description
+
+  # Re-display updated feature list
+  # Ask for confirmation
+
+# Loop until user selects "Accept all features"
+WHILE user_choice != "Accept all features":
+  # Continue modification loop
+```
+
+**Output:**
+- features (3-8 approved features with full metadata)
+- feature_count (for validation)
+
+**Reference:** feature-decomposition-patterns.md (850 lines - loaded in Step 3.1)
+
+---
+
+#### Phase 4: Technical Assessment
+
+**Objective:** Assess technical complexity, identify risks, validate against context files
+
+**Step 4.1: Check for Context Files**
+
+```
+context_files = Glob(pattern="devforgeai/specs/context/*.md")
+
+IF len(context_files) == 6:
+  greenfield_mode = false
+
+  # Load context files for validation
+  tech_stack_content = Read(file_path="devforgeai/specs/context/tech-stack.md")
+  architecture_constraints = Read(file_path="devforgeai/specs/context/architecture-constraints.md")
+  dependencies_content = Read(file_path="devforgeai/specs/context/dependencies.md")
+  anti_patterns_content = Read(file_path="devforgeai/specs/context/anti-patterns.md")
+
+  context_summary = f"Context files exist. Validate against:
+    - tech-stack.md: {extract_technologies(tech_stack_content)}
+    - architecture-constraints.md: {extract_constraints(architecture_constraints)}
+    - dependencies.md: {extract_approved_deps(dependencies_content)}
+    - anti-patterns.md: {extract_forbidden_patterns(anti_patterns_content)}"
+ELSE:
+  greenfield_mode = true
+  context_summary = "Context files not present (greenfield mode). No constraints to validate against."
+```
+
+**Step 4.2: Load Technical Assessment Guide**
+
+```
+Read(file_path=".claude/skills/devforgeai-orchestration/references/technical-assessment-guide.md")
+# 900 lines: Complexity scoring rubric (0-10), risk identification, validation procedures
+# Progressive disclosure: Loaded only in Phase 4
+```
+
+**Step 4.3: Invoke architect-reviewer Subagent**
+
+```
+Task(
+  subagent_type="architect-reviewer",
+  description="Assess epic technical complexity",
+  prompt=f"Assess technical complexity for epic '{epic_name}' ({epic_id}).
+
+**Epic Context:**
+- Goal: {epic_goal}
+- Features: {feature_count} features
+  {for feature in features:
+    - {feature.name} ({feature.complexity}): {feature.description}
+  }
+- Success Criteria:
+  {for criterion in success_criteria_list:
+    - {criterion}
+  }
+
+**Assessment Instructions:**
+
+Load technical assessment guide:
+Read(file_path=\".claude/skills/devforgeai-orchestration/references/technical-assessment-guide.md\")
+
+Use the guide's complexity scoring rubric (0-10 scale) to analyze:
+
+1. **Technology Stack Impact:**
+   - New technologies required? Which ones?
+   - Learning curve for team?
+   - License/cost implications?
+   - {IF NOT greenfield: \"Validate against tech-stack.md\"}
+
+2. **Architecture Changes:**
+   - New layers, services, or components needed?
+   - Changes to existing architecture?
+   - {IF NOT greenfield: \"Check architecture-constraints.md compliance\"}
+
+3. **Integration Complexity:**
+   - External systems to integrate?
+   - APIs to design/consume?
+   - {IF NOT greenfield: \"Validate integrations in dependencies.md\"}
+
+4. **Data Modeling Complexity:**
+   - New entities, attributes, relationships?
+   - Schema changes to existing data?
+   - Data migration requirements?
+
+5. **Testing Complexity:**
+   - New test types needed (E2E, performance, security)?
+   - Test infrastructure requirements?
+   - Mock/stub complexity?
+
+6. **Security Considerations:**
+   - Authentication/authorization changes?
+   - Sensitive data handling?
+   - OWASP Top 10 vulnerabilities to address?
+   - {IF NOT greenfield: \"Check anti-patterns.md for security violations\"}
+
+7. **Performance Requirements:**
+   - Scalability targets (concurrent users, transactions)?
+   - Latency requirements?
+   - Resource constraints?
+
+**Complexity Scoring (0-10):**
+Use rubric from technical-assessment-guide.md:
+- 0-2: Trivial (no new tech, no architecture changes)
+- 3-4: Low (existing stack, simple integrations)
+- 5-6: Moderate (1-2 new tech, new service layer)
+- 7-8: High (3+ new tech, major architecture changes)
+- 9-10: Very High (new stack, major redesign - may need epic split)
+
+**Framework Validation Mode:** {greenfield_mode ? \"Greenfield\" : \"Brownfield\"}
+
+{IF NOT greenfield:}
+**CRITICAL Context File Validation:**
+
+Context files loaded:
+{context_summary}
+
+For each proposed technology/pattern:
+1. Check tech-stack.md: Is technology approved?
+   - IF NO: Flag as \"REQUIRES ADR\" - user must approve
+2. Check architecture-constraints.md: Do changes violate layer rules?
+   - IF YES: BLOCK - cannot proceed, require redesign
+3. Check dependencies.md: Are integrations approved?
+   - IF NO: Flag as \"REQUIRES APPROVAL\"
+4. Check anti-patterns.md: Do features introduce forbidden patterns?
+   - IF YES: BLOCK - cannot proceed, require redesign
+
+**Output violations clearly:**
+⚠️ Technology Conflicts:
+  - Proposed: {new_technology}
+  - Approved in tech-stack.md: {existing_technologies}
+  - Action: Requires ADR creation + tech-stack.md update
+
+❌ Architecture Violations:
+  - Violation: {description}
+  - Constraint violated: {constraint_from_architecture-constraints.md}
+  - Action: Redesign required to respect constraint
+
+{END IF}
+
+{IF greenfield:}
+**Greenfield Mode Note:**
+Context files not present. Provide technology recommendations but no validation constraints.
+Recommend creating context files after epic approval before implementation starts.
+{END IF}
+
+**Risk Identification:**
+
+Identify 2+ key technical risks with mitigation strategies:
+- Risk: {description}
+  Mitigation: {approach}
+
+**Prerequisites:**
+
+List required prerequisites:
+- Skills/expertise needed
+- Tools/infrastructure required
+- Dependencies to resolve first
+
+**Output Format (Structured):**
+
+```markdown
+## Technical Assessment
+
+**Overall Complexity:** {score}/10
+
+**Technology Stack:**
+- {Technology 1}: {Purpose} [{APPROVED|REQUIRES ADR}]
+- {Technology 2}: {Purpose} [{APPROVED|REQUIRES ADR}]
+
+**Architecture Impact:**
+{Description of changes}
+{IF violations} ⚠️ Violates architecture-constraints.md: {specific violation}
+
+**Integration Complexity:**
+{Description of integrations}
+{IF conflicts} ⚠️ Requires approval in dependencies.md: {unapproved integration}
+
+**Data Modeling:**
+{Entity count, complexity description}
+
+**Testing Requirements:**
+{Test types, infrastructure needs}
+
+**Security Considerations:**
+{Auth/authz changes, sensitive data, OWASP concerns}
+{IF anti-patterns} ❌ Introduces anti-patterns: {specific patterns}
+
+**Performance Requirements:**
+{Scalability, latency, throughput targets}
+
+**Key Technical Risks:**
+1. {Risk 1} - Mitigation: {approach}
+2. {Risk 2} - Mitigation: {approach}
+{3. Risk 3 if applicable}
+
+**Prerequisites:**
+- {Prerequisite 1}
+- {Prerequisite 2}
+
+{IF conflicts or violations found:}
+**⚠️ Framework Conflicts Detected:**
+
+Technology Conflicts:
+- {Conflict description}
+- Proposed: {technology}
+- Approved: {tech from tech-stack.md}
+- Resolution: User decision required (AskUserQuestion)
+
+Architecture Violations:
+- {Violation description}
+- Action: BLOCKED - Redesign required
+
+{IF greenfield:}
+**📝 Greenfield Recommendations:**
+- Create context files before implementation: /create-context
+- Recommended tech stack: {technologies based on features}
+- Recommended architecture: {patterns based on complexity}
+```
+
+Return this structured assessment."
+)
+```
+
+**Step 4.2: Handle Framework Conflicts (If Not Greenfield)**
+
+```
+technical_assessment = subagent_output
+
+IF "REQUIRES ADR" in technical_assessment OR "⚠️" in technical_assessment:
+
+  conflicts = extract_conflicts(technical_assessment)
+
+  AskUserQuestion:
+    Question: f"Technical assessment found {len(conflicts)} conflicts with tech-stack.md. How to proceed?"
+    Header: "Technology Conflicts"
+    Options:
+      - label: "Update tech-stack.md to allow new technologies (requires ADR creation)"
+        description: "Approve new technologies, document decision in ADR"
+      - label: "Adjust epic scope to use existing approved technologies"
+        description: "Modify features to work within current tech stack"
+      - label: "Mark as technical debt for architecture phase"
+        description: "Defer technology decision, resolve during architecture planning"
+    multiSelect: false
+
+  conflict_resolution = user_selection["label"]
+
+  IF conflict_resolution == "Update tech-stack.md":
+    # Note for later: ADR creation required
+    adr_required = true
+    adr_topics = [conflict.technology for conflict in conflicts]
+
+  ELSE IF conflict_resolution == "Adjust epic scope":
+    # Re-invoke architect-reviewer with constraint
+    # "Reassess using only approved technologies from tech-stack.md"
+    # Loop until no conflicts
+
+  ELSE:
+    # Mark as debt, continue with assessment as-is
+    technical_debt_notes = "Technology decisions deferred to architecture phase"
+
+IF "❌" in technical_assessment:  # Architecture violations or anti-patterns
+  violations = extract_violations(technical_assessment)
+
+  Display:
+    ❌ Critical Framework Violations Detected
+
+    The proposed epic design violates DevForgeAI constraints:
+    {FOR violation in violations:
+      - {violation.description}
+      - Violated constraint: {violation.source_file}
+      - Required action: {violation.action}
+    }
+
+    Epic creation BLOCKED.
+
+    Recommendations:
+    {FOR violation in violations:
+      - {violation.recommendation}
+    }
+
+  HALT: "Cannot proceed with epic containing framework violations. Redesign required."
+```
+
+**Output:**
+- technical_assessment (complexity score, risks, prerequisites, technology stack)
+- conflict_resolution (if conflicts found)
+- adr_required (boolean, list of topics if true)
+- violations (empty if greenfield or compliant)
+
+**Reference:** technical-assessment-guide.md (900 lines - loaded in Step 4.2)
+
+---
+
+#### Phase 5: Epic File Creation
+
+**Objective:** Generate epic document using template, populate with gathered data
+
+**Step 5.1: Load Epic Template**
+
+```
+epic_template = Read(file_path=".claude/skills/devforgeai-orchestration/assets/templates/epic-template.md")
+# 265 lines: YAML frontmatter + markdown sections structure
+```
+
+**Step 5.2: Populate Template**
+
+```
+# Get current date for timestamps
+current_date = today's date in YYYY-MM-DD format
+
+# Build YAML frontmatter
+yaml_frontmatter = f"""---
+id: {epic_id}
+title: {epic_name}
+status: Planning
+priority: {priority}
+business_value: {business_value}
+timeline: {timeline}
+created: {current_date}
+updated: {current_date}
+stakeholders:
+{for stakeholder in stakeholders:
+  - {stakeholder.name or "TBD"} ({stakeholder.role})
+}
+---"""
+
+# Build markdown content
+markdown_content = f"""
+# {epic_id}: {epic_name}
+
+## Overview
+
+**Epic Goal:** {epic_goal}
+
+{epic_goal_description}
+
+## Business Value
+
+**Value Tier:** {business_value}
+
+This epic delivers value by {infer_from_goal_and_features}.
+
+## Success Criteria
+
+This epic is considered successful when the following measurable outcomes are achieved:
+
+### Measurable Outcomes
+
+{for criterion in success_criteria_list:
+- [ ] {criterion}
+}
+
+## Features
+
+{for feature in features:
+### Feature {index}: {feature.name}
+
+**Description:** {feature.description}
+
+**Complexity:** {feature.complexity}
+
+**Dependencies:** {feature.dependencies}
+
+**User Value:** {feature.user_value}
+
+**Estimated Story Points:** {feature.estimated_points}
+
+---
+}
+
+## Technical Assessment
+
+{technical_assessment}
+
+**Overall Complexity:** {technical_assessment.score}/10
+
+**Technology Stack:**
+{for tech in technical_assessment.technologies:
+- {tech.name}: {tech.purpose} [{tech.approval_status}]
+}
+
+**Architecture Impact:**
+{technical_assessment.architecture_impact}
+
+**Key Technical Risks:**
+{for risk in technical_assessment.risks:
+{index}. {risk.description} - Mitigation: {risk.mitigation}
+}
+
+**Prerequisites:**
+{for prereq in technical_assessment.prerequisites:
+- {prereq}
+}
+
+{IF adr_required:}
+**⚠️ ADR Required:**
+The following technology decisions require Architecture Decision Records before implementation:
+{for topic in adr_topics:
+- {topic}
+}
+{END IF}
+
+## Timeline Estimate
+
+**Target Duration:** {timeline}
+
+**Estimated Sprints:** {calculate_sprint_estimate_from_features()}
+
+**Dependencies:** {extract_external_dependencies()}
+
+## Stakeholders
+
+| Role | Name | Responsibility |
+|------|------|----------------|
+{for stakeholder in stakeholders:
+| {stakeholder.role} | {stakeholder.name} | {stakeholder.responsibility} |
+}
+
+## Related Documentation
+
+- Requirements Spec: `devforgeai/specs/requirements/{epic_id}-requirements.md` (to be created)
+- ADRs: (to be created during architecture phase)
+- User Stories: (to be created during sprint planning)
+
+## Status History
+
+- {current_date}: Created - Epic defined and scoped{IF greenfield_mode:} (greenfield - no context files){END IF}
+"""
+
+epic_document = yaml_frontmatter + "\n" + markdown_content
+```
+
+**Step 5.3: Create devforgeai/specs/Epics Directory (If Needed)**
+
+```
+# Check if directory exists
+Check via Glob or attempt Write and handle error
+
+IF directory missing:
+  Bash(command="mkdir -p devforgeai/specs/Epics")
+  # Using Bash for directory creation (terminal operation)
+```
+
+**Step 5.4: Write Epic File**
+
+```
+Write(
+  file_path=f"devforgeai/specs/Epics/{epic_id}.epic.md",
+  content=epic_document
+)
+
+# Verify file created successfully
+epic_file_path = f"devforgeai/specs/Epics/{epic_id}.epic.md"
+verification = Glob(pattern=epic_file_path)
+
+IF not verification:
+  HALT: f"Failed to create epic file at {epic_file_path}. Check directory permissions."
+```
+
+**Output:**
+- epic_document (complete content)
+- epic_file_path (absolute path to created file)
+
+**Reference:** epic-template.md (265 lines - loaded in Step 5.1)
+
+---
+
+#### Phase 6: Requirements Specification (Optional)
+
+**Objective:** Create detailed requirements document if user requests
+
+**Step 6.1: Ask User**
+
+```
+AskUserQuestion:
+  Question: "Would you like to create a detailed requirements specification for this epic?"
+  Header: "Requirements Spec"
+  Options:
+    - label: "Yes - Create full requirements spec"
+      description: "Generate comprehensive requirements (functional, non-functional, data models, API contracts)"
+    - label: "No - Epic document is sufficient"
+      description: "Skip detailed requirements for now"
+    - label: "Later - During sprint planning"
+      description: "I'll create requirements when planning individual stories"
+  multiSelect: false
+
+create_requirements = (user_selection["label"] == "Yes - Create full requirements spec")
+```
+
+**Step 6.2: Generate Requirements Spec (If Requested)**
+
+```
+IF create_requirements:
+
+  Task(
+    subagent_type="requirements-analyst",
+    description="Create requirements specification",
+    prompt=f"Create detailed requirements specification for epic '{epic_name}' ({epic_id}).
+
+**Based on features:**
+{for feature in features:
+### {feature.name}
+{feature.description}
+Complexity: {feature.complexity}
+User Value: {feature.user_value}
+}
+
+**Epic context:**
+- Goal: {epic_goal}
+- Success Criteria: {success_criteria_list}
+- Technical Assessment: Complexity {technical_assessment.score}/10
+
+**Generate comprehensive requirements document including:**
+
+1. **Functional Requirements**
+   - Detailed use cases for each feature
+   - User flows (step-by-step scenarios)
+   - Feature interactions and dependencies
+
+2. **Non-Functional Requirements**
+   - Performance targets (response time, throughput, concurrency)
+   - Security requirements (auth, encryption, compliance)
+   - Scalability requirements (user growth, data growth)
+   - Reliability requirements (uptime, recovery)
+
+3. **Data Models**
+   - Entities and attributes
+   - Relationships between entities
+   - Data validation rules
+   - Schema considerations
+
+4. **API Contracts** (if applicable)
+   - Endpoint definitions
+   - Request/response formats
+   - Error handling
+   - Versioning strategy
+
+5. **Business Rules**
+   - Validation rules
+   - Workflow logic
+   - Business constraints
+   - Calculations/algorithms
+
+6. **Integration Requirements**
+   - External systems to integrate
+   - API dependencies
+   - Data exchange formats
+
+{IF NOT greenfield:}
+**Framework Constraints:**
+
+Reference context files:
+- tech-stack.md: {tech_stack_content}
+- architecture-constraints.md: {architecture_constraints}
+- dependencies.md: {dependencies_content}
+
+Ensure requirements align with approved technologies and patterns.
+{ELSE:}
+**Greenfield Mode:**
+Provide technology-agnostic requirements where possible.
+Note recommended technologies but don't lock decisions.
+{END IF}
+
+**Output Format:**
+
+Structured markdown suitable for `devforgeai/specs/requirements/` with clear sections, examples, and framework integration notes.
+
+Return complete requirements specification document."
+  )
+
+  requirements_spec = subagent_output
+
+  # Create requirements spec directory if needed
+  Bash(command="mkdir -p devforgeai/specs/requirements")
+
+  # Write requirements spec
+  requirements_file_path = f"devforgeai/specs/requirements/{epic_id}-requirements.md"
+
+  Write(
+    file_path=requirements_file_path,
+    content=requirements_spec
+  )
+
+  # Update epic file with requirements link
+  Edit(
+    file_path=epic_file_path,
+    old_string=f"- Requirements Spec: `devforgeai/specs/requirements/{epic_id}-requirements.md` (to be created)",
+    new_string=f"- Requirements Spec: `devforgeai/specs/requirements/{epic_id}-requirements.md`"
+  )
+
+  requirements_created = true
+
+ELSE:
+  requirements_created = false
+  requirements_file_path = None
+```
+
+**Output:**
+- requirements_created (boolean)
+- requirements_file_path (if created)
+
+---
+
+#### Phase 7: Epic Validation and Self-Healing
+
+**Objective:** Validate epic quality, self-heal correctable issues, HALT on critical failures
+
+**Load validation checklist:**
+```
+Read(file_path=".claude/skills/devforgeai-orchestration/references/epic-validation-checklist.md")
+# 800 lines: Validation procedures, self-healing logic, quality gates
+# Progressive disclosure: Loaded only in Phase 7
+```
+
+**Execute validation following checklist:**
+
+```
+validation_results = {
+  "passed": [],
+  "warnings": [],
+  "failures": [],
+  "self_healed": []
+}
+
+# Validation 1: YAML Frontmatter
+Read epic file: {epic_file_path}
+Extract YAML frontmatter
+
+required_fields = ["id", "title", "status", "priority", "business_value", "timeline", "created", "updated", "stakeholders"]
+
+FOR field in required_fields:
+  IF field missing:
+    IF field has default (id, status, dates):
+      # Self-heal
+      auto_value = generate_default(field)
+      Edit epic file to insert field
+      validation_results["self_healed"].append(f"Added missing {field}: {auto_value}")
+    ELSE:
+      # Cannot heal
+      validation_results["failures"].append(f"Missing required field: {field}")
+
+# Validation 2: Content Sections
+required_sections = ["Overview", "Business Value", "Success Criteria", "Features", "Technical Assessment", "Timeline Estimate", "Stakeholders"]
+
+FOR section in required_sections:
+  IF section missing or empty (<50 words):
+    IF can regenerate from Phase 2 data:
+      # Self-heal
+      regenerated_content = reconstruct_section(section, phase_2_data)
+      Insert into epic document
+      validation_results["self_healed"].append(f"Regenerated {section} section")
+    ELSE:
+      validation_results["failures"].append(f"Section {section} missing and cannot auto-generate")
+
+# Validation 3: Feature Scoping
+feature_count = len(features)
+
+IF feature_count < 3:
+  validation_results["warnings"].append(f"Under-scoped: Only {feature_count} features (recommend 3-8)")
+  # Update epic status in frontmatter
+  Edit(
+    file_path=epic_file_path,
+    old_string="status: Planning",
+    new_string="status: Planning (Under-Scoped)"
+  )
+  validation_results["self_healed"].append("Marked status as Under-Scoped")
+
+ELSE IF feature_count > 8:
+  validation_results["warnings"].append(f"Over-scoped: {feature_count} features (recommend 3-8, consider splitting)")
+  # Update epic status
+  Edit(
+    file_path=epic_file_path,
+    old_string="status: Planning",
+    new_string="status: Planning (Over-Scoped)"
+  )
+  validation_results["self_healed"].append("Marked status as Over-Scoped")
+
+# Validation 4: Circular Dependencies
+dependency_graph = build_dependency_graph(features)
+circular_deps = detect_circular_dependencies(dependency_graph)
+
+IF circular_deps:
+  validation_results["failures"].append(f"Circular dependencies detected: {circular_deps}")
+  # CRITICAL - cannot auto-heal, requires manual resolution
+
+# Validation 5: Success Criteria Count
+IF len(success_criteria_list) < 3:
+  validation_results["warnings"].append(f"Only {len(success_criteria_list)} success criteria (recommend 3+)")
+
+# Validation 6: Technical Assessment Completeness
+IF technical_assessment.score is None:
+  validation_results["failures"].append("Technical assessment missing complexity score")
+
+IF len(technical_assessment.risks) < 2:
+  # Self-heal: Add generic risk
+  generic_risk = {"description": "Implementation complexity", "mitigation": "TBD during sprint planning"}
+  technical_assessment.risks.append(generic_risk)
+  validation_results["self_healed"].append("Added generic risk (min 2 required)")
+  # Update epic file Technical Assessment section
+
+# Validation 7: Stakeholder Count
+IF len(stakeholders) < 3:
+  # Self-heal: Add default stakeholders
+  default_stakeholders = [
+    {"role": "Product Owner", "name": "TBD", "responsibility": "Requirements, prioritization"},
+    {"role": "Tech Lead", "name": "TBD", "responsibility": "Architecture, implementation"},
+    {"role": "QA Lead", "name": "TBD", "responsibility": "Testing strategy"}
+  ]
+
+  missing_roles = set([s.role for s in default_stakeholders]) - set([s.role for s in stakeholders])
+
+  FOR role in missing_roles:
+    stakeholders.append(find_default_stakeholder(role))
+
+  # Update stakeholders section in epic file
+  validation_results["self_healed"].append(f"Added {len(missing_roles)} default stakeholders")
+
+# Validation 8: Framework Integration (If Not Greenfield)
+IF NOT greenfield_mode:
+  # Already validated in Phase 4, check for violations
+  IF technical_assessment contains violations:
+    validation_results["failures"].append("Framework constraint violations detected")
+    # Already HALTed in Phase 4 - this is redundant check
+
+# Validation 9: Feasibility Check
+IF technical_assessment.score > 8:
+  validation_results["warnings"].append(f"High complexity ({technical_assessment.score}/10) - epic may be too large, consider splitting")
+
+IF technical_assessment.score > 10:
+  validation_results["failures"].append("Complexity score invalid (>10) - reassessment required")
+```
+
+**Step 7.2: Process Validation Results**
+
+```
+passed_count = len(validation_results["passed"])
+warning_count = len(validation_results["warnings"])
+failure_count = len(validation_results["failures"])
+heal_count = len(validation_results["self_healed"])
+
+IF failure_count > 0:
+  # Critical failures - cannot proceed
+
+  Display:
+    ❌ Epic Validation Failed
+
+    Critical Issues ({failure_count}):
+    {FOR failure in validation_results["failures"]:
+      - {failure}
+    }
+
+    Self-Healing Attempted:
+    {FOR heal in validation_results["self_healed"]:
+      ✓ {heal}
+    }
+
+    Epic creation BLOCKED. Resolve critical issues and retry.
+
+  HALT
+
+ELSE IF warning_count > 0:
+  # Warnings only - proceed with notes
+
+  validation_note = f"""
+⚠️ Epic Validation Completed with Warnings
+
+Warnings ({warning_count}):
+{for warning in validation_results["warnings"]:
+- {warning}
+}
+
+Self-Healing Actions ({heal_count}):
+{for heal in validation_results["self_healed"]:
+✓ {heal}
+}
+
+Epic created successfully but review warnings before implementation.
+"""
+
+  # Append validation note to epic Status History
+  Edit(
+    file_path=epic_file_path,
+    old_string=f"- {current_date}: Created - Epic defined and scoped",
+    new_string=f"- {current_date}: Created - Epic defined and scoped\n- {current_date}: Validation completed with {warning_count} warnings (self-healed {heal_count} issues)"
+  )
+
+ELSE:
+  # All validations passed
+  validation_note = f"✅ Epic validation passed ({heal_count} issues self-healed)"
+```
+
+**Output:**
+- validation_results (passed, warnings, failures, self_healed)
+- validation_note (for display)
+- epic_file updated with validation results
+
+**Reference:** epic-validation-checklist.md (800 lines - loaded in Step 7.1)
+
+---
+
+#### Phase 8: Completion Summary
+
+**Objective:** Return structured summary for /create-epic command to display
+
+**Generate completion summary:**
+
+```
+completion_summary = {
+  "status": "success",
+  "epic_id": epic_id,
+  "epic_name": epic_name,
+  "priority": priority,
+  "business_value": business_value,
+  "timeline": timeline,
+  "feature_count": len(features),
+  "features": [
+    {
+      "name": feature.name,
+      "complexity": feature.complexity,
+      "user_value": feature.user_value
+    }
+    for feature in features
+  ],
+  "technical_assessment": {
+    "complexity_score": technical_assessment.score,
+    "risk_count": len(technical_assessment.risks),
+    "prerequisite_count": len(technical_assessment.prerequisites),
+    "technology_conflicts": adr_required,
+    "greenfield_mode": greenfield_mode
+  },
+  "files_created": [
+    epic_file_path,
+    requirements_file_path (if requirements_created)
+  ],
+  "validation": {
+    "passed": passed_count,
+    "warnings": warning_count,
+    "failures": failure_count,
+    "self_healed": heal_count,
+    "note": validation_note
+  },
+  "next_steps": [
+    f"Review epic document: {epic_file_path}",
+    (IF greenfield_mode: "⚠️ Create architectural context: /create-context {project_name}"),
+    (IF adr_required: f"⚠️ Create ADRs for technology decisions: {adr_topics}"),
+    "Create sprint: /create-sprint {sprint_number}",
+    "Break features into stories during sprint planning",
+    "Implement stories: /dev {STORY-ID}"
+  ]
+}
+
+# Return structured summary to command for display
+RETURN completion_summary
+```
+
+**Command will display this as:**
+
+```
+✅ Epic Created Successfully
+
+Epic Details:
+  📋 ID: {epic_id}
+  🎯 Title: {epic_name}
+  🏆 Priority: {priority}
+  📊 Business Value: {business_value}
+  📅 Timeline: {timeline}
+
+Features: {feature_count} features identified
+  {for feature in features:
+    ✨ {feature.name} - {feature.complexity}
+  }
+
+Technical Assessment:
+  🔧 Complexity Score: {complexity_score}/10
+  ⚠️ Key Risks: {risk_count} identified
+  📦 Prerequisites: {prerequisite_count}
+  {IF technology_conflicts:
+    ⚠️ ADR Required: {adr_topics}
+  }
+
+Files Created:
+  📁 {epic_file_path}
+  {IF requirements_created:
+    📁 {requirements_file_path}
+  }
+
+{validation_note}
+
+Next Steps:
+  {for step in next_steps:
+    {step}
+  }
+```
+
+**Output:** Structured JSON summary (returned to command)
+
+---
+
+**Epic Creation Workflow Complete**
+
+**Total phases:** 8
+**Subagents:** 2 (requirements-analyst, architect-reviewer)
+**Reference files:** 5 (loaded progressively)
+**Estimated lines added:** ~300
+**Token usage (isolated context):** ~125,000 (skill + subagents + references)
+**Main conversation impact:** ~2,000 tokens (command displays summary only)
+
+---
+
+#### Sprint Planning
+
+**NOTE:** Sprint planning workflow is now handled by Phase 3 (above).
+
+**Phase 3 provides:**
+- Complete sprint creation workflow
+- Story selection and capacity validation
+- Sprint file generation
+- Story status updates (Backlog → Ready for Dev)
+- Framework-aware via sprint-planner subagent
+
+**Legacy reference:** See references/sprint-planning-guide.md
+
+#### Story Creation
+
+**Delegate to story-creation skill:**
+
+```
+Skill(command="devforgeai-story-creation")
+```
+
+**The story-creation skill handles:**
+- Story ID generation, epic/sprint association, metadata collection
+- Requirements analysis (requirements-analyst subagent)
+- Technical specification (api-designer subagent, data models, business rules)
+- UI specification (components, mockups, accessibility)
+- Story file creation with all sections
+- Epic/sprint linking
+- Quality validation
+
+**For story lifecycle management** (status updates, workflow history):
+See references/story-management.md
+
+---
+
+### Phase 4.5: Deferred Work Tracking (NEW - RCA-006)
+
+**Purpose:** Ensure deferred DoD items are tracked and not lost
+
+**Triggered when:**
+- Story reaches "Dev Complete" status
+- Implementation Notes contain deferred items ([ ] status)
+- Before QA validation begins
+- During sprint planning (debt analysis)
+
+**Workflow:**
+
+#### Step 1: Scan for Deferrals
+
+```
+Read story > Implementation Notes > Definition of Done Status
+
+Extract all items marked [ ] (incomplete)
+Count deferrals by type:
+- Story splits: {count}
+- Scope changes: {count}
+- External blockers: {count}
+```
+
+#### Step 2: Validate Deferral Tracking
+
+```
+FOR each deferral:
+    reason_type = parse_deferral_type(reason)
+
+    IF reason_type == "story_split":
+        referenced_story = extract_story_id(reason)
+
+        Glob(pattern="devforgeai/specs/Stories/{referenced_story}*.md")
+
+        IF not found:
+            WARN: "Referenced {referenced_story} not found"
+
+            AskUserQuestion:
+                Question: "Deferral references {referenced_story} but story doesn't exist. Create it?"
+                Header: "Missing story"
+                Options:
+                    - "Yes - create tracking story now"
+                    - "No - I'll create it manually"
+                    - "Fix reference (I meant different story)"
+                multiSelect: false
+
+            IF "Yes":
+                # Set context for story-creation skill
+                **Feature Description:** Create tracking story for deferred work: {item}
+                **Story ID:** {referenced_story} (specific ID requested)
+                **Epic:** {current_story.epic} (same epic as original story)
+                **Sprint:** Backlog (will be planned later)
+
+                # Invoke story-creation skill
+                Skill(command="devforgeai-story-creation")
+
+    ELSE IF reason_type == "scope_change":
+        adr_reference = extract_adr_id(reason)
+
+        Glob(pattern="devforgeai/specs/adrs/{adr_reference}*.md")
+
+        IF not found:
+            WARN: "Referenced {adr_reference} not found"
+
+            AskUserQuestion:
+                Question: "Deferral references {adr_reference} but ADR doesn't exist. Create it?"
+                Header: "Missing ADR"
+                Options:
+                    - "Yes - document scope change in ADR"
+                    - "No - I'll create it manually"
+                    - "Change justification (not scope change)"
+                multiSelect: false
+
+            IF "Yes":
+                Task(
+                    subagent_type="architect-reviewer",
+                    description="Create scope change ADR",
+                    prompt="Create {adr_reference} documenting scope change for: '{item}'"
+                )
+
+    ELSE IF reason_type == "external_blocker":
+        # Verify logged in technical debt register
+
+        # Auto-create debt register from template if doesn't exist
+        Check if devforgeai/technical-debt-register.md exists
+        IF not found:
+            Read template: .claude/skills/devforgeai-orchestration/assets/templates/technical-debt-register-template.md
+            Write(devforgeai/technical-debt-register.md, content=template)
+            Display: "Created technical debt register from template"
+
+        Read devforgeai/technical-debt-register.md
+        Search for {story_id} and {item}
+
+        IF not found:
+            Append to register (format from template)
+```
+
+#### Step 3: Analyze Debt Trends (Periodic)
+
+```
+IF invoked during sprint planning OR retrospective:
+    Task(
+        subagent_type="technical-debt-analyzer",
+        description="Analyze accumulated technical debt",
+        prompt="Analyze current technical debt from deferrals.
+
+                Generate trends, identify oldest items, recommend actions.
+
+                Focus on:
+                - Items >90 days old (stale debt)
+                - Circular deferrals (CRITICAL - must resolve)
+                - Pattern detection (common deferral reasons)
+                - Deferral rate trends by sprint
+
+                Provide recommendations for upcoming sprint planning."
+    )
+
+    debt_analysis = {result from subagent}
+
+    Display debt analysis summary to user
+
+    IF debt_analysis.open_items > 10:
+        RECOMMEND: "High technical debt ({count} items) - schedule debt reduction sprint"
+
+    IF debt_analysis.circular_deferrals detected:
+        CRITICAL: "Circular deferrals must be resolved immediately"
+        List circular chains
+
+    IF debt_analysis.stale_items (>90 days) exist:
+        WARN: "{count} stale debt items - review and close or escalate"
+```
+
+---
+
+### Phase 5: Determine Next Action
+
+Based on current state, determine next orchestration action:
+
+```
+Backlog → Architecture: Invoke devforgeai-architecture
+Architecture → Ready for Dev: Context files created, ready for developer
+Ready for Dev → In Development: Developer starts work
+In Development → Dev Complete: TDD workflow complete
+Dev Complete → QA In Progress: Invoke devforgeai-qa
+QA Approved → Releasing: Invoke devforgeai-release when ready
+Releasing → Released: Deployment complete
+QA Failed → In Development: Developer fixes violations
+Blocked → Previous State: When blocker resolved
+```
+
+**For complete decision tree:** See `references/state-transitions.md`
+
+---
+
+## Quality Gate Enforcement
+
+### Four Gates Block Workflow Progression
+
+1. **Context Validation Gate** (Architecture → Ready for Dev)
+   - All 6 context files exist and valid
+   - No placeholder content
+   - Tech stack locked
+
+2. **Test Passing Gate** (Dev Complete → QA In Progress)
+   - Build succeeds
+   - All tests pass (100% pass rate)
+   - Light validation clean
+
+3. **QA Approval Gate** (QA Approved → Releasing)
+   - Deep validation PASSED
+   - Coverage meets thresholds (95%/85%/80%)
+   - Zero CRITICAL violations
+   - Zero HIGH violations (or approved exceptions)
+
+4. **Release Readiness Gate** (Releasing → Released)
+   - Deployment successful
+   - Health checks pass
+   - All workflow checkboxes complete
+
+**For detailed gate requirements and enforcement:** See `references/quality-gates.md`
+
+---
+
+## AskUserQuestion Patterns
+
+### Pattern 1: Story Priority Conflict
+```
+Sprint capacity: 20 points
+Stories ready: 3 (totaling 25 points)
+
+AskUserQuestion:
+  Question: "Sprint has 3 stories (25 points) but capacity for 20 points. Which stories to include?"
+  Header: "Sprint capacity"
+  Options:
+    - STORY-001: User registration (5 points, High priority)
+    - STORY-002: Order history (8 points, Medium priority)
+    - STORY-003: Admin dashboard (12 points, Low priority)
+  multiSelect: true
+```
+
+### Pattern 2: Blocked Story Resolution
+```
+Story blocked on external dependency (email service API not ready)
+
+AskUserQuestion:
+  Question: "STORY-001 blocked waiting for email API (ETA: 7 days, beyond sprint). How to proceed?"
+  Header: "Story blocker"
+  Options:
+    - "Wait for dependency (keep blocked)"
+    - "Create mock/stub to unblock"
+    - "De-prioritize, start different story"
+    - "Escalate to tech lead"
+  multiSelect: false
+```
+
+### Pattern 3: QA Threshold Exception Request
+```
+Infrastructure coverage: 68% (threshold: 80%)
+Uncovered code: Logging utilities (non-critical)
+Business logic: 97% (exceeds 95%)
+
+AskUserQuestion:
+  Question: "Infrastructure coverage 68% < 80%. Uncovered: non-critical utilities. Business logic: 97%. Accept exception?"
+  Header: "Coverage exception"
+  Options:
+    - "Fail QA - Require tests for all infrastructure"
+    - "Pass with waiver - Document reason"
+    - "Require public API tests only - Skip internals"
+  multiSelect: false
+```
+
+---
+
+## Integration with Other Skills
+
+### devforgeai-architecture
+**When:** Architecture → Ready for Dev transition
+**Invocation:** `Skill(command="devforgeai-architecture")`
+**Process:** Creates/validates all 6 context files, creates ADRs
+**Result:** Update story status, check workflow box
+
+### devforgeai-development
+**When:** In Development workflow execution
+**Invocation:** `Skill(command="devforgeai-development --story={story_id}")`
+**Process:** Executes TDD workflow (6 phases), light QA automatic
+**Result:** Update story status when Phase 6 complete
+
+### devforgeai-qa
+**When 1 (Light):** During development (Phases 3, 4, 5) - automatic
+**When 2 (Deep):** After Dev Complete
+**Invocation:** `Skill(command="devforgeai-qa --mode=deep --story={story_id}")`
+**Process:** 5 comprehensive validation phases, generates QA report
+**Result:** Update status to QA Approved or QA Failed
+
+### devforgeai-release
+**When:** QA Approved → Releasing transition
+**Invocation:** `Skill(command="devforgeai-release --story={story_id}")`
+**Process:** Deployment to production, health checks
+**Result:** Update status to Released, update progress
+
+---
+
+## Tool Usage Protocol
+
+### Use Native Tools for File Operations
+
+✅ **CORRECT:**
+```
+Read(file_path="story.md")
+Edit(file_path="story.md", old_string="old", new_string="new")
+Glob(pattern="**/*.story.md")
+Grep(pattern="epic: EPIC-001", glob="**/*.md")
+```
+
+❌ **FORBIDDEN:**
+```
+Bash(command="cat story.md")
+Bash(command="sed -i 's/old/new/' story.md")
+Bash(command="find . -name '*.story.md'")
+Bash(command="grep 'epic: EPIC-001' **/*.md")
+```
+
+**Use Bash ONLY for:**
+- Git operations: `git status`, `git commit`, `git push`
+- Test execution: `pytest`, `npm test`, `dotnet test`
+- Build commands: `npm run build`, `dotnet build`
+
+---
+
+## Reference Materials
+
+Load these on demand during orchestration:
+
+### State Management
+- **`./references/workflow-states.md`** - Detailed 11-state definitions (585 lines)
+- **`./references/state-transitions.md`** - Transition rules, validations, decision trees (1,105 lines)
+- **`./references/quality-gates.md`** - Gate requirements and enforcement procedures (987 lines)
+
+### Project Management
+- **`./references/epic-management.md`** - Epic planning, decomposition, estimation (496 lines)
+- **`./references/feature-decomposition-patterns.md`** - Epic → feature breakdown patterns by type (850 lines) **[NEW - 2025-11-05]**
+- **`./references/technical-assessment-guide.md`** - Complexity scoring rubric (0-10), risk assessment, context validation (900 lines) **[NEW - 2025-11-05]**
+- **`./references/epic-validation-checklist.md`** - Epic quality validation, self-healing procedures (800 lines) **[NEW - 2025-11-05]**
+- **`./references/sprint-planning.md`** - Sprint capacity, story selection, tracking (620 lines)
+
+### Story Operations
+- **`./references/story-management.md`** - Story structure, status updates, workflow history (691 lines)
+
+### Templates (Assets)
+- **`./assets/templates/epic-template.md`** - Epic document structure (265 lines)
+- **`./assets/templates/sprint-template.md`** - Sprint planning template (366 lines)
+- **`./assets/templates/story-template.md`** - Story specification format (610 lines)
+
+---
+
+## Success Criteria
+
+### Orchestration Success
+
+**Story Lifecycle:**
+- [x] Story progresses through all required workflow stages
+- [x] No stages skipped (strict enforcement)
+- [x] Quality gates enforced at each transition
+- [x] Story status always accurate and up-to-date
+
+**Skill Coordination:**
+- [x] Skills invoked in correct sequence
+- [x] Architecture skill creates context before development
+- [x] Development skill executes TDD workflow
+- [x] QA skill validates before release approval
+- [x] Skills communicate state back to orchestration
+
+**State Management:**
+- [x] Story state transitions follow defined rules
+- [x] Invalid transitions blocked
+- [x] Workflow history maintained for audit trail
+- [x] All checkboxes completed before release
+
+**Quality Enforcement:**
+- [x] Context validation gate enforced
+- [x] Test passing gate enforced
+- [x] QA approval gate enforced
+- [x] Release readiness gate enforced
+
+**Documentation:**
+- [x] Story documents always current
+- [x] Workflow history appended at each transition
+- [x] QA reports linked from stories
+- [x] Action items documented when QA fails
+
+**Overall Success:**
+- [x] Stories progress from Backlog to Released without manual intervention (when no blockers)
+- [x] Quality standards maintained throughout workflow
+- [x] Developer experience smooth (minimal friction)
+- [x] Transparency into workflow status
+- [x] Audit trail for compliance/review
+
+---
+
+**The orchestration skill ensures every story follows the same high-quality workflow: Architecture → Development → QA → Release, with no shortcuts and complete transparency.**

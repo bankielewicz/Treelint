@@ -1,0 +1,54 @@
+---
+template-id: command-passed
+operation-type: command
+success-status: passed
+version: "1.0"
+description: "Template for successful command execution"
+---
+
+# Template: Command Success Retrospective
+
+This template collects feedback when a command completes successfully.
+
+## Metadata Extraction
+
+- operation: {operation_name}
+- type: command
+- status: passed
+- timestamp: {ISO 8601}
+- story-id: {STORY-XXX or null}
+
+## Field Mappings
+
+field-mappings:
+  what-went-well:
+    question-id: "cmd_passed_01"
+    section: "## What Went Well"
+    description: "Positive aspects of the command execution"
+
+  what-went-poorly:
+    question-id: "cmd_passed_02"
+    section: "## What Could Improve"
+    description: "Areas for improvement"
+
+  suggestions:
+    question-id: "cmd_passed_03"
+    section: "## Suggestions for Next Time"
+    description: "Specific recommendations"
+
+  efficiency:
+    question-id: "cmd_passed_04"
+    section: "## Efficiency Notes"
+    description: "Performance or optimization insights"
+
+## Template Sections
+
+- # Retrospective: {operation}
+- ## What Went Well
+- ## What Could Improve
+- ## Suggestions for Next Time
+- ## Efficiency Notes
+- ## Context (auto-populated)
+- ## Performance Metrics (auto-populated)
+- ## User Sentiment (auto-populated)
+- ## Actionable Insights (auto-extracted)

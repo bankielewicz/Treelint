@@ -1,0 +1,28 @@
+{
+  "version": "1.0",
+  "description": "Queue of high-priority recommendations from AI analysis",
+  "last_updated": "2026-01-11T12:30:00Z",
+  "queue": [
+    {
+      "id": "R1-STORY-200-qa",
+      "source_story": "STORY-200",
+      "source_workflow": "qa",
+      "source_file": "STORY-200/2026-01-11-qa-analysis.json",
+      "title": "Add edge case checklist to test-automator subagent",
+      "description": "Add explicit edge case checklist for file-based scripts to test-automator system prompt",
+      "affected_files": [".claude/agents/test-automator.md"],
+      "priority": "high",
+      "effort": "medium",
+      "feasible_in_claude_code": true,
+      "status": "pending",
+      "created_at": "2026-01-11T12:30:00Z"
+    }
+  ],
+  "statistics": {
+    "total_queued": 1,
+    "pending": 1,
+    "in_progress": 0,
+    "completed": 0,
+    "dismissed": 0
+  }
+}

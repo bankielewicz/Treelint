@@ -1,0 +1,39 @@
+{
+  "cache_key": "decisions_default",
+  "created_at": "2026-01-12T09:00:00Z",
+  "ttl_seconds": 3600,
+  "expires_at": "2026-01-12T10:00:00Z",
+  "query": {
+    "type": "decisions",
+    "filters": {},
+    "date_range": {
+      "start": "2026-01-09T05:12:14Z",
+      "end": "2026-01-12T12:36:10Z"
+    }
+  },
+  "results": {
+    "decision_summary": {
+      "total_decisions": 42,
+      "by_category": {
+        "architecture": 5,
+        "technology": 8,
+        "implementation": 12,
+        "process": 9,
+        "deferral": 3,
+        "rca": 5
+      }
+    },
+    "high_impact_decisions": [
+      "Platform-aware locking for STORY-253",
+      "phase_state.py module relocation",
+      "Cross-platform NFR requirement"
+    ],
+    "technology_decisions": [
+      {"technology": "fcntl", "decision": "rejected", "reason": "Unix-only"},
+      {"technology": "platform-aware locking", "decision": "adopted", "reason": "Cross-platform"},
+      {"technology": "pytest", "decision": "adopted", "reason": "TDD workflow"}
+    ],
+    "process_changes": 6,
+    "rca_references": 2
+  }
+}

@@ -1,0 +1,73 @@
+# Claude Code Hooks Configuration
+# DevForgeAI Framework Phase Enforcement System
+#
+# INSTALLATION NOTE: Copy this file to .claude/hooks.yaml
+#
+# Reference: https://docs.anthropic.com/en/docs/build-with-claude/claude-code/hooks
+#
+# Hooks are scripts that run at specific points in Claude Code execution.
+# They can validate, log, or modify behavior.
+#
+# Status: Active
+# Version: 1.1.0
+# Last Updated: 2025-12-28
+
+hooks:
+  # Pre-Phase-Transition Hook (STORY-150)
+  # Validates phase completion before allowing phase transitions
+  - id: pre-phase-transition
+    event: pre_tool_call
+    description: |
+      Validates that the previous development phase is complete before
+      allowing transition to the next phase. Part of the Phase Execution
+      Enforcement System (Layer 3) that prevents phase skipping.
+    script: devforgeai/hooks/pre-phase-transition.sh
+    blocking: true
+    timeout: 5000
+    filter:
+      tool: Task
+      subagent_type_pattern: "^(git-validator|tech-stack-detector|test-automator|backend-architect|frontend-developer|context-validator|refactoring-specialist|code-reviewer|integration-tester|deferral-validator|dev-result-interpreter)$"
+    environment:
+      - DEVFORGEAI_LOG_DIR=devforgeai/logs
+      - DEVFORGEAI_WORKFLOWS_DIR=devforgeai/workflows
+      - PROJECT_ROOT=.
+
+# Post-Subagent Recording Section (STORY-151)
+post_tool_call:
+  hooks:
+    # Post-Subagent Recording Hook (STORY-151)
+    # Records subagent invocations to phase state file for audit trail
+    - name: post-subagent-recording
+      description: |
+        Records subagent invocations to the phase state file after Task tool
+        completes. Part of the Phase Execution Enforcement System (Layer 3)
+        that maintains audit trail of which subagents were invoked during each phase.
+      script: devforgeai/hooks/post-subagent-recording.sh
+      blocking: false
+      timeout: 5000
+      filter:
+        tool: Task
+        has_param: subagent_type
+      environment:
+        - DEVFORGEAI_LOG_DIR=devforgeai/logs
+        - DEVFORGEAI_WORKFLOWS_DIR=devforgeai/workflows
+        - DEVFORGEAI_CONFIG_DIR=devforgeai/config
+        - PROJECT_ROOT=.
+
+# Hook Event Types:
+#   pre_tool_call  - Before a tool is invoked
+#   post_tool_call - After a tool completes
+#   on_error       - When an error occurs
+#
+# Filter Options:
+#   tool                  - Exact tool name match
+#   tool_pattern          - Regex pattern for tool names
+#   subagent_type         - Exact subagent type match
+#   subagent_type_pattern - Regex pattern for subagent types
+#   has_param             - Check if parameter exists
+#
+# Script Requirements:
+#   - Must be executable (chmod +x)
+#   - Exit 0 = allow/continue
+#   - Exit 1 = block/abort (for blocking hooks)
+#   - Receives CLAUDE_TOOL_NAME and CLAUDE_TOOL_INPUT environment variables

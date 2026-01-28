@@ -1,0 +1,217 @@
+---
+name: devforgeai-development
+description: Implement features using Test-Driven Development (TDD) while enforcing architectural constraints from context files. Use when implementing user stories, building features, or writing code that must comply with tech-stack.md, source-tree.md, and dependencies.md. Automatically invokes devforgeai-architecture skill if context files are missing.
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+  - AskUserQuestion
+  - Task
+  - Bash(git:*)
+  - Bash(npm:*)
+  - Bash(pytest:*)
+  - Bash(dotnet:*)
+  - Bash(cargo:*)
+  - Bash(mvn:*)
+  - Bash(gradle:*)
+  - Bash(python:*)
+  - Skill
+model: claude-model: opus-4-5-20251001
+---
+
+# DevForgeAI Development Skill
+
+Implement user stories using Test-Driven Development while enforcing architectural constraints to prevent technical debt.
+
+---
+
+## ⚠️ EXECUTION MODEL: This Skill Expands Inline
+
+**After invocation, YOU (Claude) execute these instructions phase by phase.**
+
+**When you invoke this skill:**
+1. This SKILL.md content is now in your conversation
+2. You execute each phase sequentially
+3. You display results as you work through phases
+4. You complete with success/failure report
+
+**Do NOT:**
+- ❌ Wait passively for skill to "return results"
+- ❌ Assume skill is executing elsewhere
+- ❌ Stop workflow after invocation
+
+**Proceed to "Parameter Extraction" section below and begin execution.**
+
+---
+
+## Parameter Extraction
+
+This skill extracts the story ID from conversation context (loaded story file YAML frontmatter, context markers, or natural language).
+
+**See `references/parameter-extraction.md` for complete extraction algorithm.**
+
+---
+
+## Purpose
+
+Implement features following strict TDD workflow (Red → Green → Refactor) while enforcing all 6 context file constraints.
+
+**Context files are THE LAW:** tech-stack.md, source-tree.md, dependencies.md, coding-standards.md, architecture-constraints.md, anti-patterns.md
+
+**If ambiguous or conflicts detected → HALT and use AskUserQuestion**
+
+**See `references/ambiguity-protocol.md` for resolution procedures.**
+
+---
+
+## When to Use This Skill
+
+**Prerequisites:** Git repo (recommended), context files (6), story file
+
+**Git modes:** Full workflow (with Git) OR file-based tracking (without Git) - auto-detects
+
+**Invoked by:** `/dev [STORY-ID]` command, devforgeai-orchestration skill, manual skill call
+
+---
+
+## Pre-Flight Validation (Phase 0)
+
+**⚠️ EXECUTION STARTS HERE - You are now executing the skill's workflow.**
+
+**This is Phase 0. Execute these steps now:**
+
+10-step validation before TDD begins:
+
+1. Validate Git status (git-validator subagent)
+1.5. **User consent for git operations (if uncommitted changes >10)** ← NEW (RCA-008)
+1.6. **Stash warning and confirmation (if user chooses to stash)** ← NEW (RCA-008)
+2. Adapt workflow (Git vs file-based)
+3. File-based tracking setup (if no Git)
+4. Validate 6 context files exist
+5. Load story specification
+6. Validate spec vs context conflicts
+7. Detect tech stack (tech-stack-detector subagent)
+8. Detect QA failures (recovery mode)
+
+**See `references/preflight-validation.md` for complete workflow.**
+
+---
+
+## TDD Workflow (6 Phases)
+
+### Phase 1: Test-First Design (Red Phase)
+Write failing tests from AC → test-automator subagent → Tests RED
+**Reference:** `tdd-red-phase.md`
+
+### Phase 2: Implementation (Green Phase)
+Minimal code to pass tests → backend-architect/frontend-developer → Tests GREEN
+**Reference:** `tdd-green-phase.md`
+
+### Phase 3: Refactor (Refactor Phase)
+Improve quality, keep tests green → refactoring-specialist, code-reviewer, Light QA → Code improved
+**Reference:** `tdd-refactor-phase.md`
+**Steps:** 1-4 Refactoring + code review, 5 Light QA validation [MANDATORY]
+
+### Phase 4: Integration & Validation
+Cross-component testing, coverage validation → integration-tester → Thresholds met
+**Reference:** `integration-testing.md`
+
+### Phase 4.5: Deferral Challenge Checkpoint (NEW - RCA-006)
+Challenge ALL deferrals (pre-existing + new) → deferral-validator → User approval required
+**Reference:** `phase-4.5-deferral-challenge.md`
+**Purpose:** Prevent autonomous deferrals, enforce "Attempt First, Defer Only If Blocked" pattern
+
+### Phase 4.5-5 Bridge: DoD Update Workflow (NEW - RCA-009)
+Update DoD format for git commit → Validate format → Prepare for Phase 5
+**Reference:** `dod-update-workflow.md`
+**Purpose:** Ensure DoD items formatted correctly (flat list in Implementation Notes, no ### subsections)
+**CRITICAL:** Execute AFTER Phase 4.5, BEFORE Phase 5 - git commit will FAIL if skipped
+
+### Phase 5: Git Workflow & DoD Validation
+Budget enforcement → Handle incomplete items → Git commit → Story complete
+**References:** `dod-update-workflow.md` (pre-requisite), `deferral-budget-enforcement.md`, `git-workflow-conventions.md`, `dod-validation-checkpoint.md`
+**Steps:** Pre-req: DoD format validated, 1.6 Budget enforcement, 1.7 Handle new incomplete items, 2.0+ Git commit
+
+**See `references/tdd-patterns.md` for comprehensive TDD guidance across all phases.**
+
+---
+
+## QA Deferral Recovery
+
+Triggered when QA fails due to deferrals. Phase 0 Step 0.8 detects, then 3-step resolution workflow executes.
+
+**See `references/qa-deferral-recovery.md` for complete procedure.**
+
+---
+
+## Integration Points
+
+**From:** devforgeai-story-creation (story+AC), devforgeai-architecture (context files)
+**To:** devforgeai-qa (validation), devforgeai-release (deployment)
+**Auto-invokes:** devforgeai-architecture (if missing), devforgeai-qa (light mode), devforgeai-story-creation (deferrals)
+
+---
+
+## Subagent Coordination
+
+**Phase 0:** git-validator, tech-stack-detector
+**Phase 1:** test-automator
+**Phase 2:** backend-architect/frontend-developer, context-validator
+**Phase 3:** refactoring-specialist, code-reviewer, devforgeai-qa (light mode) ← NEW
+**Phase 4:** integration-tester
+**Phase 4.5:** deferral-validator (blocker validation)
+**Phase 5:** (Phase 4.5 handles deferrals, Phase 5 handles new incomplete items)
+
+**See phase-specific reference files for coordination details.**
+
+---
+
+## Reference Files
+
+Load these on-demand during workflow execution:
+
+### Core Workflow
+- **parameter-extraction.md** (92 lines) - Story ID extraction from conversation
+- **preflight-validation.md** (982 lines) - Phase 0: 10-step validation (git, user consent, stash warning, context, tech stack)
+- **tdd-red-phase.md** (125 lines) - Phase 1: Test-first design
+- **tdd-green-phase.md** (167 lines) - Phase 2: Minimal implementation
+- **tdd-refactor-phase.md** (202 lines) - Phase 3: Code improvement
+- **integration-testing.md** (189 lines) - Phase 4: Cross-component tests
+
+### Phase 4.5 & 5 (Deferrals & Git)
+- **phase-4.5-deferral-challenge.md** (794 lines) - Phase 4.5: Challenge ALL deferrals (RCA-006 Phase 1)
+- **dod-update-workflow.md** (NEW - ~400 lines) - Phase 4.5-5 Bridge: DoD format update and validation (RCA-009 Rec 4)
+- **deferral-budget-enforcement.md** (290 lines) - Phase 5 Step 1.6: Budget limits (RCA-006 Phase 2)
+- **git-workflow-conventions.md** (1,270 lines) - Git operations, stash safety protocol (RCA-008), DoD prerequisites
+- **dod-validation-checkpoint.md** (519 lines) - Phase 5 Step 1.7: Handle new incomplete items
+
+### Supporting Files
+- **tdd-patterns.md** (1,013 lines) - Comprehensive TDD guidance (all phases)
+- **refactoring-patterns.md** (797 lines) - Code smell detection and fixes
+- **story-documentation-pattern.md** (532 lines) - Story update procedures
+- **qa-deferral-recovery.md** (218 lines) - QA failure resolution
+- **ambiguity-protocol.md** (234 lines) - When to ask user questions
+
+**Total reference content:** ~6,250 lines (loaded progressively as needed - includes RCA-008 safeguards)
+
+---
+
+## Success Criteria
+
+This skill succeeds when:
+
+- [ ] All tests pass (100% pass rate)
+- [ ] Coverage meets thresholds (95%/85%/80%)
+- [ ] Light QA validation passed
+- [ ] No context file violations
+- [ ] All AC implemented
+- [ ] Code follows coding-standards.md
+- [ ] No anti-patterns from anti-patterns.md
+- [ ] DoD validation passed (3 layers)
+- [ ] Changes committed (or file-tracked)
+- [ ] Story status = "Dev Complete"
+- [ ] Token usage <85K (isolated context)
+
+**The goal: Zero technical debt from wrong assumptions, fully tested features that comply with architectural decisions.**

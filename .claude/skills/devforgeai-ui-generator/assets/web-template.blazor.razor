@@ -1,0 +1,150 @@
+@page "/component"
+@using Microsoft.AspNetCore.Components
+@inject NavigationManager Navigation
+
+<div class="component-container">
+    <header class="component-header">
+        <h2>Component Title</h2>
+    </header>
+
+    <main class="component-main">
+        @if (isLoading)
+        {
+            <div class="loading" role="status">
+                <p>Loading...</p>
+            </div>
+        }
+        else
+        {
+            <EditForm Model="formModel" OnValidSubmit="HandleSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="form-group">
+                    <label for="exampleInput">Example Input</label>
+                    <InputText
+                        id="exampleInput"
+                        @bind-Value="formModel.ExampleInput"
+                        class="form-control"
+                        placeholder="Enter value"
+                    />
+                    <ValidationMessage For="@(() => formModel.ExampleInput)" />
+                </div>
+
+                <button type="submit" disabled="@isLoading" class="btn btn-primary">
+                    @if (isLoading)
+                    {
+                        <span>Submitting...</span>
+                    }
+                    else
+                    {
+                        <span>Submit</span>
+                    }
+                </button>
+            </EditForm>
+        }
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger" role="alert">
+                @errorMessage
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success" role="alert">
+                @successMessage
+            </div>
+        }
+    </main>
+</div>
+
+@code {
+    // Component parameters
+    [Parameter]
+    public EventCallback<FormModel> OnAction { get; set; }
+
+    [Parameter]
+    public FormModel? InitialData { get; set; }
+
+    // Private fields
+    private FormModel formModel = new();
+    private bool isLoading = false;
+    private string? errorMessage;
+    private string? successMessage;
+
+    // Lifecycle methods
+    protected override void OnInitialized()
+    {
+        if (InitialData != null)
+        {
+            formModel = InitialData;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Async initialization logic
+        await Task.CompletedTask;
+    }
+
+    // Event handlers
+    private async Task HandleSubmit()
+    {
+        isLoading = true;
+        errorMessage = null;
+        successMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            // Validate form
+            if (string.IsNullOrWhiteSpace(formModel.ExampleInput))
+            {
+                errorMessage = "Example Input is required";
+                return;
+            }
+
+            // Invoke callback if provided
+            if (OnAction.HasDelegate)
+            {
+                await OnAction.InvokeAsync(formModel);
+            }
+
+            // Success handling
+            successMessage = "Form submitted successfully!";
+
+            // Optional: Reset form
+            // formModel = new FormModel();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    // Helper methods
+    private void ResetForm()
+    {
+        formModel = new FormModel();
+        errorMessage = null;
+        successMessage = null;
+        StateHasChanged();
+    }
+
+    // Form model class
+    public class FormModel
+    {
+        [Required(ErrorMessage = "Example Input is required")]
+        [StringLength(100, MinimumLength = 3, ErrorMessage = "Must be between 3 and 100 characters")]
+        public string ExampleInput { get; set; } = string.Empty;
+
+        // Add more properties as needed
+    }
+}

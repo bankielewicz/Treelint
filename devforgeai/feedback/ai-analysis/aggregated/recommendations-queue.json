@@ -1,0 +1,12 @@
+{
+  "version": "1.0",
+  "description": "Prioritized queue of AI-generated recommendations",
+  "last_updated": null,
+  "recommendations": {
+    "high": [],
+    "medium": [],
+    "low": []
+  },
+  "implemented": [],
+  "deferred": []
+}

@@ -1,0 +1,47 @@
+# Question Bank YAML Schema
+
+# Structure: Organized by operation_type → success_status → questions array
+#
+# Example:
+# dev:
+#   passed:
+#     - id: dev_pass_1
+#       text: "How confident are you with the implementation?"
+#       operation_type: dev
+#       success_status: passed
+#       priority: 2              # 1=critical, 5=optional
+#       response_type: rating    # rating|yes_no|text|select
+#       requires_context: false  # true if needs operation details
+#       first_time_only: false   # true if only for first-time users
+#   failed:
+#     - id: dev_fail_1
+#       text: "Which test failed?"
+#       operation_type: dev
+#       success_status: failed
+#       priority: 1
+#       response_type: text
+#       requires_context: true
+#       first_time_only: false
+#
+# Question ID Format: {operation}_{status}_{number}
+# Examples: dev_pass_1, qa_fail_3, release_partial_5
+#
+# Priority Levels:
+#   1 - Critical (always included)
+#   2 - High (included if space available)
+#   3 - Medium (included for first-time or normal users)
+#   4 - Low (skipped for repeat users)
+#   5 - Optional (only if extra space)
+#
+# Response Types:
+#   rating: 1-5 scale
+#   yes_no: Binary choice
+#   text: Open-ended text input
+#   select: Multiple choice from options list
+#
+# Validation Rules:
+#   - Each operation_type must have questions for: passed, failed, partial
+#   - Minimum 5 questions per (operation_type, success_status) pair
+#   - All IDs must be unique
+#   - Priority must be 1-5
+#   - response_type must be valid enum value

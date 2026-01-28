@@ -1,0 +1,41 @@
+---
+template-id: subagent-passed
+operation-type: subagent
+success-status: passed
+version: "1.0"
+description: "Template for successful subagent execution"
+---
+
+# Template: Subagent Success Retrospective
+
+This template collects feedback when a subagent completes successfully.
+
+## Field Mappings
+
+field-mappings:
+  task-clarity:
+    question-id: "subagent_passed_01"
+    section: "## Task Clarity"
+
+  output-quality:
+    question-id: "subagent_passed_02"
+    section: "## Output Quality"
+
+  specialization:
+    question-id: "subagent_passed_03"
+    section: "## Domain Expertise"
+
+  suggestions:
+    question-id: "subagent_passed_04"
+    section: "## Suggestions for Improvement"
+
+## Template Sections
+
+- # Subagent Retrospective: {operation}
+- ## Task Clarity
+- ## Output Quality
+- ## Domain Expertise
+- ## Suggestions for Improvement
+- ## Context (auto-populated)
+- ## User Sentiment (auto-populated)
+- ## Actionable Insights (auto-extracted)

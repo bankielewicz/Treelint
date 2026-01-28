@@ -1,0 +1,863 @@
+---
+name: devforgeai-brainstorming
+description: Business Analyst discovery skill for pre-ideation brainstorming. Transforms vague business problems into structured, AI-consumable documents.
+model: claude-opus-4-5-20251101
+---
+
+# devforgeai-brainstorming
+
+Transform vague business ideas into structured brainstorm documents through guided discovery.
+This skill covers the Business Analyst (BA) discovery phase that precedes formal ideation,
+focusing on stakeholder analysis, problem exploration, opportunity mapping, and prioritization.
+
+---
+
+## Skill Metadata
+
+- **Skill ID:** devforgeai-brainstorming
+- **Version:** 1.0.0
+- **Category:** Planning/Discovery
+- **Invoked By:** `/brainstorm` command
+- **Invokes:** stakeholder-analyst subagent, internet-sleuth subagent (optional)
+
+---
+
+## Prerequisites
+
+1. Project root accessible (CLAUDE.md readable)
+2. No blocking validation errors
+3. User available for interactive questions
+
+---
+
+## Output Portability Principle
+
+**All brainstorm outputs must be self-contained for cross-session consumption.**
+
+This means:
+- Framework-specific terms must be defined in a Glossary section
+- File references must include full paths from project root
+- Another Claude session running `/ideate` should not need prior context to understand the document
+
+This is especially important for:
+- Technical brainstorms about DevForgeAI internals
+- Brainstorms referencing specific framework components (skills, agents, commands)
+- Documents intended for review in separate sessions
+
+**Enforcement:** Phase 7 validation automatically detects undefined terms and incomplete paths, generating context sections as needed. Users can also flag portability issues during validation (Step 7.9).
+
+---
+
+## Session Context Variables
+
+Track these throughout the session:
+
+```yaml
+session:
+  brainstorm_id: "BRAINSTORM-{NNN}"
+  started_at: "{timestamp}"
+  current_phase: 0-7
+  topic: "{user-provided or discovered}"
+  resume_mode: false
+  checkpoint_file: null
+
+context_tracking:
+  estimated_tokens_used: 0
+  checkpoint_threshold: 70%  # Warn user at this level
+```
+
+---
+
+## Workflow Phases
+
+### Phase 0: Initialization & Resume Detection
+
+**Purpose:** Set up session, check for resume, generate brainstorm ID
+
+**Steps:**
+
+1. **Check for resume mode:**
+   ```
+   IF command includes --resume BRAINSTORM-ID:
+     checkpoint_file = "devforgeai/specs/brainstorms/${BRAINSTORM_ID}.checkpoint.json"
+
+     IF checkpoint_file exists:
+       Read(file_path=checkpoint_file)
+       Load checkpoint.completed_outputs into context
+       Set current_phase = checkpoint.progress.current_phase
+       Display: "Resuming from Phase ${current_phase}"
+       GOTO Phase ${current_phase}
+     ELSE:
+       Display: "Checkpoint not found. Starting fresh."
+   ```
+
+2. **Generate new brainstorm ID:**
+   ```
+   existing = Glob(pattern="devforgeai/specs/brainstorms/BRAINSTORM-*.brainstorm.md")
+   next_id = max(existing IDs) + 1
+   brainstorm_id = "BRAINSTORM-{next_id:03d}"
+   ```
+
+3. **Create output directory if needed:**
+   ```
+   IF NOT exists "devforgeai/specs/brainstorms/":
+     Create directory
+   ```
+
+4. **Display session start:**
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     DevForgeAI Brainstorming Session
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   Session ID: ${brainstorm_id}
+   Mode: ${resume_mode ? "Resume" : "New"}
+
+   This session will guide you through 7 phases of discovery:
+   1. Stakeholder Discovery - Who is involved?
+   2. Problem Exploration - What's the actual problem?
+   3. Opportunity Mapping - What's possible?
+   4. Constraint Discovery - What limits us?
+   5. Hypothesis Formation - What do we assume?
+   6. Prioritization - What matters most?
+   7. Handoff Synthesis - Package for ideation
+
+   Estimated duration: 20-45 minutes
+   Questions: 30-50 interactive prompts
+
+   Let's begin...
+   ```
+
+---
+
+### Phase 1: Stakeholder Discovery
+
+**Purpose:** Identify WHO is involved and WHAT they want
+**Questions:** 5-10
+**Reference:** references/stakeholder-discovery-workflow.md
+
+**Steps:**
+
+1. **Get initial topic (if not provided):**
+   ```
+   IF topic is null:
+     AskUserQuestion:
+       Question: "What business problem or opportunity would you like to explore?"
+       Header: "Topic"
+       Options:
+         - label: "I have a specific problem"
+           description: "Something isn't working well"
+         - label: "I see an opportunity"
+           description: "Something could be better"
+         - label: "I'm not sure yet"
+           description: "Help me discover it"
+       multiSelect: false
+
+     IF "specific problem" OR "opportunity":
+       AskUserQuestion:
+         Question: "Describe it in a few sentences:"
+         Header: "Description"
+         [Free text input]
+     ELSE:
+       # Discovery mode - start with stakeholders
+   ```
+
+2. **Invoke stakeholder-analyst subagent:**
+   ```
+   Task(
+     subagent_type="stakeholder-analyst",
+     prompt="Analyze stakeholders for: ${topic}. Identify primary decision makers, end users, and affected parties."
+   )
+   ```
+
+3. **Capture stakeholder responses:**
+   ```
+   Store in session.stakeholder_map:
+     - Primary stakeholders (decision authority)
+     - Secondary stakeholders (users/beneficiaries)
+     - Tertiary stakeholders (affected parties)
+     - Goals per stakeholder
+     - Concerns per stakeholder
+     - Identified conflicts
+   ```
+
+4. **Context window check:**
+   ```
+   IF estimated_context_usage > 70%:
+     Offer checkpoint (see Session Continuity section)
+   ```
+
+---
+
+### Phase 2: Problem Exploration
+
+**Purpose:** Deep dive into WHAT the actual problem is
+**Questions:** 8-15
+**Reference:** references/problem-exploration-workflow.md
+
+**Steps:**
+
+1. **5 Whys Analysis:**
+   ```
+   problem = session.topic or stakeholder-derived problem
+
+   FOR level 1-5:
+     AskUserQuestion:
+       Question: "Why does ${current_problem} happen?"
+       Header: "Why ${level}"
+       [Free text input]
+
+     Store response as root_cause[level]
+     current_problem = response
+   ```
+
+2. **Current State Mapping:**
+   ```
+   AskUserQuestion:
+     Question: "Describe the current process or situation:"
+     Header: "As-Is"
+     Options:
+       - label: "Manual process"
+         description: "Done by humans with little automation"
+       - label: "Semi-automated"
+         description: "Mix of manual and automated steps"
+       - label: "Automated but broken"
+         description: "System exists but has issues"
+       - label: "No process exists"
+         description: "Currently not being done at all"
+     multiSelect: false
+
+   THEN ask for specifics:
+     - How long does it take?
+     - What's the error rate?
+     - Where are the bottlenecks?
+   ```
+
+3. **Pain Point Inventory:**
+   ```
+   AskUserQuestion:
+     Question: "What are the top 3-5 pain points?"
+     Header: "Pain Points"
+     [Multi-line free text]
+
+   FOR each pain_point:
+     AskUserQuestion:
+       Question: "What's the business impact of '${pain_point}'?"
+       Header: "Impact"
+       Options:
+         - label: "Revenue loss"
+           description: "Directly affects income"
+         - label: "Cost increase"
+           description: "Increases operational costs"
+         - label: "Customer impact"
+           description: "Affects customer satisfaction/retention"
+         - label: "Employee impact"
+           description: "Affects productivity/morale"
+         - label: "Risk/Compliance"
+           description: "Creates legal or regulatory exposure"
+       multiSelect: true
+   ```
+
+4. **Failed Solution History:**
+   ```
+   AskUserQuestion:
+     Question: "Have you tried solving this before? What happened?"
+     Header: "History"
+     Options:
+       - label: "Yes - it failed"
+         description: "We tried but it didn't work"
+       - label: "Yes - partially worked"
+         description: "Some success but not complete"
+       - label: "No - first attempt"
+         description: "Haven't tried before"
+       - label: "Not sure"
+         description: "Before my time / don't know"
+     multiSelect: false
+
+   IF "failed" OR "partially worked":
+     Ask: "What went wrong?"
+   ```
+
+5. **Generate problem statement:**
+   ```
+   Synthesize:
+     problem_statement = "[Stakeholder] experiences [pain point] because [root cause],
+                          resulting in [business impact]."
+
+   Display for validation
+   ```
+
+---
+
+### Phase 3: Opportunity Mapping
+
+**Purpose:** Explore WHAT COULD BE (blue-sky thinking)
+**Questions:** 5-10
+**Reference:** references/opportunity-mapping-workflow.md
+
+**Steps:**
+
+1. **Offer research option:**
+   ```
+   AskUserQuestion:
+     Question: "Would you like to include market research in this brainstorm?"
+     Header: "Research"
+     Options:
+       - label: "Yes - Research competitors & trends"
+         description: "I'll search for market data and competitor approaches"
+       - label: "Skip - Use internal knowledge only"
+         description: "Faster session, relies on what you know"
+     multiSelect: false
+
+   IF "Yes":
+     Task(
+       subagent_type="internet-sleuth",
+       prompt="Research market trends and competitor approaches for: ${problem_statement}"
+     )
+     Store results in session.market_research
+   ```
+
+2. **"What If" Scenarios:**
+   ```
+   AskUserQuestion:
+     Question: "If you had unlimited resources, what would the ideal solution look like?"
+     Header: "Ideal State"
+     [Free text]
+
+   AskUserQuestion:
+     Question: "What would change if this problem was completely solved?"
+     Header: "Vision"
+     [Free text]
+   ```
+
+3. **Technology Opportunities:**
+   ```
+   AskUserQuestion:
+     Question: "Are there any technologies you've heard about that might help?"
+     Header: "Tech Ideas"
+     Options:
+       - label: "AI/ML automation"
+         description: "Artificial intelligence solutions"
+       - label: "Process automation (RPA)"
+         description: "Robotic process automation"
+       - label: "Cloud migration"
+         description: "Moving to cloud infrastructure"
+       - label: "Integration/APIs"
+         description: "Connecting existing systems"
+       - label: "Mobile/Web apps"
+         description: "New user interfaces"
+       - label: "Other"
+         description: "Something else"
+     multiSelect: true
+   ```
+
+4. **Adjacent Opportunities:**
+   ```
+   AskUserQuestion:
+     Question: "Are there related problems that could be solved at the same time?"
+     Header: "Related"
+     [Free text - optional]
+   ```
+
+5. **Context window check:**
+   ```
+   IF estimated_context_usage > 70%:
+     Offer checkpoint
+   ```
+
+---
+
+### Phase 4: Constraint Discovery
+
+**Purpose:** Understand WHAT LIMITS the solution space
+**Questions:** 5-8
+**Reference:** references/constraint-discovery-workflow.md
+
+**Steps:**
+
+1. **Budget Constraints:**
+   ```
+   AskUserQuestion:
+     Question: "What budget range is available for this initiative?"
+     Header: "Budget"
+     Options:
+       - label: "< $10K"
+         description: "Small project / proof of concept"
+       - label: "$10K - $50K"
+         description: "Modest investment"
+       - label: "$50K - $200K"
+         description: "Significant project"
+       - label: "$200K - $1M"
+         description: "Major initiative"
+       - label: "> $1M"
+         description: "Enterprise transformation"
+       - label: "Not defined yet"
+         description: "Budget TBD"
+     multiSelect: false
+   ```
+
+2. **Timeline Constraints:**
+   ```
+   AskUserQuestion:
+     Question: "When does this need to be done?"
+     Header: "Timeline"
+     Options:
+       - label: "ASAP (< 1 month)"
+         description: "Urgent need"
+       - label: "This quarter"
+         description: "Within 3 months"
+       - label: "This half"
+         description: "Within 6 months"
+       - label: "This year"
+         description: "Within 12 months"
+       - label: "No hard deadline"
+         description: "Flexible timing"
+     multiSelect: false
+
+   IF "ASAP" OR "This quarter":
+     AskUserQuestion:
+       Question: "Is this deadline negotiable?"
+       Header: "Flexibility"
+       [Yes/No/Maybe]
+   ```
+
+3. **Resource Constraints:**
+   ```
+   AskUserQuestion:
+     Question: "What team/resources are available?"
+     Header: "Resources"
+     [Free text describing team size, skills]
+
+   AskUserQuestion:
+     Question: "Are there any skill gaps that would need to be filled?"
+     Header: "Skill Gaps"
+     [Free text - optional]
+   ```
+
+4. **Technical Constraints:**
+   ```
+   AskUserQuestion:
+     Question: "Are there technical constraints we need to work within?"
+     Header: "Tech Constraints"
+     Options:
+       - label: "Must integrate with existing systems"
+         description: "Legacy system requirements"
+       - label: "Must use specific technology"
+         description: "Technology mandates"
+       - label: "Must meet security standards"
+         description: "Security/compliance requirements"
+       - label: "Must work on-premise"
+         description: "No cloud allowed"
+       - label: "No major constraints"
+         description: "Greenfield opportunity"
+     multiSelect: true
+   ```
+
+5. **Organizational Constraints:**
+   ```
+   AskUserQuestion:
+     Question: "Are there organizational or political constraints?"
+     Header: "Org Constraints"
+     Options:
+       - label: "Requires executive approval"
+         description: "C-level sign-off needed"
+       - label: "Union considerations"
+         description: "Labor agreements"
+       - label: "Change resistance expected"
+         description: "Cultural barriers"
+       - label: "Regulatory requirements"
+         description: "Industry regulations"
+       - label: "None significant"
+         description: "Organization is supportive"
+     multiSelect: true
+   ```
+
+---
+
+### Phase 5: Hypothesis Formation
+
+**Purpose:** Create TESTABLE assumptions for validation
+**Questions:** 3-6
+**Reference:** references/hypothesis-formation-workflow.md
+
+**Steps:**
+
+1. **Extract implicit assumptions:**
+   ```
+   Review all previous phases
+   Identify assumptions made:
+   - About the problem
+   - About stakeholders
+   - About solutions
+   - About constraints
+   ```
+
+2. **Formulate hypotheses:**
+   ```
+   FOR each key assumption:
+     Create hypothesis:
+       - IF [condition], THEN [outcome]
+       - Success criteria: [measurable]
+       - Validation approach: [how to test]
+       - Risk if wrong: [consequences]
+   ```
+
+3. **Prioritize hypotheses:**
+   ```
+   AskUserQuestion:
+     Question: "Which assumptions are most critical to validate?"
+     Header: "Critical"
+     Options:
+       [List of hypotheses with checkboxes]
+     multiSelect: true
+   ```
+
+4. **Context window check:**
+   ```
+   IF estimated_context_usage > 70%:
+     Offer checkpoint
+   ```
+
+---
+
+### Phase 6: Prioritization
+
+**Purpose:** Rank opportunities and solutions
+**Questions:** 3-5
+**Reference:** references/prioritization-workflow.md
+
+**Steps:**
+
+1. **MoSCoW Classification:**
+   ```
+   FOR each capability/opportunity identified:
+     AskUserQuestion:
+       Question: "How would you classify '${capability}'?"
+       Header: "Priority"
+       Options:
+         - label: "Must Have"
+           description: "Critical - project fails without it"
+         - label: "Should Have"
+           description: "Important but can work around"
+         - label: "Could Have"
+           description: "Nice to have if time/budget allows"
+         - label: "Won't Have (this time)"
+           description: "Explicitly out of scope"
+       multiSelect: false
+   ```
+
+2. **Impact-Effort Matrix:**
+   ```
+   Display 2x2 matrix:
+
+   HIGH IMPACT, LOW EFFORT = Quick Wins (do first)
+   HIGH IMPACT, HIGH EFFORT = Major Projects (plan carefully)
+   LOW IMPACT, LOW EFFORT = Fill-ins (do if time allows)
+   LOW IMPACT, HIGH EFFORT = Avoid (not worth it)
+
+   AskUserQuestion:
+     Question: "Place each opportunity in the matrix"
+     [Interactive or list-based classification]
+   ```
+
+3. **Recommended Sequence:**
+   ```
+   Based on MoSCoW + Impact-Effort:
+   Generate recommended order:
+   1. [Quick Win + Must Have]
+   2. [Quick Win + Should Have]
+   3. [Major Project + Must Have]
+   ...
+   ```
+
+---
+
+### Phase 7: Handoff Synthesis
+
+**Purpose:** Generate AI-consumable brainstorm document
+**Questions:** 0-2
+**Reference:** references/handoff-synthesis-workflow.md
+
+**Steps:**
+
+1. **Compile all outputs:**
+   ```
+   Gather from all phases:
+   - stakeholder_map (Phase 1)
+   - problem_statement (Phase 2)
+   - root_causes (Phase 2)
+   - current_state (Phase 2)
+   - pain_points (Phase 2)
+   - failed_solutions (Phase 2)
+   - opportunities (Phase 3)
+   - market_research (Phase 3, if done)
+   - constraints (Phase 4)
+   - hypotheses (Phase 5)
+   - prioritization (Phase 6)
+   ```
+
+2. **Generate confidence level:**
+   ```
+   IF all phases complete AND stakeholder consensus:
+     confidence = "HIGH"
+   ELSE IF most phases complete:
+     confidence = "MEDIUM"
+   ELSE:
+     confidence = "LOW"
+   ```
+
+3. **Create brainstorm document:**
+   ```
+   Write(
+     file_path="devforgeai/specs/brainstorms/${brainstorm_id}-${short_name}.brainstorm.md",
+     content=BRAINSTORM_TEMPLATE with all values
+   )
+   ```
+
+4. **Validate cross-session portability:** (STORY-320)
+   ```
+   # Framework terms that require glossary definition
+   FRAMEWORK_TERMS = [
+     "Phase", "Phase 0[0-9]", "Phase [0-9]+",
+     "exit gate", "quality gate",
+     "subagent", "skill",
+     "context file", "context files",
+     "workflow state", "phase state",
+     "TDD", "DoD", "Definition of Done",
+     "AC", "acceptance criteria",
+     "preflight", "pre-flight"
+   ]
+
+   TERM_DEFINITIONS = {
+     "Phase": "A numbered step (01-10) in the DevForgeAI development workflow",
+     "exit gate": "A validation checkpoint at the end of each phase",
+     "quality gate": "A set of criteria that must pass before workflow progression",
+     "subagent": "A specialized AI worker defined in .claude/agents/",
+     "skill": "A capability module defined in .claude/skills/",
+     "context file": "One of 6 architectural constraint files in devforgeai/specs/context/",
+     "TDD": "Test-Driven Development - Red → Green → Refactor cycle",
+     "DoD": "Definition of Done - completion criteria for a story",
+     "AC": "Acceptance Criteria - testable requirements for a story",
+     "preflight": "Phase 01 validation checks before development begins",
+     "workflow state": "Current position in the development workflow pipeline",
+     "phase state": "Persistent tracking of phase completion status"
+   }
+
+   # Scan document body for undefined terms
+   missing_definitions = []
+   FOR each pattern in FRAMEWORK_TERMS:
+     matches = Grep(pattern=pattern, content=document_body, case_insensitive=true)
+     IF matches.count > 0 AND pattern not in existing_glossary:
+       missing_definitions.append({
+         term: matches[0],
+         definition: TERM_DEFINITIONS[pattern] OR "[Definition needed]"
+       })
+
+   # Scan for incomplete file paths (references without full path)
+   incomplete_paths = []
+   file_patterns = [
+     r'\b\w+\.(md|yaml|json|py|sh)\b'  # filename.ext without path
+   ]
+   FOR each pattern in file_patterns:
+     matches = Grep(pattern=pattern, content=document_body)
+     FOR each match in matches:
+       IF NOT match.startswith(".claude/") AND NOT match.startswith("devforgeai/") AND NOT match.startswith("src/"):
+         incomplete_paths.append(match)
+
+   # Generate context sections if issues found
+   IF missing_definitions.length > 0 OR incomplete_paths.length > 0:
+     # Generate Glossary section (markdown list with bold terms)
+     glossary_section = "## Glossary\n\n"
+     FOR each item in missing_definitions:
+       glossary_section += "- **{item.term}**: {item.definition}\n"
+
+     # Generate Key Files section (table format)
+     key_files_section = "## Key Files for Context\n\n"
+     key_files_section += "| File | Purpose |\n"
+     key_files_section += "|------|--------|\n"
+     FOR each path in incomplete_paths:
+       resolved_path = resolve_to_full_path(path)  # Attempt to find full path
+       key_files_section += "| {resolved_path} | [Context needed] |\n"
+
+     # Insert sections after YAML frontmatter (Key Files before Glossary)
+     document = insert_after_frontmatter(document, key_files_section + "\n" + glossary_section)
+
+     # Update the brainstorm file with context sections
+     Write(
+       file_path="devforgeai/specs/brainstorms/${brainstorm_id}-${short_name}.brainstorm.md",
+       content=document
+     )
+   # ELSE: Document unchanged (clean pass - no issues found)
+   ```
+
+6. **Generate project artifacts (optional):**
+   ```
+   Reference: references/handoff-synthesis-workflow.md Step 7.7
+
+   AskUserQuestion:
+     Question: "Would you like to generate initial project files?"
+     Header: "Artifacts"
+     Options:
+       - "Yes - Generate all (README.md, CLAUDE.md, .gitignore)"
+       - "README.md and CLAUDE.md only"
+       - "Skip"
+
+   IF user wants artifacts:
+     Load templates from assets/templates/
+     Populate with session data
+     Check for existing files (conflict handling)
+     Write to project root
+
+   Templates:
+     - assets/templates/readme-brainstorm-template.md
+     - assets/templates/claude-md-template.md
+     - assets/templates/gitignore-template.md
+   ```
+
+7. **Delete checkpoint (if exists):**
+   ```
+   IF checkpoint_file exists:
+     Delete checkpoint_file (no longer needed)
+   ```
+
+8. **Display completion summary:**
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Brainstorm Session Complete
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   Document: devforgeai/specs/brainstorms/${filename}
+
+   Summary:
+     - Stakeholders: ${count} identified
+     - Problem: ${problem_statement_summary}
+     - Opportunities: ${count} candidates
+     - Constraints: ${constraint_summary}
+     - Hypotheses: ${count} to validate
+
+   Confidence: ${confidence_level}
+
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Next Steps
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   1. Review brainstorm document for accuracy
+   2. Run /ideate to transform into formal requirements
+      - The brainstorm will be automatically detected
+      - Key inputs will be pre-populated
+   3. After ideation: /create-context for architecture
+
+   Recommended command:
+     /ideate
+   ```
+
+---
+
+## Session Continuity
+
+### Context Window Monitoring
+
+**Check at these points:**
+- After Phase 1 (Stakeholder Discovery)
+- After Phase 3 (Opportunity Mapping - heaviest with research)
+- After Phase 5 (Hypothesis Formation)
+- Before Phase 7 (Synthesis)
+
+**Trigger threshold:** 70% of context window
+
+**When triggered:**
+```
+AskUserQuestion:
+  Question: "Context window is ~${percent}% full. Would you like to:"
+  Header: "Session"
+  Options:
+    - label: "Continue in this session"
+      description: "Proceed to next phase"
+    - label: "Save and continue later"
+      description: "Create checkpoint and exit"
+  multiSelect: false
+
+IF "Save and continue later":
+  Generate checkpoint (see below)
+  Display resume instructions
+  EXIT skill
+```
+
+### Checkpoint Generation
+
+**When:** User requests checkpoint OR context window critical
+
+**File:** `devforgeai/specs/brainstorms/${brainstorm_id}.checkpoint.json`
+
+**Content:** See Session Checkpoint Format in plan
+
+**After checkpoint:**
+```
+Display:
+"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Brainstorm Session Checkpointed
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Progress: ${percent}% complete (Phases 1-${current_phase} of 7)
+Checkpoint: devforgeai/specs/brainstorms/${brainstorm_id}.checkpoint.json
+
+To resume in your next session:
+  /brainstorm --resume ${brainstorm_id}
+"
+```
+
+---
+
+## Reference Files
+
+| File | Purpose |
+|------|---------|
+| `references/stakeholder-discovery-workflow.md` | Phase 1 detailed workflow |
+| `references/problem-exploration-workflow.md` | Phase 2 detailed workflow |
+| `references/opportunity-mapping-workflow.md` | Phase 3 detailed workflow |
+| `references/constraint-discovery-workflow.md` | Phase 4 detailed workflow |
+| `references/hypothesis-formation-workflow.md` | Phase 5 detailed workflow |
+| `references/prioritization-workflow.md` | Phase 6 detailed workflow |
+| `references/handoff-synthesis-workflow.md` | Phase 7 detailed workflow |
+| `references/session-checkpoint-workflow.md` | Checkpoint generation & resume |
+| `references/user-interaction-patterns.md` | Question templates |
+| `references/error-handling.md` | Error recovery procedures |
+| `references/output-templates.md` | Document templates |
+| `assets/templates/readme-brainstorm-template.md` | README.md artifact template |
+| `assets/templates/claude-md-template.md` | CLAUDE.md artifact template |
+| `assets/templates/gitignore-template.md` | .gitignore artifact template |
+
+---
+
+## Error Handling
+
+### User Abandons Session
+- Save partial progress to checkpoint
+- Display resume instructions
+
+### File Write Fails
+- Retry with backup location
+- Display error with manual save instructions
+
+### Subagent Timeout
+- Skip optional research
+- Continue with available data
+
+### Invalid Resume ID
+- Display available brainstorms
+- Offer to start fresh
+
+---
+
+## Integration
+
+**Invoked by:** `/brainstorm` command
+**Outputs:** `devforgeai/specs/brainstorms/BRAINSTORM-{NNN}.brainstorm.md`
+**Checkpoints:** `devforgeai/specs/brainstorms/BRAINSTORM-{NNN}.checkpoint.json`
+**Feeds into:** `/ideate` command (auto-detects brainstorm documents)
+
+---
+
+## Version History
+
+- **1.0.0** (2025-12-20): Initial creation

@@ -1,0 +1,458 @@
+# DevForgeAI Question Bank - Default Configuration
+# Baseline question sets for all operation types and success statuses
+# This configuration defines fallback questions when specific question banks are unavailable
+# Updated: 2025-11-09
+
+version: "2.0"
+timestamp: "2025-11-09T00:00:00Z"
+
+# ============================================================================
+# DEFAULT QUESTIONS BY OPERATION TYPE & SUCCESS STATUS
+# ============================================================================
+
+# DEV Operation Type Defaults
+dev:
+  passed:
+    # Baseline: 5 essential + 2-3 optional for passed operations
+    essential:
+      - "dev_pass_conf_01"  # Confidence with TDD
+      - "dev_pass_qual_02"  # Code readability
+      - "dev_pass_next_01"  # Ready for QA
+      - "dev_pass_behav_04" # Helpful workflow
+      - "dev_pass_next_06"  # Next steps
+    optional:
+      - "dev_pass_conf_02"  # Red→Green→Refactor felt natural
+      - "dev_pass_qual_04"  # Clean architecture
+      - "dev_pass_behav_07" # Test-first improved design
+
+  failed:
+    # Baseline: 4 investigation + 2 resolution for failure
+    investigation:
+      - "dev_fail_inv_01"  # Which test failed
+      - "dev_fail_inv_02"  # Error category
+      - "dev_fail_inv_04"  # Which TDD phase
+      - "dev_fail_inv_05"  # Is this a blocker
+    resolution:
+      - "dev_fail_res_02"  # Need troubleshooting help
+      - "dev_fail_res_01"  # What would help
+
+  partial:
+    # Baseline: 3 investigation + 2 next-steps for partial
+    investigation:
+      - "dev_partial_inv_01" # Which items incomplete
+      - "dev_partial_inv_02" # What is blocking
+      - "dev_partial_inv_06" # Do you have a plan
+    next_steps:
+      - "dev_partial_next_01"  # Estimate % complete
+      - "dev_partial_next_05"  # What's your priority
+
+# QA Operation Type Defaults
+qa:
+  passed:
+    # Baseline: 4 essential + 2-3 optional for passed operations
+    essential:
+      - "qa_pass_metric_01"  # Coverage thresholds met
+      - "qa_pass_metric_05"  # Ready for next phase
+      - "qa_pass_proc_01"    # Acceptance criteria validated
+      - "qa_pass_next_01"    # Ready for release
+    optional:
+      - "qa_pass_metric_07"  # Comprehensive testing
+      - "qa_pass_proc_03"    # Context files respected
+      - "qa_pass_impact_11"  # Security scan passed
+
+  failed:
+    # Baseline: 4 investigation + 2 resolution for failure
+    investigation:
+      - "qa_fail_cov_01"    # Coverage failure metric
+      - "qa_fail_cov_02"    # Which files low coverage
+      - "qa_fail_anti_01"   # Which anti-patterns
+      - "qa_fail_anti_07"   # Compliance violations
+    resolution:
+      - "qa_fail_res_01"    # Can you fix these
+      - "qa_fail_res_03"    # Defer and iterate
+
+  partial:
+    # Baseline: 3 investigation + 2 next-steps for partial
+    investigation:
+      - "qa_partial_inv_01" # Which validations failed
+      - "qa_partial_inv_02" # Which validations passed
+      - "qa_partial_inv_06" # Plan to address failures
+    next_steps:
+      - "qa_partial_next_01"  # Approve or changes
+      - "qa_partial_next_09"  # Confidence in quality
+
+# ORCHESTRATE Operation Type Defaults
+orchestrate:
+  passed:
+    # Baseline: 4 essential + 2-3 optional for passed operations
+    essential:
+      - "orch_pass_exec_01"   # All phases completed
+      - "orch_pass_exec_04"   # Overall quality
+      - "orch_pass_phase_05"  # Any phase had friction
+      - "orch_pass_outcome_01" # What did you learn
+    optional:
+      - "orch_pass_exec_12"   # Ready for next epic
+      - "orch_pass_phase_04"  # Production release confidence
+      - "orch_pass_outcome_08" # Next epic priority
+
+  failed:
+    # Baseline: 4 investigation + 2 resolution for failure
+    investigation:
+      - "orch_fail_inv_01"  # Which phase failed
+      - "orch_fail_inv_02"  # Error details
+      - "orch_fail_inv_05"  # Need manual intervention
+      - "orch_fail_inv_10"  # Error logs available
+    resolution:
+      - "orch_fail_res_01"  # Retry orchestration
+      - "orch_fail_res_02"  # Rollback to previous
+
+  partial:
+    # Baseline: 3 investigation + 2 next-steps for partial
+    investigation:
+      - "orch_partial_inv_01" # Which phases succeeded
+      - "orch_partial_inv_02" # Where did it stop
+      - "orch_partial_inv_09" # Why did it stop
+    next_steps:
+      - "orch_partial_next_01" # Resume or restart
+      - "orch_partial_next_02" # Timeline to complete
+
+# RELEASE Operation Type Defaults
+release:
+  passed:
+    # Baseline: 4 essential + 2-3 optional for passed operations
+    essential:
+      - "rel_pass_deploy_01"  # Deployment successful
+      - "rel_pass_deploy_05"  # Production stable
+      - "rel_pass_impact_01"  # Any user-facing errors
+      - "rel_pass_next_01"    # Continue monitoring
+    optional:
+      - "rel_pass_deploy_15"  # Overall confidence
+      - "rel_pass_impact_07"  # Intended improvements achieved
+      - "rel_pass_next_06"    # What's next priority
+
+  failed:
+    # Baseline: 4 investigation + 2 resolution for failure
+    investigation:
+      - "rel_fail_inv_01"   # Deployment error
+      - "rel_fail_inv_02"   # Which environment failed
+      - "rel_fail_inv_03"   # Rollback needed
+      - "rel_fail_inv_06"   # Smoke test failure reason
+    resolution:
+      - "rel_fail_res_01"   # Rollback or recover
+      - "rel_fail_res_02"   # Timeline for resolution
+
+  partial:
+    # Baseline: 3 investigation + 2 next-steps for partial
+    investigation:
+      - "rel_partial_inv_01" # Which environments deployed
+      - "rel_partial_inv_02" # Where did it stop
+      - "rel_partial_inv_05" # Are users affected
+    next_steps:
+      - "rel_partial_next_01" # Continue or rollback
+      - "rel_partial_next_02" # Timeline to complete
+
+# ============================================================================
+# QUESTION SELECTION THRESHOLDS
+# Used by AdaptiveQuestioningEngine for question count calculations
+# ============================================================================
+
+thresholds:
+  # Base question counts by operation type and success status
+  base_question_counts:
+    dev:
+      passed: 6
+      failed: 8
+      partial: 6
+    qa:
+      passed: 6
+      failed: 8
+      partial: 6
+    orchestrate:
+      passed: 5
+      failed: 7
+      partial: 6
+    release:
+      passed: 5
+      failed: 7
+      partial: 5
+
+  # Minimum and maximum questions
+  minimum_questions: 2
+  maximum_questions: 10
+
+  # Question count modifiers
+  modifiers:
+    # First-time user: +2 questions (8-10 range)
+    first_time_user: 2
+    # Repeat user (4+ operations): 0.7x multiplier (minimum 4)
+    repeat_user_multiplier: 0.7
+    repeat_user_minimum: 4
+    # Error context: +2 questions
+    error_context: 2
+    # Performance outlier: +1 question
+    performance_outlier: 1
+    # Rapid mode: -3 questions (3-5 critical only)
+    rapid_mode: -3
+    rapid_mode_minimum: 3
+
+  # Rapid operation detection
+  rapid_mode:
+    operations_window_seconds: 600  # 10 minutes
+    operations_threshold: 3         # 3+ operations = rapid
+
+  # Question deduplication
+  deduplication:
+    window_days: 30  # Skip if answered within 30 days
+    priority_1_override: true  # Never suppress priority 1 questions
+
+# ============================================================================
+# QUESTION PRIORITIZATION RULES
+# How to rank questions within a category
+# ============================================================================
+
+prioritization:
+  # Priority levels (1=critical, 5=optional)
+  levels:
+    "1":
+      label: "Critical"
+      description: "Essential questions that must be asked"
+      max_skip_percentage: 0  # Never skip
+
+    "2":
+      label: "Important"
+      description: "High-value questions to gather feedback"
+      max_skip_percentage: 20  # Can skip if space constrained
+
+    "3":
+      label: "Standard"
+      description: "Regular feedback questions"
+      max_skip_percentage: 50
+
+    "4":
+      label: "Low"
+      description: "Nice-to-have questions"
+      max_skip_percentage: 80
+
+    "5":
+      label: "Optional"
+      description: "Informational or exploratory questions"
+      max_skip_percentage: 100  # Skip if constrained
+
+  # Response type to UI mapping
+  response_types:
+    rating:
+      scale: "1-5"
+      widget: "slider"
+      validation: "numeric"
+
+    yes_no:
+      widget: "toggle"
+      validation: "boolean"
+
+    open_text:
+      widget: "textarea"
+      validation: "string"
+
+    multiple_choice:
+      widget: "select"
+      validation: "option"
+
+# ============================================================================
+# FALLBACK QUESTION SETS
+# Used when specific question banks are unavailable
+# ============================================================================
+
+fallback:
+  generic_passed:
+    - text: "How confident are you with the outcome?"
+      response_type: "rating"
+      priority: 1
+
+    - text: "Ready to proceed?"
+      response_type: "yes_no"
+      priority: 2
+
+    - text: "What would improve the process?"
+      response_type: "open_text"
+      priority: 3
+
+  generic_failed:
+    - text: "What blocked you?"
+      response_type: "open_text"
+      priority: 1
+
+    - text: "Do you need help?"
+      response_type: "yes_no"
+      priority: 1
+
+    - text: "What would help resolve this?"
+      response_type: "open_text"
+      priority: 2
+
+  generic_partial:
+    - text: "What's blocking completion?"
+      response_type: "open_text"
+      priority: 1
+
+    - text: "Do you have a plan to finish?"
+      response_type: "yes_no"
+      priority: 1
+
+    - text: "When can you resume?"
+      response_type: "open_text"
+      priority: 2
+
+# ============================================================================
+# QUESTION BANK METADATA
+# Information about available question banks
+# ============================================================================
+
+question_banks:
+  dev:
+    file: "dev-questions.yaml"
+    status: "active"
+    last_updated: "2025-11-09"
+    total_questions: 100
+    by_status:
+      passed: 40
+      failed: 35
+      partial: 25
+
+  qa:
+    file: "qa-questions.yaml"
+    status: "active"
+    last_updated: "2025-11-09"
+    total_questions: 100
+    by_status:
+      passed: 35
+      failed: 40
+      partial: 25
+
+  orchestrate:
+    file: "orchestrate-questions.yaml"
+    status: "active"
+    last_updated: "2025-11-09"
+    total_questions: 100
+    by_status:
+      passed: 35
+      failed: 35
+      partial: 30
+
+  release:
+    file: "release-questions.yaml"
+    status: "active"
+    last_updated: "2025-11-09"
+    total_questions: 100
+    by_status:
+      passed: 40
+      failed: 35
+      partial: 25
+
+# ============================================================================
+# OPERATION TYPES WITH ALL REQUIRED SUCCESS STATUSES
+# ============================================================================
+
+operation_types:
+  - name: dev
+    label: "Development"
+    statuses: ["passed", "failed", "partial"]
+    description: "TDD development workflow"
+
+  - name: qa
+    label: "Quality Assurance"
+    statuses: ["passed", "failed", "partial"]
+    description: "Quality validation and testing"
+
+  - name: orchestrate
+    label: "Orchestration"
+    statuses: ["passed", "failed", "partial"]
+    description: "End-to-end workflow execution"
+
+  - name: release
+    label: "Release"
+    statuses: ["passed", "failed", "partial"]
+    description: "Production deployment"
+
+# ============================================================================
+# QUESTION CATEGORIES
+# How questions are organized
+# ============================================================================
+
+categories:
+  confidence:
+    label: "Confidence & Comfort"
+    description: "Assess user confidence with process"
+    typical_questions: 10
+    priority_range: [1, 3]
+
+  investigation:
+    label: "Investigation & Diagnostics"
+    description: "Understand what went wrong"
+    typical_questions: 12
+    priority_range: [1, 2]
+
+  optimization:
+    label: "Optimization & Quality"
+    description: "Gather feedback for improvements"
+    typical_questions: 12
+    priority_range: [2, 4]
+
+  next-steps:
+    label: "Next Steps & Planning"
+    description: "Understand future direction"
+    typical_questions: 10
+    priority_range: [1, 3]
+
+# ============================================================================
+# QUALITY ASSURANCE
+# Metadata about question bank quality and coverage
+# ============================================================================
+
+quality:
+  coverage:
+    dev: "100%"      # 100 questions across all statuses
+    qa: "100%"       # 100 questions across all statuses
+    orchestrate: "100%" # 100 questions across all statuses
+    release: "100%"   # 100 questions across all statuses
+    overall: "100%"   # All operation types covered
+
+  diversity:
+    by_category:
+      confidence: "30 questions"
+      investigation: "45 questions"
+      optimization: "50 questions"
+      next-steps: "35 questions"
+    by_response_type:
+      rating: "45 questions"
+      yes_no: "140 questions"
+      open_text: "85 questions"
+      multiple_choice: "30 questions"
+
+  validation:
+    all_questions_have_ids: true
+    all_questions_have_text: true
+    all_questions_have_response_type: true
+    all_questions_have_priority: true
+    all_questions_have_requires_context: true
+    all_response_types_valid: true
+    all_priorities_in_range: true
+
+# ============================================================================
+# INTEGRATION NOTES
+# How this configuration is used
+# ============================================================================
+
+integration:
+  loader: "devforgeai_cli/feedback/adaptive_questioning_engine.py"
+  method: "load_from_yaml"
+  caching: "enabled"
+  cache_ttl_minutes: 60
+
+  # How defaults are applied
+  selection_algorithm:
+    - "Load question bank YAML file"
+    - "If unavailable, use defaults from this file"
+    - "If operation type unsupported, use fallback questions"
+    - "Apply adaptive selection based on context"
+    - "Filter by priority and availability"
+    - "Return ranked question list"

@@ -1,0 +1,17 @@
+Metadata-Version: 2.1
+Name: devforgeai-cli
+Version: 0.1.0
+Summary: DevForgeAI workflow validators for spec-driven development
+Author: DevForgeAI Contributors
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Quality Assurance
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.8
+
+Automated validation tools that prevent autonomous deferrals, validate Git availability, and enforce workflow quality gates.

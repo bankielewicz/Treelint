@@ -1,0 +1,43 @@
+{
+  "version": "1.0.0",
+  "story": "STORY-089",
+  "description": "Coverage validation thresholds for epic-story traceability",
+
+  "coverage_gates": {
+    "pass": 80,
+    "warn": 70,
+    "block": 70,
+    "description": "Coverage percentage thresholds: >=pass=PASS, >=warn=WARN, <block=BLOCK"
+  },
+
+  "confidence": {
+    "low_threshold": 0.60,
+    "high_threshold": 0.75,
+    "minimum_for_count": 0.75,
+    "description": "Match confidence scoring: <low=no match, low-high=manual review, >high=counted"
+  },
+
+  "validation": {
+    "min_feature_description_length": 10,
+    "required_frontmatter_fields": ["title", "status", "priority"],
+    "epic_id_fields": ["epic_id", "id"],
+    "feature_pattern": "Feature [0-9]+:",
+    "description": "Epic validation rules"
+  },
+
+  "performance": {
+    "single_epic_validation_ms": 50,
+    "full_scan_ms": 2000,
+    "create_epic_hook_overhead_ms": 100,
+    "orchestrate_gate_overhead_ms": 500,
+    "description": "NFR performance targets in milliseconds"
+  },
+
+  "exit_codes": {
+    "pass": 0,
+    "warn": 1,
+    "block": 2,
+    "error": 3,
+    "description": "Standard exit codes for validation scripts"
+  }
+}

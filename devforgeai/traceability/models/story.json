@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "devforgeai-story-schema-v1",
+  "title": "ParsedStory",
+  "description": "JSON schema for parsed story metadata from YAML frontmatter",
+  "type": "object",
+  "required": ["id", "title", "status"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^STORY-\\d{3}$",
+      "description": "Story identifier in format STORY-NNN (e.g., STORY-084)"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "Story title (1-200 characters)"
+    },
+    "epic": {
+      "type": ["string", "null"],
+      "description": "Epic reference: EPIC-NNN format, 'None', or null for standalone stories"
+    },
+    "sprint": {
+      "type": "string",
+      "pattern": "^(Sprint-\\d+|Backlog)$",
+      "description": "Sprint assignment (Sprint-N or Backlog)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Backlog",
+        "Ready for Dev",
+        "In Development",
+        "Dev Complete",
+        "QA In Progress",
+        "QA Approved",
+        "QA Failed",
+        "Releasing",
+        "Released"
+      ],
+      "description": "Current story status"
+    },
+    "points": {
+      "type": "integer",
+      "enum": [1, 2, 3, 5, 8, 13, 21],
+      "description": "Story points (Fibonacci sequence only)"
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["Critical", "High", "Medium", "Low"],
+      "description": "Priority level"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "Assigned developer or 'Unassigned'"
+    },
+    "created": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "Creation date in YYYY-MM-DD format"
+    },
+    "completed": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "Completion date in YYYY-MM-DD format"
+    },
+    "updated": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "Last updated date in YYYY-MM-DD format"
+    },
+    "format_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$",
+      "description": "Story template format version (e.g., '2.1')"
+    },
+    "file_path": {
+      "type": "string",
+      "description": "Relative path to the story file"
+    },
+    "epic_reference": {
+      "type": "string",
+      "enum": ["explicit", "implicit", "none"],
+      "description": "How epic was referenced (explicit=frontmatter, implicit=in-text, none=standalone)"
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low"],
+      "description": "Confidence level of epic reference extraction"
+    }
+  }
+}

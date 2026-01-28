@@ -1,0 +1,6 @@
+#!/bin/bash
+# Wrapper script for devforgeai_cli phase commands
+# Usage: ./devforgeai-validate phase-init STORY-XXX --project-root=.
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PYTHONPATH="$SCRIPT_DIR" python3 -m devforgeai_cli.cli "$@"

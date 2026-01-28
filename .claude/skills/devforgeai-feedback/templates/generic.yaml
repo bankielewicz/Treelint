@@ -1,0 +1,41 @@
+---
+template-id: generic
+operation-type: generic
+success-status: generic
+version: "1.0"
+description: "Fallback template for any operation"
+---
+
+# Template: Generic Operation Retrospective
+
+This is a fallback template used when a specific template is not found.
+
+## Field Mappings
+
+field-mappings:
+  what-went-well:
+    question-id: "generic_01"
+    section: "## What Went Well"
+
+  what-could-improve:
+    question-id: "generic_02"
+    section: "## What Could Improve"
+
+  suggestions:
+    question-id: "generic_03"
+    section: "## Suggestions for Improvement"
+
+  additional-notes:
+    question-id: "generic_04"
+    section: "## Additional Notes"
+
+## Template Sections
+
+- # Operation Retrospective: {operation}
+- ## What Went Well
+- ## What Could Improve
+- ## Suggestions for Improvement
+- ## Additional Notes
+- ## Context (auto-populated)
+- ## User Sentiment (auto-populated)
+- ## Actionable Insights (auto-extracted)

@@ -1,0 +1,835 @@
+# DevForgeAI Question Bank - ORCHESTRATE Operation Type
+# Comprehensive questions for end-to-end workflow orchestration
+# 100+ questions covering passed, failed, and partial success scenarios
+
+operation_type: orchestrate
+
+# ============================================================================
+# PASSED OPERATION QUESTIONS (35 questions)
+# ============================================================================
+passed:
+  # Workflow Execution Questions (12)
+  - id: "orch_pass_exec_01"
+    priority: 1
+    category: "confidence"
+    text: "All phases completed successfully?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_exec_02"
+    priority: 2
+    category: "confidence"
+    text: "Deployment smooth without issues?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_exec_03"
+    priority: 2
+    category: "confidence"
+    text: "Smoke tests all passed?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_exec_04"
+    priority: 1
+    category: "confidence"
+    text: "Overall orchestration quality?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_exec_05"
+    priority: 2
+    category: "confidence"
+    text: "Any unexpected issues during workflow?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_exec_06"
+    priority: 2
+    category: "confidence"
+    text: "Phase transitions smooth?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_exec_07"
+    priority: 3
+    category: "confidence"
+    text: "Workflow timeline acceptable?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_exec_08"
+    priority: 2
+    category: "confidence"
+    text: "Production deployment successful?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_exec_09"
+    priority: 2
+    category: "confidence"
+    text: "All quality gates passed?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_exec_10"
+    priority: 3
+    category: "confidence"
+    text: "User feedback positive?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_exec_11"
+    priority: 2
+    category: "confidence"
+    text: "Performance impact acceptable?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_exec_12"
+    priority: 1
+    category: "confidence"
+    text: "Ready for next epic?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  # Phase Quality Questions (12)
+  - id: "orch_pass_phase_01"
+    priority: 2
+    category: "optimization"
+    text: "Dev phase quality acceptable?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_phase_02"
+    priority: 2
+    category: "optimization"
+    text: "QA validation thorough?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_phase_03"
+    priority: 2
+    category: "optimization"
+    text: "Staging deployment successful?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_phase_04"
+    priority: 1
+    category: "optimization"
+    text: "Production release confidence?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_phase_05"
+    priority: 2
+    category: "optimization"
+    text: "Any phase had friction?"
+    response_type: "multiple_choice"
+    options: ["Dev", "QA", "Staging", "Production", "None"]
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_phase_06"
+    priority: 3
+    category: "optimization"
+    text: "Could any phase be faster?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_phase_07"
+    priority: 2
+    category: "optimization"
+    text: "Were phase handoffs smooth?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_phase_08"
+    priority: 3
+    category: "optimization"
+    text: "Phase coordination effective?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_phase_09"
+    priority: 2
+    category: "optimization"
+    text: "Documentation adequate for each phase?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_phase_10"
+    priority: 2
+    category: "optimization"
+    text: "All gate criteria met?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_phase_11"
+    priority: 3
+    category: "optimization"
+    text: "Should we adjust phase structure?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_phase_12"
+    priority: 2
+    category: "optimization"
+    text: "Parallel phase execution possible?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  # Outcomes & Lessons (11)
+  - id: "orch_pass_outcome_01"
+    priority: 1
+    category: "next-steps"
+    text: "What did you learn?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_outcome_02"
+    priority: 2
+    category: "next-steps"
+    text: "Process improvements identified?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_outcome_03"
+    priority: 2
+    category: "next-steps"
+    text: "Should we document best practices?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_outcome_04"
+    priority: 3
+    category: "next-steps"
+    text: "Create ADR for lessons?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_outcome_05"
+    priority: 2
+    category: "next-steps"
+    text: "Should we run retrospective?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_outcome_06"
+    priority: 3
+    category: "next-steps"
+    text: "Team efficiency improved?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_outcome_07"
+    priority: 2
+    category: "next-steps"
+    text: "Feature adoption metrics good?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_outcome_08"
+    priority: 1
+    category: "next-steps"
+    text: "Next epic priority?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_outcome_09"
+    priority: 2
+    category: "next-steps"
+    text: "Should we iterate on this feature?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_outcome_10"
+    priority: 3
+    category: "next-steps"
+    text: "Update roadmap?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_pass_outcome_11"
+    priority: 2
+    category: "next-steps"
+    text: "Overall workflow confidence?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+# ============================================================================
+# FAILED OPERATION QUESTIONS (35 questions)
+# ============================================================================
+failed:
+  # Failure Investigation (18)
+  - id: "orch_fail_inv_01"
+    priority: 1
+    category: "investigation"
+    text: "Which phase failed?"
+    response_type: "multiple_choice"
+    options: ["Dev", "QA", "Staging", "Production", "Multiple"]
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_fail_inv_02"
+    priority: 1
+    category: "investigation"
+    text: "Error details?"
+    response_type: "open_text"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_fail_inv_03"
+    priority: 2
+    category: "investigation"
+    text: "Is this a blocker?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_fail_inv_04"
+    priority: 2
+    category: "investigation"
+    text: "Can we recover automatically?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_fail_inv_05"
+    priority: 1
+    category: "investigation"
+    text: "Need manual intervention?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_fail_inv_06"
+    priority: 2
+    category: "investigation"
+    text: "Is this a known issue?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_fail_inv_07"
+    priority: 2
+    category: "investigation"
+    text: "Root cause identified?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_fail_inv_08"
+    priority: 2
+    category: "investigation"
+    text: "Is deployment affected?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_fail_inv_09"
+    priority: 2
+    category: "investigation"
+    text: "Are users impacted?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_fail_inv_10"
+    priority: 1
+    category: "investigation"
+    text: "Error logs available?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_fail_inv_11"
+    priority: 2
+    category: "investigation"
+    text: "Can you isolate the issue?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_fail_inv_12"
+    priority: 2
+    category: "investigation"
+    text: "Rollback needed?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_fail_inv_13"
+    priority: 2
+    category: "investigation"
+    text: "Workflow framework issue?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_fail_inv_14"
+    priority: 3
+    category: "investigation"
+    text: "Did you follow all procedures?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_fail_inv_15"
+    priority: 2
+    category: "investigation"
+    text: "Concurrent operations conflict?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_fail_inv_16"
+    priority: 2
+    category: "investigation"
+    text: "Environment configuration issue?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_fail_inv_17"
+    priority: 3
+    category: "investigation"
+    text: "Did prerequisites fail?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_fail_inv_18"
+    priority: 2
+    category: "investigation"
+    text: "Time constraints exceeded?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  # Resolution Questions (10)
+  - id: "orch_fail_res_01"
+    priority: 1
+    category: "optimization"
+    text: "Retry orchestration?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_fail_res_02"
+    priority: 1
+    category: "optimization"
+    text: "Rollback to previous version?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_fail_res_03"
+    priority: 2
+    category: "optimization"
+    text: "What would help?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_fail_res_04"
+    priority: 2
+    category: "optimization"
+    text: "Should we go back to staging?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_fail_res_05"
+    priority: 2
+    category: "optimization"
+    text: "Create hotfix story?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_fail_res_06"
+    priority: 2
+    category: "optimization"
+    text: "Notify stakeholders?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_fail_res_07"
+    priority: 3
+    category: "optimization"
+    text: "Update runbook?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_fail_res_08"
+    priority: 2
+    category: "optimization"
+    text: "Need disaster recovery?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_fail_res_09"
+    priority: 1
+    category: "optimization"
+    text: "Confidence in recovery?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_fail_res_10"
+    priority: 2
+    category: "optimization"
+    text: "Timeline to fix?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  # Learning & Prevention (7)
+  - id: "orch_fail_learn_01"
+    priority: 2
+    category: "next-steps"
+    text: "How to prevent this failure?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_fail_learn_02"
+    priority: 2
+    category: "next-steps"
+    text: "Should we add monitoring?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_fail_learn_03"
+    priority: 3
+    category: "next-steps"
+    text: "Create preventive ADR?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_fail_learn_04"
+    priority: 2
+    category: "next-steps"
+    text: "Update orchestration procedures?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_fail_learn_05"
+    priority: 3
+    category: "next-steps"
+    text: "Run incident review?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_fail_learn_06"
+    priority: 2
+    category: "next-steps"
+    text: "Document lessons learned?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_fail_learn_07"
+    priority: 1
+    category: "next-steps"
+    text: "When can we retry?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+# ============================================================================
+# PARTIAL SUCCESS QUESTIONS (30 questions)
+# ============================================================================
+partial:
+  # Partial Progress Investigation (14)
+  - id: "orch_partial_inv_01"
+    priority: 1
+    category: "investigation"
+    text: "Which phases succeeded?"
+    response_type: "open_text"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_partial_inv_02"
+    priority: 1
+    category: "investigation"
+    text: "Where did it stop?"
+    response_type: "open_text"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_partial_inv_03"
+    priority: 2
+    category: "investigation"
+    text: "Can you resume from checkpoint?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_partial_inv_04"
+    priority: 1
+    category: "investigation"
+    text: "Resume or restart?"
+    response_type: "multiple_choice"
+    options: ["Resume", "Restart", "Rollback", "Manual fix"]
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_partial_inv_05"
+    priority: 2
+    category: "investigation"
+    text: "Is partial state safe?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_partial_inv_06"
+    priority: 2
+    category: "investigation"
+    text: "Are users affected?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_partial_inv_07"
+    priority: 2
+    category: "investigation"
+    text: "Data consistency maintained?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_partial_inv_08"
+    priority: 2
+    category: "investigation"
+    text: "Can next phase proceed?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_partial_inv_09"
+    priority: 1
+    category: "investigation"
+    text: "Why did it stop?"
+    response_type: "open_text"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_partial_inv_10"
+    priority: 2
+    category: "investigation"
+    text: "Is checkpoint valid?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_partial_inv_11"
+    priority: 3
+    category: "investigation"
+    text: "Workflow framework issue?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_partial_inv_12"
+    priority: 2
+    category: "investigation"
+    text: "Timeout occurred?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_partial_inv_13"
+    priority: 2
+    category: "investigation"
+    text: "Resource exhaustion?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "orch_partial_inv_14"
+    priority: 3
+    category: "investigation"
+    text: "Dependency failure?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  # Next Steps & Recovery (16)
+  - id: "orch_partial_next_01"
+    priority: 1
+    category: "next-steps"
+    text: "Action to take?"
+    response_type: "multiple_choice"
+    options: ["Resume", "Restart", "Rollback", "Hold", "Skip phase"]
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_partial_next_02"
+    priority: 2
+    category: "next-steps"
+    text: "Timeline to complete?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_partial_next_03"
+    priority: 2
+    category: "next-steps"
+    text: "Need manual intervention?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_partial_next_04"
+    priority: 2
+    category: "next-steps"
+    text: "Create follow-up story?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_partial_next_05"
+    priority: 2
+    category: "next-steps"
+    text: "Alert stakeholders?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_partial_next_06"
+    priority: 1
+    category: "next-steps"
+    text: "Can we deliver current state?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_partial_next_07"
+    priority: 2
+    category: "next-steps"
+    text: "Is remaining work blocking?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_partial_next_08"
+    priority: 3
+    category: "next-steps"
+    text: "Update runbook?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_partial_next_09"
+    priority: 2
+    category: "next-steps"
+    text: "Increase timeout?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_partial_next_10"
+    priority: 2
+    category: "next-steps"
+    text: "Optimize phase timing?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_partial_next_11"
+    priority: 3
+    category: "next-steps"
+    text: "Create ADR for handling?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_partial_next_12"
+    priority: 2
+    category: "next-steps"
+    text: "Need additional resources?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_partial_next_13"
+    priority: 1
+    category: "next-steps"
+    text: "Confidence in recovery?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_partial_next_14"
+    priority: 2
+    category: "next-steps"
+    text: "Should we restart workflow?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_partial_next_15"
+    priority: 2
+    category: "next-steps"
+    text: "Document what worked?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "orch_partial_next_16"
+    priority: 3
+    category: "next-steps"
+    text: "Schedule retry?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false

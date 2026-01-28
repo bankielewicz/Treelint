@@ -1,0 +1,8 @@
+# DevForgeAI CLI Requirements
+
+# Core dependencies
+PyYAML>=6.0
+
+# Development dependencies (optional)
+pytest>=7.0  # For running tests
+pytest-cov>=4.0  # For coverage reports

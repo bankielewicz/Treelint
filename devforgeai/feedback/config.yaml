@@ -1,0 +1,38 @@
+# DevForgeAI Feedback System Configuration
+
+# Feature flag: Enable/disable feedback collection
+# Default: true (opt-in)
+enable_feedback: true
+
+# Collection mode
+# - all: Collect after all operations
+# - failures_only: Only collect when operations fail
+# - disabled: No collection (same as enable_feedback: false)
+mode: all
+
+# Skip tracking
+# After this many consecutive skips, ask user about preference
+max_skip_count: 3
+
+# Retention policy
+# Number of months to retain active feedback before action
+retention_months: 12
+
+# Default action after retention period
+# - anonymize: Remove identifiers, keep insights (default)
+# - delete: Permanently remove
+# - archive: Keep with archived flag
+# - extend: Extend for another retention period
+default_retention_action: anonymize
+
+# Anonymization
+# Anonymize feedback after retention period
+anonymize_after: true
+
+# Storage quota (MB)
+# Maximum storage per user for archived feedback
+storage_quota_mb: 100
+
+# Sensitive feedback
+# Extended retention for sensitive feedback (months)
+sensitive_retention_months: 18

@@ -1,0 +1,96 @@
+# DevForgeAI Parallel Development Configuration
+# Version: 1.0
+# Story: STORY-091 - Git Worktree Auto-Management
+# Location: devforgeai/config/parallel.yaml
+#
+# Copy this file to devforgeai/config/parallel.yaml and customize as needed.
+# All settings have sensible defaults; only override if needed for your workflow.
+
+# Master enable/disable switch for worktree management feature
+# Set to false to use traditional branch-only workflow (no worktrees)
+# Set to true to automatically create isolated worktrees for each story
+enabled: true
+
+# Git worktree configuration
+worktree:
+  # Idle detection threshold (days)
+  # Worktrees inactive longer than this period are flagged for cleanup on next /dev invocation
+  # Valid range: 1-365 days
+  # Default: 7 days
+  # Examples:
+  #   1   = Clean up worktrees unused for more than 1 day
+  #   3   = Clean up worktrees unused for more than 3 days
+  #   7   = Clean up worktrees unused for more than 7 days (recommended)
+  #   14  = Clean up worktrees unused for more than 2 weeks
+  #   30  = Clean up worktrees unused for more than a month
+  cleanup_threshold_days: 7
+
+  # Maximum number of concurrent active worktrees
+  # When limit is reached, user must delete an existing worktree before creating new one
+  # Valid range: 1-20 worktrees
+  # Default: 5 worktrees
+  # Rationale: Balances parallel development flexibility with filesystem and performance costs
+  # Each worktree uses ~500MB disk space (depends on repository size)
+  max_worktrees: 5
+
+  # Location pattern for worktree directories
+  # Must contain {id} placeholder (replaced with story number without STORY- prefix)
+  # Examples:
+  #   "../devforgeai-story-{id}/"        = ../devforgeai-story-091/
+  #   "../work/story-{id}/"              = ../work/story-091/
+  #   "/tmp/devforgeai-worktrees/{id}/"  = /tmp/devforgeai-worktrees/091/
+  # Default: "../devforgeai-story-{id}/"
+  # Constraint: Path must be relative to main repository root
+  location_pattern: "../devforgeai-story-{id}/"
+
+# Performance timeout settings
+# Adjust these if you experience timeouts with large repositories or slow filesystems
+performance:
+  # Maximum time to wait for worktree creation (seconds)
+  # If creation takes longer, system falls back to branch-only mode and warns user
+  # Default: 15 seconds (sufficient for most local SSD drives)
+  # Increase for: HDD drives, network filesystems, large repositories (>100k files)
+  # Decrease for: CI/CD environments requiring fast feedback
+  creation_timeout_seconds: 15
+
+  # Maximum time to scan for idle worktrees (seconds)
+  # On /dev invocation, system checks all existing worktrees for idle status
+  # Default: 5 seconds (sufficient for scanning up to 20 worktrees)
+  # Increase for: Many worktrees (>20), network filesystems
+  # Decrease for: CI/CD environments requiring fast feedback
+  idle_scan_timeout_seconds: 5
+
+# Platform-specific configuration
+# These settings enable cross-platform compatibility (Windows, macOS, Linux, WSL)
+platform:
+  # Auto-detect operating system and filesystem
+  # Set to true for automatic detection (Linux, macOS, Windows, WSL)
+  # Set to false to manually specify platform (not recommended)
+  auto_detect: true
+
+  # Windows-specific: Validate path length limits (260 character limit)
+  # Windows paths longer than 260 chars fail unless long path support is enabled
+  # Set to true to enforce validation and prevent errors
+  # Set to false to skip validation (not recommended on Windows)
+  windows_path_check: true
+
+  # WSL-specific: Handle /mnt/c/ path conversion for Windows compatibility
+  # When running in WSL, automatically convert /mnt/c/ paths to Windows-compatible format
+  # Set to true for automatic conversion (recommended)
+  # Set to false to use Unix paths (may cause issues with Windows Git Bash)
+  wsl_path_handling: true
+
+# Logging configuration
+# Logs record all worktree operations for debugging and audit purposes
+logging:
+  # Path to worktree operation log file
+  # Relative paths are relative to main repository root
+  # Default: devforgeai/logs/worktree.log
+  log_file: "devforgeai/logs/worktree.log"
+
+  # Logging level
+  # debug  = Verbose output for troubleshooting
+  # info   = Normal operation logging (recommended)
+  # warning = Only log warnings and errors
+  # error  = Only log errors
+  level: info

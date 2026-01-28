@@ -1,0 +1,41 @@
+---
+template-id: skill-failed
+operation-type: skill
+success-status: failed
+version: "1.0"
+description: "Template for failed skill execution"
+---
+
+# Template: Skill Failure Retrospective
+
+This template collects feedback when a skill encounters errors.
+
+## Field Mappings
+
+field-mappings:
+  error-description:
+    question-id: "skill_failed_01"
+    section: "## Error Description"
+
+  subagent-issues:
+    question-id: "skill_failed_02"
+    section: "## Subagent Issues"
+
+  recovery-approach:
+    question-id: "skill_failed_03"
+    section: "## Recovery Approach"
+
+  prevention:
+    question-id: "skill_failed_04"
+    section: "## Improvements for Future"
+
+## Template Sections
+
+- # Skill Failure: {operation}
+- ## Error Description
+- ## Subagent Issues
+- ## Recovery Approach
+- ## Improvements for Future
+- ## Context (auto-populated)
+- ## User Sentiment (auto-populated)
+- ## Actionable Insights (auto-extracted)

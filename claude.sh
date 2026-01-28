@@ -1,0 +1,1 @@
+claude --system-prompt "$(cat .claude/system-prompt-core.md)"

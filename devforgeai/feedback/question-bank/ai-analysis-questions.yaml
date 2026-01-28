@@ -1,0 +1,192 @@
+# DevForgeAI Question Bank - AI Architectural Analysis
+# Prompts for Claude to generate framework improvement recommendations
+# These are NOT user-facing questions - they guide AI analysis generation
+
+operation_type: ai_analysis
+
+# ============================================================================
+# AI ANALYSIS PROMPTS
+# ============================================================================
+
+# These prompts are executed by Claude (not presented to users) to generate
+# structured architectural analysis after /dev and /qa workflows.
+#
+# Key Constraint: All recommendations MUST be implementable within Claude Code
+# Terminal constraints as defined in .claude/skills/claude-code-terminal-expert/
+
+analysis_prompts:
+
+  # What Worked Well (identify positive patterns)
+  - id: "ai_what_worked_well"
+    priority: 1
+    category: "positive_patterns"
+    prompt: |
+      Analyze this workflow and identify what aspects of the DevForgeAI framework
+      worked well. Focus on:
+      - Context file effectiveness (did constraints prevent issues?)
+      - TDD workflow efficiency (did Red→Green→Refactor flow smoothly?)
+      - Phase sequencing (were phases in optimal order?)
+      - Subagent coordination (did delegations work effectively?)
+      - Quality gate enforcement (did gates catch issues appropriately?)
+
+      Provide 2-5 specific observations, not generic praise.
+    output_type: "array"
+    output_field: "what_worked_well"
+    min_items: 2
+    max_items: 5
+
+  # Areas for Improvement (identify enhancement opportunities)
+  - id: "ai_areas_for_improvement"
+    priority: 1
+    category: "improvement_opportunities"
+    prompt: |
+      Analyze this workflow and identify areas where the DevForgeAI framework
+      could be improved. Focus on:
+      - Redundant validations or duplicate checks
+      - Missing validations that could have caught issues earlier
+      - Phase ordering inefficiencies
+      - Documentation gaps encountered
+      - Constraint file limitations
+
+      Be specific about what could be better, not what was wrong.
+      Provide 2-5 specific observations.
+    output_type: "array"
+    output_field: "areas_for_improvement"
+    min_items: 2
+    max_items: 5
+
+  # Recommendations (structured, actionable suggestions)
+  - id: "ai_recommendations"
+    priority: 1
+    category: "actionable_recommendations"
+    prompt: |
+      Based on this workflow, provide specific, actionable recommendations for
+      improving the DevForgeAI framework. For each recommendation:
+
+      1. Description: Clear statement of what to change
+      2. Affected Files: Which files would need modification
+      3. Implementation Notes: How to implement within Claude Code Terminal
+      4. Priority: low/medium/high based on impact
+      5. Feasibility: Confirm it's implementable (must be true)
+
+      CONSTRAINT: All recommendations MUST be implementable within Claude Code
+      Terminal's capabilities. No external services, no persistent processes,
+      no custom runtimes. Reference .claude/skills/claude-code-terminal-expert/
+      for what's possible.
+
+      Provide 1-3 recommendations. Quality over quantity.
+    output_type: "structured_array"
+    output_field: "recommendations"
+    min_items: 1
+    max_items: 3
+    structure:
+      description: "string"
+      affected_files: "array"
+      implementation_notes: "string"
+      priority: "enum:low,medium,high"
+      feasible_in_claude_code: "boolean"
+
+  # Patterns Observed (emergent patterns across workflows)
+  - id: "ai_patterns_observed"
+    priority: 2
+    category: "pattern_detection"
+    prompt: |
+      Identify any patterns that emerged during this workflow that could inform
+      framework development:
+      - Story types that work particularly well with current framework
+      - Common sequences of operations that could be optimized
+      - Effective subagent combinations
+      - Context file patterns that prevented issues
+
+      Focus on patterns that are generalizable across multiple stories.
+      Provide 0-3 observations (empty is acceptable if no clear patterns).
+    output_type: "array"
+    output_field: "patterns_observed"
+    min_items: 0
+    max_items: 3
+
+  # Anti-Patterns Detected (issues to avoid)
+  - id: "ai_anti_patterns"
+    priority: 2
+    category: "anti_pattern_detection"
+    prompt: |
+      Identify any anti-patterns or issues that occurred during this workflow:
+      - Circular dependencies encountered
+      - Context file violations
+      - Quality gate bypasses
+      - Ineffective phase transitions
+      - Subagent failures or timeouts
+
+      Only report actual issues observed, not potential issues.
+      Provide 0-3 observations (empty is acceptable if no issues).
+    output_type: "array"
+    output_field: "anti_patterns_detected"
+    min_items: 0
+    max_items: 3
+
+  # Constraint Analysis (how well did context files support workflow)
+  - id: "ai_constraint_analysis"
+    priority: 2
+    category: "constraint_effectiveness"
+    prompt: |
+      Analyze how well the 6 constitutional context files supported this workflow:
+      - tech-stack.md: Did it cover needed technologies?
+      - source-tree.md: Were file placements correct?
+      - dependencies.md: Were all packages available?
+      - coding-standards.md: Were patterns clear?
+      - architecture-constraints.md: Were layer boundaries enforced?
+      - anti-patterns.md: Did it prevent common mistakes?
+
+      Provide a brief (2-4 sentences) assessment of constraint effectiveness.
+    output_type: "string"
+    output_field: "constraint_analysis"
+    max_length: 500
+
+# ============================================================================
+# ANALYSIS CONFIGURATION
+# ============================================================================
+
+config:
+  # Maximum time allowed for AI analysis (ms)
+  max_duration_ms: 30000
+
+  # Minimum workflow duration to trigger analysis (ms)
+  # Set to 0 to analyze all workflows
+  min_workflow_duration_ms: 0
+
+  # Whether to require user approval before storing analysis
+  require_approval: false
+
+  # Storage location for analysis results
+  storage_path: "devforgeai/feedback/ai-analysis/"
+
+  # Index file for searchability
+  index_file: "devforgeai/feedback/ai-analysis/index.json"
+
+  # Aggregation files
+  patterns_file: "devforgeai/feedback/ai-analysis/aggregated/patterns-detected.json"
+  recommendations_file: "devforgeai/feedback/ai-analysis/aggregated/recommendations-queue.json"
+
+# ============================================================================
+# CONSTRAINT REFERENCE
+# ============================================================================
+
+# All recommendations MUST be implementable within these constraints:
+#
+# Claude Code Terminal Capabilities:
+# - Read/Write/Edit files
+# - Glob/Grep for file discovery
+# - Bash commands (with restrictions)
+# - Task subagents (parallel execution)
+# - AskUserQuestion for clarification
+# - WebFetch/WebSearch for research
+# - Skills and Commands (markdown-based)
+#
+# NOT Available:
+# - Persistent background processes
+# - Custom runtime environments
+# - External service integrations (without MCP)
+# - Direct database access
+# - GUI applications
+#
+# Reference: .claude/skills/claude-code-terminal-expert/SKILL.md

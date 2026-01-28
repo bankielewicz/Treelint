@@ -1,0 +1,471 @@
+# Kubernetes Deployment Configuration Template
+# DevForgeAI Release Skill
+#
+# This template provides a comprehensive Kubernetes deployment manifest
+# supporting multiple deployment strategies (Blue-Green, Canary, Rolling, Recreate)
+#
+# Usage:
+# 1. Replace {{VARIABLE}} placeholders with actual values
+# 2. Customize resource limits based on application requirements
+# 3. Update health check endpoints and parameters
+# 4. Configure environment-specific values via Helm values.yaml or Kustomize
+
+---
+# Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{APP_NAME}}
+  namespace: {{NAMESPACE}}
+  labels:
+    app: {{APP_NAME}}
+    version: {{VERSION}}
+    environment: {{ENVIRONMENT}}
+    managed-by: devforgeai-release
+spec:
+  replicas: {{REPLICAS}}
+
+  # Deployment Strategy Configuration
+  strategy:
+    # Rolling Update (default, zero-downtime)
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: {{MAX_SURGE}}              # Max pods above desired count (default: 25%)
+      maxUnavailable: {{MAX_UNAVAILABLE}}  # Max unavailable pods during update (default: 25%)
+
+    # Alternative: Recreate Strategy (terminates all old pods before creating new)
+    # Uncomment below and comment out RollingUpdate for Recreate strategy
+    # type: Recreate
+
+  selector:
+    matchLabels:
+      app: {{APP_NAME}}
+      version: {{VERSION}}  # Remove this for rolling updates across versions
+
+  template:
+    metadata:
+      labels:
+        app: {{APP_NAME}}
+        version: {{VERSION}}
+        environment: {{ENVIRONMENT}}
+      annotations:
+        # Force pod restart on config change
+        checksum/config: {{CONFIG_CHECKSUM}}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{METRICS_PORT}}"
+        prometheus.io/path: "/metrics"
+
+    spec:
+      # Service Account
+      serviceAccountName: {{SERVICE_ACCOUNT_NAME}}
+
+      # Image Pull Secrets (for private registries)
+      imagePullSecrets:
+        - name: {{IMAGE_PULL_SECRET}}
+
+      # Init Containers (optional - for setup tasks)
+      initContainers:
+        - name: init-db
+          image: {{INIT_IMAGE}}
+          command: ['sh', '-c', 'until nc -z {{DB_HOST}} {{DB_PORT}}; do echo waiting for db; sleep 2; done;']
+
+      # Main Application Container
+      containers:
+        - name: {{CONTAINER_NAME}}
+          image: {{IMAGE_REGISTRY}}/{{IMAGE_NAME}}:{{VERSION}}
+          imagePullPolicy: {{IMAGE_PULL_POLICY}}  # Always, IfNotPresent, Never
+
+          # Container Ports
+          ports:
+            - name: http
+              containerPort: {{APP_PORT}}
+              protocol: TCP
+            - name: metrics
+              containerPort: {{METRICS_PORT}}
+              protocol: TCP
+
+          # Environment Variables
+          env:
+            - name: ENVIRONMENT
+              value: {{ENVIRONMENT}}
+            - name: VERSION
+              value: {{VERSION}}
+            - name: LOG_LEVEL
+              value: {{LOG_LEVEL}}
+
+            # Database Configuration
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{APP_NAME}}-config
+                  key: db.host
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{APP_NAME}}-config
+                  key: db.port
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: {{APP_NAME}}-config
+                  key: db.name
+
+            # Secrets (passwords, API keys, etc.)
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{APP_NAME}}-secrets
+                  key: db.password
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{APP_NAME}}-secrets
+                  key: api.key
+
+          # Resource Limits and Requests
+          resources:
+            requests:
+              memory: {{MEMORY_REQUEST}}      # e.g., "256Mi"
+              cpu: {{CPU_REQUEST}}            # e.g., "100m" (0.1 CPU)
+            limits:
+              memory: {{MEMORY_LIMIT}}        # e.g., "512Mi"
+              cpu: {{CPU_LIMIT}}              # e.g., "500m" (0.5 CPU)
+
+          # Liveness Probe (restart container if failing)
+          livenessProbe:
+            httpGet:
+              path: {{LIVENESS_PROBE_PATH}}   # e.g., /health
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: {{LIVENESS_INITIAL_DELAY}}  # e.g., 30
+            periodSeconds: {{LIVENESS_PERIOD}}                # e.g., 10
+            timeoutSeconds: {{LIVENESS_TIMEOUT}}              # e.g., 5
+            successThreshold: 1
+            failureThreshold: {{LIVENESS_FAILURE_THRESHOLD}}  # e.g., 3
+
+          # Readiness Probe (remove from service if failing)
+          readinessProbe:
+            httpGet:
+              path: {{READINESS_PROBE_PATH}}  # e.g., /ready
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: {{READINESS_INITIAL_DELAY}}  # e.g., 10
+            periodSeconds: {{READINESS_PERIOD}}                # e.g., 5
+            timeoutSeconds: {{READINESS_TIMEOUT}}              # e.g., 3
+            successThreshold: 1
+            failureThreshold: {{READINESS_FAILURE_THRESHOLD}}  # e.g., 3
+
+          # Startup Probe (for slow-starting applications)
+          startupProbe:
+            httpGet:
+              path: {{STARTUP_PROBE_PATH}}    # e.g., /health
+              port: http
+            initialDelaySeconds: 0
+            periodSeconds: {{STARTUP_PERIOD}}                  # e.g., 5
+            timeoutSeconds: {{STARTUP_TIMEOUT}}                # e.g., 3
+            successThreshold: 1
+            failureThreshold: {{STARTUP_FAILURE_THRESHOLD}}    # e.g., 30 (150 seconds total)
+
+          # Volume Mounts
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/config
+              readOnly: true
+            - name: secrets-volume
+              mountPath: /etc/secrets
+              readOnly: true
+            - name: logs-volume
+              mountPath: /var/log/app
+
+      # Volumes
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{APP_NAME}}-config
+        - name: secrets-volume
+          secret:
+            secretName: {{APP_NAME}}-secrets
+        - name: logs-volume
+          emptyDir: {}
+
+      # Pod Affinity/Anti-Affinity (for high availability)
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - {{APP_NAME}}
+                topologyKey: kubernetes.io/hostname
+
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{APP_NAME}}-service
+  namespace: {{NAMESPACE}}
+  labels:
+    app: {{APP_NAME}}
+spec:
+  type: {{SERVICE_TYPE}}  # ClusterIP, NodePort, LoadBalancer
+  selector:
+    app: {{APP_NAME}}
+    # For Blue-Green deployments, add version selector here
+    # version: {{VERSION}}
+  ports:
+    - name: http
+      port: {{SERVICE_PORT}}        # Service port (e.g., 80)
+      targetPort: {{APP_PORT}}      # Container port (e.g., 8080)
+      protocol: TCP
+  sessionAffinity: {{SESSION_AFFINITY}}  # None, ClientIP
+
+---
+# ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{APP_NAME}}-config
+  namespace: {{NAMESPACE}}
+data:
+  # Application Configuration
+  app.name: "{{APP_NAME}}"
+  app.environment: "{{ENVIRONMENT}}"
+  app.version: "{{VERSION}}"
+
+  # Database Configuration
+  db.host: "{{DB_HOST}}"
+  db.port: "{{DB_PORT}}"
+  db.name: "{{DB_NAME}}"
+
+  # Logging Configuration
+  log.level: "{{LOG_LEVEL}}"
+  log.format: "json"
+
+  # Feature Flags
+  feature.new_ui: "{{FEATURE_NEW_UI}}"
+  feature.beta_api: "{{FEATURE_BETA_API}}"
+
+---
+# Secret (base64-encoded values)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{APP_NAME}}-secrets
+  namespace: {{NAMESPACE}}
+type: Opaque
+data:
+  # Base64-encoded secrets
+  # Encode with: echo -n "password" | base64
+  db.password: {{DB_PASSWORD_BASE64}}
+  api.key: {{API_KEY_BASE64}}
+  jwt.secret: {{JWT_SECRET_BASE64}}
+
+---
+# Horizontal Pod Autoscaler (optional - for auto-scaling)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{APP_NAME}}-hpa
+  namespace: {{NAMESPACE}}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{APP_NAME}}
+  minReplicas: {{HPA_MIN_REPLICAS}}
+  maxReplicas: {{HPA_MAX_REPLICAS}}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{HPA_TARGET_CPU}}  # e.g., 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{HPA_TARGET_MEMORY}}  # e.g., 80
+
+---
+# Ingress (for external access)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{APP_NAME}}-ingress
+  namespace: {{NAMESPACE}}
+  annotations:
+    kubernetes.io/ingress.class: {{INGRESS_CLASS}}  # nginx, traefik, etc.
+    cert-manager.io/cluster-issuer: {{CERT_ISSUER}}
+    # For Canary deployments with NGINX
+    # nginx.ingress.kubernetes.io/canary: "true"
+    # nginx.ingress.kubernetes.io/canary-weight: "10"  # 10% traffic to canary
+spec:
+  tls:
+    - hosts:
+        - {{APP_DOMAIN}}
+      secretName: {{APP_NAME}}-tls
+  rules:
+    - host: {{APP_DOMAIN}}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{APP_NAME}}-service
+                port:
+                  number: {{SERVICE_PORT}}
+
+---
+# Network Policy (optional - for network security)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{APP_NAME}}-netpol
+  namespace: {{NAMESPACE}}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{APP_NAME}}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: {{ALLOWED_NAMESPACE}}
+        - podSelector:
+            matchLabels:
+              app: {{ALLOWED_APP}}
+      ports:
+        - protocol: TCP
+          port: {{APP_PORT}}
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 443  # HTTPS
+        - protocol: TCP
+          port: {{DB_PORT}}  # Database
+
+---
+# PodDisruptionBudget (for high availability during maintenance)
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{APP_NAME}}-pdb
+  namespace: {{NAMESPACE}}
+spec:
+  minAvailable: {{PDB_MIN_AVAILABLE}}  # e.g., 1 or 50%
+  selector:
+    matchLabels:
+      app: {{APP_NAME}}
+
+---
+# ============================================
+# Blue-Green Deployment Configuration
+# ============================================
+# For Blue-Green deployments, create two deployments:
+# 1. {{APP_NAME}}-blue (current production)
+# 2. {{APP_NAME}}-green (new version)
+#
+# Switch traffic by updating Service selector:
+# kubectl patch service {{APP_NAME}}-service -p '{"spec":{"selector":{"version":"green"}}}'
+
+---
+# ============================================
+# Canary Deployment Configuration
+# ============================================
+# For Canary deployments with NGINX Ingress:
+# 1. Deploy baseline (stable) version
+# 2. Deploy canary version with canary annotations
+# 3. Gradually increase canary-weight: 5% → 25% → 50% → 100%
+#
+# Example Canary Ingress:
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: {{APP_NAME}}-canary
+#   annotations:
+#     nginx.ingress.kubernetes.io/canary: "true"
+#     nginx.ingress.kubernetes.io/canary-weight: "10"  # 10% to canary
+# spec:
+#   rules:
+#     - host: {{APP_DOMAIN}}
+#       http:
+#         paths:
+#           - backend:
+#               service:
+#                 name: {{APP_NAME}}-canary-service
+#                 port:
+#                   number: 80
+
+---
+# Variable Reference
+# ==================
+# {{APP_NAME}}                - Application name (e.g., "myapp")
+# {{NAMESPACE}}               - Kubernetes namespace (e.g., "production")
+# {{VERSION}}                 - Version tag (e.g., "v1.2.3", "STORY-001-release")
+# {{ENVIRONMENT}}             - Environment name (e.g., "production", "staging")
+# {{REPLICAS}}                - Number of pod replicas (e.g., 3)
+# {{MAX_SURGE}}               - Max surge during rolling update (e.g., 1 or "25%")
+# {{MAX_UNAVAILABLE}}         - Max unavailable during rolling update (e.g., 0 or "25%")
+# {{CONTAINER_NAME}}          - Container name (e.g., "myapp-container")
+# {{IMAGE_REGISTRY}}          - Docker registry (e.g., "gcr.io/project", "myregistry.azurecr.io")
+# {{IMAGE_NAME}}              - Image name (e.g., "myapp")
+# {{IMAGE_PULL_POLICY}}       - Pull policy: Always, IfNotPresent, Never
+# {{IMAGE_PULL_SECRET}}       - Secret for private registry authentication
+# {{SERVICE_ACCOUNT_NAME}}    - Kubernetes service account (e.g., "myapp-sa")
+# {{APP_PORT}}                - Application port (e.g., 8080)
+# {{METRICS_PORT}}            - Metrics endpoint port (e.g., 9090)
+# {{MEMORY_REQUEST}}          - Memory request (e.g., "256Mi")
+# {{CPU_REQUEST}}             - CPU request (e.g., "100m")
+# {{MEMORY_LIMIT}}            - Memory limit (e.g., "512Mi")
+# {{CPU_LIMIT}}               - CPU limit (e.g., "500m")
+# {{LIVENESS_PROBE_PATH}}     - Liveness probe endpoint (e.g., "/health")
+# {{READINESS_PROBE_PATH}}    - Readiness probe endpoint (e.g., "/ready")
+# {{STARTUP_PROBE_PATH}}      - Startup probe endpoint (e.g., "/health")
+# {{LIVENESS_INITIAL_DELAY}}  - Liveness initial delay seconds (e.g., 30)
+# {{LIVENESS_PERIOD}}         - Liveness period seconds (e.g., 10)
+# {{LIVENESS_TIMEOUT}}        - Liveness timeout seconds (e.g., 5)
+# {{LIVENESS_FAILURE_THRESHOLD}} - Liveness failure threshold (e.g., 3)
+# {{READINESS_INITIAL_DELAY}} - Readiness initial delay seconds (e.g., 10)
+# {{READINESS_PERIOD}}        - Readiness period seconds (e.g., 5)
+# {{READINESS_TIMEOUT}}       - Readiness timeout seconds (e.g., 3)
+# {{READINESS_FAILURE_THRESHOLD}} - Readiness failure threshold (e.g., 3)
+# {{STARTUP_PERIOD}}          - Startup period seconds (e.g., 5)
+# {{STARTUP_TIMEOUT}}         - Startup timeout seconds (e.g., 3)
+# {{STARTUP_FAILURE_THRESHOLD}} - Startup failure threshold (e.g., 30)
+# {{SERVICE_TYPE}}            - Service type: ClusterIP, NodePort, LoadBalancer
+# {{SERVICE_PORT}}            - Service port (e.g., 80)
+# {{SESSION_AFFINITY}}        - Session affinity: None, ClientIP
+# {{DB_HOST}}                 - Database host
+# {{DB_PORT}}                 - Database port (e.g., 5432)
+# {{DB_NAME}}                 - Database name
+# {{LOG_LEVEL}}               - Log level (e.g., "info", "debug")
+# {{FEATURE_NEW_UI}}          - Feature flag value (e.g., "true", "false")
+# {{FEATURE_BETA_API}}        - Feature flag value
+# {{DB_PASSWORD_BASE64}}      - Base64-encoded database password
+# {{API_KEY_BASE64}}          - Base64-encoded API key
+# {{JWT_SECRET_BASE64}}       - Base64-encoded JWT secret
+# {{HPA_MIN_REPLICAS}}        - HPA minimum replicas (e.g., 2)
+# {{HPA_MAX_REPLICAS}}        - HPA maximum replicas (e.g., 10)
+# {{HPA_TARGET_CPU}}          - HPA target CPU utilization % (e.g., 70)
+# {{HPA_TARGET_MEMORY}}       - HPA target memory utilization % (e.g., 80)
+# {{APP_DOMAIN}}              - Application domain (e.g., "myapp.example.com")
+# {{INGRESS_CLASS}}           - Ingress class (e.g., "nginx", "traefik")
+# {{CERT_ISSUER}}             - Cert-manager issuer (e.g., "letsencrypt-prod")
+# {{ALLOWED_NAMESPACE}}       - Allowed namespace for network policy
+# {{ALLOWED_APP}}             - Allowed app for network policy
+# {{PDB_MIN_AVAILABLE}}       - PDB minimum available (e.g., 1 or "50%")
+# {{CONFIG_CHECKSUM}}         - ConfigMap checksum (for force restart)
+# {{INIT_IMAGE}}              - Init container image

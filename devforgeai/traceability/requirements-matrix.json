@@ -1,0 +1,775 @@
+{
+  "epics": {
+    "EPIC-002": {
+      "features_count": 3,
+      "file_path": "devforgeai/specs/Epics/EPIC-002-feedback-capture-interaction.epic.md",
+      "linked_stories": [],
+      "title": "Feedback Capture & Interaction"
+    },
+    "EPIC-003": {
+      "features_count": 3,
+      "file_path": "devforgeai/specs/Epics/EPIC-003-template-configuration-system.epic.md",
+      "linked_stories": [],
+      "title": "Template & Configuration System"
+    },
+    "EPIC-004": {
+      "features_count": 3,
+      "file_path": "devforgeai/specs/Epics/EPIC-004-storage-indexing.epic.md",
+      "linked_stories": [],
+      "title": "Storage & Indexing"
+    },
+    "EPIC-005": {
+      "features_count": 3,
+      "file_path": "devforgeai/specs/Epics/EPIC-005-framework-integration.epic.md",
+      "linked_stories": [],
+      "title": "Framework Integration"
+    },
+    "EPIC-006": {
+      "features_count": 8,
+      "file_path": "devforgeai/specs/Epics/EPIC-006-feedback-integration-completion.epic.md",
+      "linked_stories": [
+        "STORY-021",
+        "STORY-023",
+        "STORY-024",
+        "STORY-025",
+        "STORY-026",
+        "STORY-027",
+        "STORY-028",
+        "STORY-029",
+        "STORY-030",
+        "STORY-031",
+        "STORY-032",
+        "STORY-033",
+        "STORY-038"
+      ],
+      "title": "Feedback System Integration Completion"
+    },
+    "EPIC-007": {
+      "features_count": 6,
+      "file_path": "devforgeai/specs/Epics/EPIC-007-lean-orchestration-compliance.epic.md",
+      "linked_stories": [],
+      "title": "Lean Orchestration Compliance"
+    },
+    "EPIC-008": {
+      "features_count": 1,
+      "file_path": "devforgeai/specs/Epics/EPIC-008-devforgeai-documentation-system.epic.md",
+      "linked_stories": [],
+      "title": "DevForgeAI Documentation System"
+    },
+    "EPIC-009": {
+      "features_count": 0,
+      "file_path": "devforgeai/specs/Epics/EPIC-009-devforgeai-src-migration-installer.epic.md",
+      "linked_stories": [
+        "STORY-041",
+        "STORY-042",
+        "STORY-043",
+        "STORY-044",
+        "STORY-045",
+        "STORY-046",
+        "STORY-047",
+        "STORY-048"
+      ],
+      "title": "DevForgeAI src/ Migration and Installer System"
+    },
+    "EPIC-010": {
+      "features_count": 0,
+      "file_path": "devforgeai/specs/Epics/EPIC-010-parallel-story-development-cicd.epic.md",
+      "linked_stories": [
+        "STORY-001",
+        "STORY-037",
+        "STORY-038"
+      ],
+      "title": "Parallel Story Development with CI/CD Integration"
+    },
+    "EPIC-011": {
+      "features_count": 9,
+      "file_path": "devforgeai/specs/Epics/EPIC-011-user-input-guidance-system.epic.md",
+      "linked_stories": [
+        "STORY-052",
+        "STORY-053",
+        "STORY-054",
+        "STORY-055",
+        "STORY-056",
+        "STORY-057",
+        "STORY-058",
+        "STORY-059",
+        "STORY-060",
+        "STORY-065"
+      ],
+      "title": "User Input Guidance System"
+    },
+    "EPIC-012": {
+      "features_count": 5,
+      "file_path": "devforgeai/specs/Epics/EPIC-012-npm-package-distribution.epic.md",
+      "linked_stories": [
+        "STORY-066",
+        "STORY-067",
+        "STORY-068",
+        "STORY-069",
+        "STORY-070"
+      ],
+      "title": "NPM Package Distribution for DevForgeAI Installer"
+    },
+    "EPIC-013": {
+      "features_count": 6,
+      "file_path": "devforgeai/specs/Epics/EPIC-013-interactive-installer-validation.epic.md",
+      "linked_stories": [],
+      "title": "Interactive Installer & Validation"
+    },
+    "EPIC-014": {
+      "features_count": 6,
+      "file_path": "devforgeai/specs/Epics/EPIC-014-version-management-lifecycle.epic.md",
+      "linked_stories": [
+        "STORY-077",
+        "STORY-078",
+        "STORY-079",
+        "STORY-080",
+        "STORY-081",
+        "STORY-082"
+      ],
+      "title": "Version Management & Installation Lifecycle"
+    },
+    "EPIC-015": {
+      "features_count": 7,
+      "file_path": "devforgeai/specs/Epics/EPIC-015-epic-coverage-validation-traceability.epic.md",
+      "linked_stories": [
+        "STORY-083",
+        "STORY-084",
+        "STORY-085",
+        "STORY-086",
+        "STORY-087",
+        "STORY-088",
+        "STORY-089"
+      ],
+      "title": "Epic Coverage Validation & Requirements Traceability"
+    },
+    "EPIC-016": {
+      "features_count": 2,
+      "file_path": "devforgeai/specs/Epics/EPIC-016-memory-architecture-accuracy.epic.md",
+      "linked_stories": [],
+      "title": "Memory Architecture Accuracy Enhancement"
+    },
+    "EPIC-017": {
+      "features_count": 7,
+      "file_path": "devforgeai/specs/Epics/EPIC-017-parallel-task-orchestration.epic.md",
+      "linked_stories": [],
+      "title": "Parallel Task Orchestration for DevForgeAI"
+    },
+    "EPIC-018": {
+      "features_count": 5,
+      "file_path": "devforgeai/specs/Epics/EPIC-018-astgrep-foundation-core-rules.epic.md",
+      "linked_stories": [],
+      "title": "ast-grep Foundation & Core Rules"
+    },
+    "EPIC-019": {
+      "features_count": 5,
+      "file_path": "devforgeai/specs/Epics/EPIC-019-framework-integration.epic.md",
+      "linked_stories": [],
+      "title": "Framework Integration (Subagents + QA)"
+    },
+    "EPIC-020": {
+      "features_count": 4,
+      "file_path": "devforgeai/specs/Epics/EPIC-020-self-validation-dogfooding.epic.md",
+      "linked_stories": [],
+      "title": "Self-Validation & Dogfooding"
+    }
+  },
+  "generated_at": "2025-12-10T14:05:15-05:00",
+  "stories": {
+    "STORY-007": {
+      "epic_ref": "EPIC-002",
+      "file_path": "devforgeai/specs/Stories/STORY-007-post-operation-retrospective-conversation.story.md",
+      "status": "QA Approved",
+      "title": "Post-Operation Retrospective Conversation"
+    },
+    "STORY-008": {
+      "epic_ref": "EPIC-002",
+      "file_path": "devforgeai/specs/Stories/STORY-008-adaptive-questioning-engine.story.md",
+      "status": "QA Approved",
+      "title": "Adaptive Questioning Engine"
+    },
+    "STORY-009": {
+      "epic_ref": "EPIC-002",
+      "file_path": "devforgeai/specs/Stories/STORY-009-skip-pattern-tracking.story.md",
+      "status": "QA Approved",
+      "title": "Skip Pattern Tracking"
+    },
+    "STORY-010": {
+      "epic_ref": "EPIC-003",
+      "file_path": "devforgeai/specs/Stories/STORY-010-feedback-template-engine.story.md",
+      "status": "QA Approved",
+      "title": "Feedback Template Engine"
+    },
+    "STORY-011": {
+      "epic_ref": "EPIC-003",
+      "file_path": "devforgeai/specs/Stories/STORY-011-configuration-management.story.md",
+      "status": "QA Approved",
+      "title": "Configuration Management"
+    },
+    "STORY-012": {
+      "epic_ref": "EPIC-003",
+      "file_path": "devforgeai/specs/Stories/STORY-012-template-customization.story.md",
+      "status": "QA Approved",
+      "title": "Template Customization"
+    },
+    "STORY-013": {
+      "epic_ref": "EPIC-004",
+      "file_path": "devforgeai/specs/Stories/STORY-013-feedback-file-persistence.story.md",
+      "status": "QA Approved",
+      "title": "Feedback File Persistence with Atomic Writes"
+    },
+    "STORY-014": {
+      "epic_ref": "None",
+      "file_path": "devforgeai/specs/Stories/STORY-014-add-definition-of-done-to-story-template.story.md",
+      "status": "QA Approved",
+      "title": "Add Definition of Done Section to Story Template"
+    },
+    "STORY-015": {
+      "epic_ref": "None",
+      "file_path": "devforgeai/specs/Stories/STORY-015-comprehensive-testing-for-story-014-dod-template.story.md",
+      "status": "QA Approved",
+      "title": "Comprehensive Testing for STORY-014 DoD Template"
+    },
+    "STORY-016": {
+      "epic_ref": "EPIC-004",
+      "file_path": "devforgeai/specs/Stories/STORY-016-searchable-metadata-index.story.md",
+      "status": "QA Approved",
+      "title": "Searchable Metadata Index for Feedback Sessions"
+    },
+    "STORY-017": {
+      "epic_ref": "EPIC-004",
+      "file_path": "devforgeai/specs/Stories/STORY-017-cross-project-export-import.story.md",
+      "status": "QA Approved",
+      "title": "Cross-Project Export/Import for Feedback Sessions"
+    },
+    "STORY-018": {
+      "epic_ref": "EPIC-005",
+      "file_path": "devforgeai/specs/Stories/STORY-018-event-driven-hook-system.story.md",
+      "status": "Dev Complete",
+      "title": "Event-Driven Hook System"
+    },
+    "STORY-019": {
+      "epic_ref": "EPIC-005",
+      "file_path": "devforgeai/specs/Stories/STORY-019-operation-lifecycle-integration.story.md",
+      "status": "QA Approved",
+      "title": "Operation Lifecycle Integration"
+    },
+    "STORY-020": {
+      "epic_ref": "EPIC-005",
+      "file_path": "devforgeai/specs/Stories/STORY-020-feedback-cli-commands.story.md",
+      "status": "QA Approved",
+      "title": "Feedback CLI Commands"
+    },
+    "STORY-021": {
+      "epic_ref": "EPIC-006",
+      "file_path": "devforgeai/specs/Stories/STORY-021-implement-devforgeai-check-hooks-cli-command.story.md",
+      "status": "QA Approved",
+      "title": "Implement devforgeai check-hooks CLI command"
+    },
+    "STORY-022": {
+      "epic_ref": "EPIC-006",
+      "file_path": "devforgeai/specs/Stories/STORY-022-implement-devforgeai-invoke-hooks-cli-command.story.md",
+      "status": "QA Approved",
+      "title": "Implement devforgeai invoke-hooks CLI command"
+    },
+    "STORY-023": {
+      "epic_ref": "EPIC-006",
+      "file_path": "devforgeai/specs/Stories/STORY-023-wire-hooks-into-dev-command-pilot.story.md",
+      "status": "QA Approved",
+      "title": "Wire hooks into /dev command (pilot)"
+    },
+    "STORY-024": {
+      "epic_ref": "EPIC-006",
+      "file_path": "devforgeai/specs/Stories/STORY-024-wire-hooks-into-qa-command.story.md",
+      "status": "QA Approved",
+      "title": "Wire hooks into /qa command"
+    },
+    "STORY-025": {
+      "epic_ref": "EPIC-006",
+      "file_path": "devforgeai/specs/Stories/STORY-025-wire-hooks-into-release-command.story.md",
+      "status": "Dev Complete",
+      "title": "Wire hooks into /release command"
+    },
+    "STORY-026": {
+      "epic_ref": "EPIC-006",
+      "file_path": "devforgeai/specs/Stories/STORY-026-wire-hooks-into-orchestrate-command.story.md",
+      "status": "QA Approved",
+      "title": "Wire hooks into /orchestrate command"
+    },
+    "STORY-027": {
+      "epic_ref": "EPIC-006",
+      "file_path": "devforgeai/specs/Stories/STORY-027-wire-hooks-into-create-story-command.story.md",
+      "status": "QA Approved",
+      "title": "Wire Hooks Into /create-story Command"
+    },
+    "STORY-028": {
+      "epic_ref": "EPIC-006",
+      "file_path": "devforgeai/specs/Stories/STORY-028-wire-hooks-into-create-epic-command.story.md",
+      "status": "QA Approved",
+      "title": "Wire Hooks Into /create-epic Command"
+    },
+    "STORY-029": {
+      "epic_ref": "EPIC-006",
+      "file_path": "devforgeai/specs/Stories/STORY-029-wire-hooks-into-create-sprint-command.story.md",
+      "status": "QA Approved",
+      "title": "Wire hooks into create-sprint command"
+    },
+    "STORY-030": {
+      "epic_ref": "EPIC-006",
+      "file_path": "devforgeai/specs/Stories/STORY-030-wire-hooks-into-create-context-command.story.md",
+      "status": "QA Approved",
+      "title": "Wire hooks into /create-context command"
+    },
+    "STORY-031": {
+      "epic_ref": "EPIC-006",
+      "file_path": "devforgeai/specs/Stories/STORY-031-wire-hooks-into-ideate-command.story.md",
+      "status": "QA Approved",
+      "title": "Wire hooks into /ideate command"
+    },
+    "STORY-032": {
+      "epic_ref": "EPIC-006",
+      "file_path": "devforgeai/specs/Stories/STORY-032-wire-hooks-into-create-ui-command.story.md",
+      "status": "QA Approved",
+      "title": "Wire hooks into /create-ui command"
+    },
+    "STORY-033": {
+      "epic_ref": "EPIC-006",
+      "file_path": "devforgeai/specs/Stories/STORY-033-wire-hooks-into-audit-deferrals-command.story.md",
+      "status": "Dev Complete",
+      "title": "Wire hooks into /audit-deferrals command"
+    },
+    "STORY-034": {
+      "epic_ref": "EPIC-007",
+      "file_path": "devforgeai/specs/Stories/STORY-034-refactor-qa-command-move-phases-to-skill.story.md",
+      "status": "QA Approved",
+      "title": "Refactor /qa command - Move Phases 4 & 5 to skill"
+    },
+    "STORY-035": {
+      "epic_ref": "EPIC-007",
+      "file_path": "devforgeai/specs/Stories/STORY-035-internet-sleuth-framework-compliance.story.md",
+      "status": "Dev Complete",
+      "title": "Internet-Sleuth Framework Compliance (Phase 1 Migration)"
+    },
+    "STORY-036": {
+      "epic_ref": "EPIC-007",
+      "file_path": "devforgeai/specs/Stories/STORY-036-internet-sleuth-deep-integration.story.md",
+      "status": "QA Approved",
+      "title": "Internet-Sleuth Deep Integration (Phase 2 Migration)"
+    },
+    "STORY-037": {
+      "epic_ref": "EPIC-007",
+      "file_path": "devforgeai/specs/Stories/STORY-037-audit-commands-pattern-compliance.story.md",
+      "status": "QA Approved",
+      "title": "Audit All Commands for Lean Orchestration Pattern Compliance"
+    },
+    "STORY-038": {
+      "epic_ref": "EPIC-007",
+      "file_path": "devforgeai/specs/Stories/STORY-038-refactor-release-command-lean-orchestration.story.md",
+      "status": "QA Approved",
+      "title": "Refactor /release Command for Lean Orchestration Compliance"
+    },
+    "STORY-039": {
+      "epic_ref": "EPIC-007",
+      "file_path": "devforgeai/specs/Stories/STORY-039-update-framework-documentation-lean-orchestration.story.md",
+      "status": "QA Approved",
+      "title": "Update Framework Documentation for Lean Orchestration Pattern"
+    },
+    "STORY-040": {
+      "epic_ref": "EPIC-008",
+      "file_path": "devforgeai/specs/Stories/STORY-040-devforgeai-documentation-skill.story.md",
+      "status": "Dev Complete",
+      "title": "DevForgeAI Documentation Skill and Command"
+    },
+    "STORY-041": {
+      "epic_ref": "EPIC-009",
+      "file_path": "devforgeai/specs/Stories/STORY-041-create-src-directory-structure.story.md",
+      "status": "QA Approved",
+      "title": "Create src/ Directory Structure with .gitignore and version.json"
+    },
+    "STORY-042": {
+      "epic_ref": "EPIC-009",
+      "file_path": "devforgeai/specs/Stories/STORY-042-copy-framework-files-to-src.story.md",
+      "status": "QA Approved",
+      "title": "Copy Framework Files from Operational Folders to src/"
+    },
+    "STORY-043": {
+      "epic_ref": "EPIC-009",
+      "file_path": "devforgeai/specs/Stories/STORY-043-update-path-references-to-src.story.md",
+      "status": "QA Approved",
+      "title": "Update Internal Path References from .claude/ to src/claude/"
+    },
+    "STORY-044": {
+      "epic_ref": "EPIC-009",
+      "file_path": "devforgeai/specs/Stories/STORY-044-comprehensive-testing-src-structure.story.md",
+      "status": "QA Approved",
+      "title": "Comprehensive Testing of src/ Structure Before Installer Development"
+    },
+    "STORY-045": {
+      "epic_ref": "EPIC-009",
+      "file_path": "devforgeai/specs/Stories/STORY-045-version-aware-installer-core.story.md",
+      "status": "QA Approved",
+      "title": "Version-Aware Installer with Backup and Rollback Capability"
+    },
+    "STORY-046": {
+      "epic_ref": "EPIC-009",
+      "file_path": "devforgeai/specs/Stories/STORY-046-claude-md-template-merge-logic.story.md",
+      "status": "QA Approved",
+      "title": "CLAUDE.md Template Merge with Variable Substitution and Conflict Resolution"
+    },
+    "STORY-047": {
+      "epic_ref": "EPIC-009",
+      "file_path": "devforgeai/specs/Stories/STORY-047-external-project-integration-testing.story.md",
+      "status": "QA Approved",
+      "title": "Full Installation Testing on External Node.js and .NET Projects"
+    },
+    "STORY-048": {
+      "epic_ref": "EPIC-009",
+      "file_path": "devforgeai/specs/Stories/STORY-048-production-cutover-documentation.story.md",
+      "status": "QA Approved",
+      "title": "Production Cutover, Documentation, and Distribution Package"
+    },
+    "STORY-049": {
+      "epic_ref": "EPIC-007",
+      "file_path": "devforgeai/specs/Stories/STORY-049-refactor-create-context-budget-compliance.story.md",
+      "status": "QA Approved",
+      "title": "Refactor /create-context command budget compliance"
+    },
+    "STORY-050": {
+      "epic_ref": "TBD",
+      "file_path": "devforgeai/specs/Stories/STORY-050-refactor-audit-deferrals-budget-compliance.story.md",
+      "status": "QA Approved",
+      "title": "Refactor /audit-deferrals command for budget compliance"
+    },
+    "STORY-051": {
+      "epic_ref": "null",
+      "file_path": "devforgeai/specs/Stories/STORY-051-refactor-dev-command-lean-orchestration.story.md",
+      "status": "QA Approved",
+      "title": "Refactor /dev Command to Lean Orchestration Pattern"
+    },
+    "STORY-052": {
+      "epic_ref": "EPIC-011",
+      "file_path": "devforgeai/specs/Stories/STORY-052-user-facing-prompting-guide.story.md",
+      "status": "QA Approved",
+      "title": "User-Facing Prompting Guide Documentation"
+    },
+    "STORY-053": {
+      "epic_ref": "EPIC-011",
+      "file_path": "devforgeai/specs/Stories/STORY-053-framework-internal-guidance-reference.story.md",
+      "status": "QA Approved",
+      "title": "Framework-Internal Guidance Reference"
+    },
+    "STORY-054": {
+      "epic_ref": "EPIC-011",
+      "file_path": "devforgeai/specs/Stories/STORY-054-claude-code-terminal-expert-enhancement.story.md",
+      "status": "QA Approved",
+      "title": "claude-code-terminal-expert Prompting Guidance Enhancement"
+    },
+    "STORY-055": {
+      "epic_ref": "EPIC-011",
+      "file_path": "devforgeai/specs/Stories/STORY-055-devforgeai-ideation-integration.story.md",
+      "status": "QA Approved",
+      "title": "devforgeai-ideation Skill Integration with User Input Guidance"
+    },
+    "STORY-056": {
+      "epic_ref": "EPIC-011",
+      "file_path": "devforgeai/specs/Stories/STORY-056-devforgeai-story-creation-integration.story.md",
+      "status": "QA Approved",
+      "title": "devforgeai-story-creation Skill Integration with User Input Guidance"
+    },
+    "STORY-057": {
+      "epic_ref": "EPIC-011",
+      "file_path": "devforgeai/specs/Stories/STORY-057-additional-skill-integrations.story.md",
+      "status": "QA Approved",
+      "title": "Additional Skill Integrations (architecture, ui-generator, orchestration)"
+    },
+    "STORY-058": {
+      "epic_ref": "EPIC-011",
+      "file_path": "devforgeai/specs/Stories/STORY-058-documentation-updates.story.md",
+      "status": "QA Approved",
+      "title": "Documentation Updates with User Input Guidance Cross-References"
+    },
+    "STORY-059": {
+      "epic_ref": "EPIC-011",
+      "file_path": "devforgeai/specs/Stories/STORY-059-user-input-guidance-validation.story.md",
+      "status": "QA Approved",
+      "title": "User Input Guidance Validation & Testing"
+    },
+    "STORY-060": {
+      "epic_ref": "EPIC-011",
+      "file_path": "devforgeai/specs/Stories/STORY-060-operational-sync.story.md",
+      "status": "Superseded",
+      "title": "Operational Sync for User Input Guidance System"
+    },
+    "STORY-061": {
+      "epic_ref": "",
+      "file_path": "devforgeai/specs/Stories/STORY-061-coverage-analyzer-subagent.story.md",
+      "status": "QA Approved",
+      "title": "Implement coverage-analyzer subagent for test coverage analysis"
+    },
+    "STORY-062": {
+      "epic_ref": "",
+      "file_path": "devforgeai/specs/Stories/STORY-062-anti-pattern-scanner-subagent.story.md",
+      "status": "QA Approved",
+      "title": "Implement anti-pattern-scanner subagent for architecture violation detection"
+    },
+    "STORY-063": {
+      "epic_ref": "",
+      "file_path": "devforgeai/specs/Stories/STORY-063-code-quality-auditor-subagent.story.md",
+      "status": "QA Approved",
+      "title": "Implement code-quality-auditor subagent for code quality metrics analysis"
+    },
+    "STORY-064": {
+      "epic_ref": "EPIC-011",
+      "file_path": "devforgeai/specs/Stories/STORY-064-story-creation-integration-validation.story.md",
+      "status": "QA Approved",
+      "title": "devforgeai-story-creation Integration Validation and Test Execution"
+    },
+    "STORY-065": {
+      "epic_ref": "EPIC-011",
+      "file_path": "devforgeai/specs/Stories/STORY-065-operational-sync-lightweight.story.md",
+      "status": "Dev Complete",
+      "title": "Operational Sync for User Input Guidance System (Lightweight)"
+    },
+    "STORY-066": {
+      "epic_ref": "EPIC-012",
+      "file_path": "devforgeai/specs/Stories/STORY-066-npm-package-creation-structure.story.md",
+      "status": "QA Approved",
+      "title": "NPM Package Creation & Structure"
+    },
+    "STORY-067": {
+      "epic_ref": "EPIC-012",
+      "file_path": "devforgeai/specs/Stories/STORY-067-npm-registry-publishing-workflow.story.md",
+      "status": "QA Approved",
+      "title": "NPM Registry Publishing Workflow"
+    },
+    "STORY-068": {
+      "epic_ref": "EPIC-012",
+      "file_path": "devforgeai/specs/Stories/STORY-068-global-cli-entry-point.story.md",
+      "status": "QA Approved",
+      "title": "Global CLI Entry Point"
+    },
+    "STORY-069": {
+      "epic_ref": "EPIC-012",
+      "file_path": "devforgeai/specs/Stories/STORY-069-offline-installation-support.story.md",
+      "status": "Dev Complete",
+      "title": "Offline Installation Support"
+    },
+    "STORY-070": {
+      "epic_ref": "EPIC-012",
+      "file_path": "devforgeai/specs/Stories/STORY-070-framework-release-automation.story.md",
+      "status": "QA Approved",
+      "title": "Framework Release Automation"
+    },
+    "STORY-071": {
+      "epic_ref": "EPIC-013",
+      "file_path": "devforgeai/specs/Stories/STORY-071-wizard-driven-interactive-ui.story.md",
+      "status": "QA Approved",
+      "title": "Wizard-Driven Interactive UI"
+    },
+    "STORY-072": {
+      "epic_ref": "EPIC-013",
+      "file_path": "devforgeai/specs/Stories/STORY-072-pre-flight-validation-checks.story.md",
+      "status": "QA Approved",
+      "title": "Pre-Flight Validation Checks"
+    },
+    "STORY-073": {
+      "epic_ref": "EPIC-013",
+      "file_path": "devforgeai/specs/Stories/STORY-073-auto-detection.story.md",
+      "status": "QA Approved",
+      "title": "Auto-Detection (Project Type & Existing Installs)"
+    },
+    "STORY-074": {
+      "epic_ref": "EPIC-013",
+      "file_path": "devforgeai/specs/Stories/STORY-074-comprehensive-error-handling.story.md",
+      "status": "QA Approved",
+      "title": "Comprehensive Error Handling"
+    },
+    "STORY-075": {
+      "epic_ref": "EPIC-013",
+      "file_path": "devforgeai/specs/Stories/STORY-075-installation-reporting-logging.story.md",
+      "status": "QA Approved",
+      "title": "Installation Reporting & Logging"
+    },
+    "STORY-076": {
+      "epic_ref": "EPIC-013",
+      "file_path": "devforgeai/specs/Stories/STORY-076-claudemd-smart-merge.story.md",
+      "status": "QA Approved",
+      "title": "CLAUDE.md Smart Merge"
+    },
+    "STORY-077": {
+      "epic_ref": "EPIC-014",
+      "file_path": "devforgeai/specs/Stories/STORY-077-version-detection-compatibility.story.md",
+      "status": "QA Approved",
+      "title": "Version Detection & Compatibility Checking"
+    },
+    "STORY-078": {
+      "epic_ref": "EPIC-014",
+      "file_path": "devforgeai/specs/Stories/STORY-078-upgrade-mode-migration-scripts.story.md",
+      "status": "QA Approved ✅",
+      "title": "Upgrade Mode with Migration Scripts"
+    },
+    "STORY-079": {
+      "epic_ref": "EPIC-014",
+      "file_path": "devforgeai/specs/Stories/STORY-079-fix-repair-installation-mode.story.md",
+      "status": "QA Approved",
+      "title": "Fix/Repair Installation Mode"
+    },
+    "STORY-080": {
+      "epic_ref": "EPIC-014",
+      "file_path": "devforgeai/specs/Stories/STORY-080-rollback-previous-version.story.md",
+      "status": "QA Approved",
+      "title": "Rollback to Previous Version"
+    },
+    "STORY-081": {
+      "epic_ref": "EPIC-014",
+      "file_path": "devforgeai/specs/Stories/STORY-081-uninstall-user-content-preservation.story.md",
+      "status": "QA Approved ✅",
+      "title": "Uninstall with User Content Preservation"
+    },
+    "STORY-082": {
+      "epic_ref": "EPIC-014",
+      "file_path": "devforgeai/specs/Stories/STORY-082-version-aware-config-management.story.md",
+      "status": "QA Approved",
+      "title": "Version-Aware Configuration Management"
+    },
+    "STORY-083": {
+      "epic_ref": "EPIC-015",
+      "file_path": "devforgeai/specs/Stories/STORY-083-requirements-traceability-matrix.story.md",
+      "status": "QA Approved",
+      "title": "Requirements Traceability Matrix Foundation"
+    },
+    "STORY-084": {
+      "epic_ref": "EPIC-015",
+      "file_path": "devforgeai/specs/Stories/STORY-084-epic-story-metadata-parser.story.md",
+      "status": "Dev Complete",
+      "title": "Epic & Story Metadata Parser"
+    },
+    "STORY-085": {
+      "epic_ref": "EPIC-015",
+      "file_path": "devforgeai/specs/Stories/STORY-085-gap-detection-engine.story.md",
+      "status": "Backlog",
+      "title": "Gap Detection Engine"
+    },
+    "STORY-086": {
+      "epic_ref": "EPIC-015",
+      "file_path": "devforgeai/specs/Stories/STORY-086-coverage-reporting-system.story.md",
+      "status": "Backlog",
+      "title": "Coverage Reporting System"
+    },
+    "STORY-087": {
+      "epic_ref": "EPIC-015",
+      "file_path": "devforgeai/specs/Stories/STORY-087-slash-command-interface.story.md",
+      "status": "Backlog",
+      "title": "Slash Command Interface for Epic Coverage Validation"
+    },
+    "STORY-088": {
+      "epic_ref": "EPIC-015",
+      "file_path": "devforgeai/specs/Stories/STORY-088-create-story-integration.story.md",
+      "status": "Backlog",
+      "title": "/create-story Integration for Gap Resolution"
+    },
+    "STORY-089": {
+      "epic_ref": "EPIC-015",
+      "file_path": "devforgeai/specs/Stories/STORY-089-devforgeai-command-integration.story.md",
+      "status": "Backlog",
+      "title": "Integration with DevForgeAI Commands"
+    },
+    "STORY-090": {
+      "epic_ref": "EPIC-010",
+      "file_path": "devforgeai/specs/Stories/STORY-090-story-template-v2.2-depends-on-field.story.md",
+      "status": "Ready for Dev",
+      "title": "Update Story Template to v2.2 with depends_on Field"
+    },
+    "STORY-091": {
+      "epic_ref": "EPIC-010",
+      "file_path": "devforgeai/specs/Stories/STORY-091-git-worktree-auto-management.story.md",
+      "status": "Ready for Dev",
+      "title": "Git Worktree Auto-Management"
+    },
+    "STORY-092": {
+      "epic_ref": "EPIC-010",
+      "file_path": "devforgeai/specs/Stories/STORY-092-story-scoped-test-isolation.story.md",
+      "status": "Ready for Dev",
+      "title": "Story-Scoped Test Isolation"
+    },
+    "STORY-093": {
+      "epic_ref": "EPIC-010",
+      "file_path": "devforgeai/specs/Stories/STORY-093-dependency-graph-enforcement.story.md",
+      "status": "Ready for Dev",
+      "title": "Dependency Graph Enforcement with Transitive Resolution"
+    },
+    "STORY-094": {
+      "epic_ref": "EPIC-010",
+      "file_path": "devforgeai/specs/Stories/STORY-094-file-overlap-detection.story.md",
+      "status": "Ready for Dev",
+      "title": "File Overlap Detection with Hybrid Analysis"
+    },
+    "STORY-095": {
+      "epic_ref": "EPIC-010",
+      "file_path": "devforgeai/specs/Stories/STORY-095-worktrees-management-command.story.md",
+      "status": "Ready for Dev",
+      "title": "/worktrees Management Command"
+    },
+    "STORY-096": {
+      "epic_ref": "EPIC-010",
+      "file_path": "devforgeai/specs/Stories/STORY-096-lock-file-coordination.story.md",
+      "status": "Ready for Dev",
+      "title": "Lock File Coordination for Critical Operations"
+    },
+    "STORY-097": {
+      "epic_ref": "EPIC-010",
+      "file_path": "devforgeai/specs/Stories/STORY-097-github-actions-workflow-templates.story.md",
+      "status": "Backlog",
+      "title": "GitHub Actions Workflow Templates with Headless Claude Code"
+    },
+    "STORY-098": {
+      "epic_ref": "EPIC-010",
+      "file_path": "devforgeai/specs/Stories/STORY-098-headless-mode-answer-configuration.story.md",
+      "status": "Backlog",
+      "title": "Headless Mode Answer Configuration"
+    },
+    "STORY-099": {
+      "epic_ref": "EPIC-016",
+      "file_path": "devforgeai/specs/Stories/STORY-099-baseline-metrics-collection.story.md",
+      "status": "Backlog",
+      "title": "Baseline Metrics Collection"
+    },
+    "STORY-100": {
+      "epic_ref": "EPIC-016",
+      "file_path": "devforgeai/specs/Stories/STORY-100-accuracy-tracking-log-setup.story.md",
+      "status": "Backlog",
+      "title": "Accuracy Tracking Log Setup"
+    },
+    "STORY-101": {
+      "epic_ref": "EPIC-016",
+      "file_path": "devforgeai/specs/Stories/STORY-101-citation-format-standards.story.md",
+      "status": "Backlog",
+      "title": "Citation Format Standards"
+    },
+    "STORY-102": {
+      "epic_ref": "EPIC-016",
+      "file_path": "devforgeai/specs/Stories/STORY-102-evidence-based-grounding-protocol.story.md",
+      "status": "Backlog",
+      "title": "Evidence-Based Grounding Protocol"
+    }
+  },
+  "validation": {
+    "broken_references": [
+      "STORY-050"
+    ],
+    "intentionally_standalone": [
+      "STORY-014",
+      "STORY-015"
+    ],
+    "missing_metadata": [
+      "STORY-051",
+      "STORY-061",
+      "STORY-062",
+      "STORY-063"
+    ],
+    "summary": {
+      "total_orphans": 7
+    }
+  },
+  "version": "1.0.0"
+}

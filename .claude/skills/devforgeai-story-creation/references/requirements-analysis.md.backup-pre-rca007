@@ -1,0 +1,201 @@
+# Phase 2: Requirements Analysis
+
+Generate user story and acceptance criteria using requirements-analyst subagent.
+
+## Overview
+
+This phase transforms the feature description into structured user story format and testable acceptance criteria following DevForgeAI standards.
+
+---
+
+## Step 2.1: Invoke Requirements Analyst Subagent
+
+**Objective:** Generate user story, acceptance criteria, edge cases, and NFRs
+
+**Prepare detailed prompt for subagent:**
+
+```
+Task(
+  subagent_type="requirements-analyst",
+  description="Generate user story",
+  prompt="""Transform feature description into structured user story for DevForgeAI framework.
+
+Feature Description: {feature_description}
+
+Story Context:
+- Story ID: {story_id}
+- Epic: {epic_id or 'None'}
+- Priority: {priority}
+- Points: {points}
+
+Generate:
+
+1. **User Story** (As a/I want/So that format)
+   - Role: Specific user type (not generic "user")
+   - Action: What the user wants to do
+   - Benefit: Why this matters (business value)
+
+2. **Acceptance Criteria** (Given/When/Then format, minimum 3)
+   - Happy path scenario
+   - Error/edge case scenarios
+   - Data validation scenarios
+   - Each criterion must be testable (can verify pass/fail)
+
+3. **Edge Cases** (minimum 2)
+   - Boundary conditions
+   - Error conditions
+   - Concurrent access scenarios
+   - Data corruption scenarios
+
+4. **Data Validation Rules**
+   - Input constraints
+   - Format requirements
+   - Business rule validations
+
+5. **Non-Functional Requirements**
+   - Performance: Response time targets (e.g., <500ms)
+   - Security: Authentication, authorization, encryption needs
+   - Usability: User experience requirements
+   - Scalability: Concurrent user targets
+
+DevForgeAI Standards:
+- No vague terms ("fast", "secure", "user-friendly" without metrics)
+- All NFRs must be measurable
+- All acceptance criteria must be testable
+- Follow spec-driven development principles
+
+Output Format: Markdown with clear sections
+"""
+)
+```
+
+**Expected subagent output:**
+- User story in proper format
+- 3+ acceptance criteria (Given/When/Then)
+- Edge cases list
+- Data validation rules
+- Quantified NFRs
+
+---
+
+## Step 2.2: Validate Subagent Output
+
+**Objective:** Ensure requirements meet DevForgeAI quality standards
+
+**Load acceptance criteria patterns for validation:**
+```
+Read(file_path=".claude/skills/devforgeai-story-creation/references/acceptance-criteria-patterns.md")
+```
+
+**Validation checks:**
+
+```
+Validate user story:
+- [ ] Follows "As a [role], I want [action], so that [benefit]" format
+- [ ] Role is specific (not "user", but "customer", "admin", "developer")
+- [ ] Action is clear and unambiguous
+- [ ] Benefit articulates business value
+
+Validate acceptance criteria:
+- [ ] Minimum 3 criteria
+- [ ] Each follows Given/When/Then structure
+- [ ] At least 1 happy path scenario
+- [ ] At least 1 error/edge case scenario
+- [ ] All criteria are testable (can write automated test)
+- [ ] No ambiguous language ("should", "might", "could")
+
+Validate NFRs:
+- [ ] Performance targets quantified (e.g., "<500ms response time")
+- [ ] Security requirements specific (e.g., "OAuth2 authentication, JWT tokens")
+- [ ] No vague terms without metrics
+
+If validation fails:
+    # Re-invoke requirements-analyst with specific feedback
+    # Or use AskUserQuestion to fill gaps
+```
+
+---
+
+## Step 2.3: Refine if Incomplete
+
+**Objective:** Fill gaps in subagent output via user questions
+
+**If subagent output incomplete or vague:**
+
+```
+Use AskUserQuestion to clarify:
+
+Example: If NFR says "fast"
+Question: "What performance target is acceptable?"
+Options:
+  - "High performance (<100ms response, >10k concurrent users)"
+  - "Standard performance (<500ms response, 1k-10k users)"
+  - "Moderate performance (<2s response, <1k users)"
+
+Example: If acceptance criteria vague
+Question: "What specific behavior should be tested?"
+Options:
+  - Provide examples of good AC
+  - Ask for edge cases
+  - Request error scenarios
+```
+
+---
+
+## Subagent Coordination
+
+**Subagent used:** requirements-analyst
+
+**Invoked by:** This phase (Step 2.1)
+
+**Input provided:**
+- Feature description
+- Story metadata (ID, epic, priority, points)
+- DevForgeAI standards
+
+**Output expected:**
+- User story
+- 3+ acceptance criteria
+- Edge cases
+- Data validation rules
+- Measurable NFRs
+
+**Reference files used by subagent:**
+- acceptance-criteria-patterns.md (1,259 lines - Given/When/Then templates)
+
+---
+
+## Output
+
+**Phase 2 produces:**
+- ✅ User story in proper format
+- ✅ 3+ testable acceptance criteria
+- ✅ Edge cases documented
+- ✅ Data validation rules defined
+- ✅ Measurable NFRs
+
+---
+
+## Error Handling
+
+**Error 1: Subagent output incomplete**
+- **Detection:** Missing user story, <3 AC, or vague NFRs
+- **Recovery:** Re-invoke with specific feedback, or use AskUserQuestion to fill gaps
+
+**Error 2: Acceptance criteria not testable**
+- **Detection:** AC uses ambiguous language ("should", "might", "could")
+- **Recovery:** Refine with specific assertions ("must", "will", "shall")
+
+**Error 3: NFRs not measurable**
+- **Detection:** Terms like "fast", "secure", "scalable" without metrics
+- **Recovery:** Use AskUserQuestion to quantify targets
+
+See `error-handling.md` for comprehensive error recovery procedures.
+
+---
+
+## Next Phase
+
+**After Phase 2 completes →** Phase 3: Technical Specification
+
+Load `technical-specification-creation.md` for Phase 3 workflow.

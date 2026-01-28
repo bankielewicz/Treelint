@@ -1,0 +1,29 @@
+{
+  "version": "1.0.0",
+  "description": "Configuration for Epic Coverage Reporting System",
+  "color_thresholds": {
+    "green": 100,
+    "yellow": 50,
+    "red": 0
+  },
+  "directories": {
+    "epics": ".ai_docs/Epics",
+    "stories": ".ai_docs/Stories",
+    "reports": "devforgeai/epic-coverage/reports",
+    "history": "devforgeai/epic-coverage/history"
+  },
+  "output_formats": [
+    "terminal",
+    "markdown",
+    "json"
+  ],
+  "limits": {
+    "max_actionable_items": 10,
+    "max_history_entries": 10000
+  },
+  "patterns": {
+    "epic_id": "^EPIC-[0-9]{3}$",
+    "story_id": "^STORY-[0-9]{3}$",
+    "coverage_percent": "0-100"
+  }
+}

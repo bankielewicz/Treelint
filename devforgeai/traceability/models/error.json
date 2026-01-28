@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "devforgeai-error-schema-v1",
+  "title": "ParsingError",
+  "description": "JSON schema for structured parsing error objects",
+  "type": "object",
+  "required": ["error_type", "file_path", "error_message"],
+  "properties": {
+    "error_type": {
+      "type": "string",
+      "enum": [
+        "MALFORMED_YAML",
+        "MISSING_FRONTMATTER",
+        "INVALID_FIELD",
+        "VALIDATION_ERROR",
+        "DUPLICATE_ID"
+      ],
+      "description": "Type of parsing error encountered"
+    },
+    "file_path": {
+      "type": "string",
+      "description": "Path to the file that caused the error"
+    },
+    "line_number": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Line number where error occurred (if applicable)"
+    },
+    "error_message": {
+      "type": "string",
+      "description": "Human-readable error description"
+    },
+    "field": {
+      "type": "string",
+      "description": "Field name that caused the error (for INVALID_FIELD type)"
+    },
+    "value": {
+      "type": "string",
+      "description": "Invalid value that was found"
+    },
+    "expected": {
+      "type": "string",
+      "description": "Expected value or pattern"
+    },
+    "needs_remediation": {
+      "type": "boolean",
+      "description": "Whether the file needs manual remediation"
+    },
+    "recovery_suggestion": {
+      "type": "string",
+      "description": "Suggested action to fix the error"
+    },
+    "extracted_id": {
+      "type": "string",
+      "description": "ID extracted via fallback method (for MISSING_FRONTMATTER)"
+    }
+  }
+}

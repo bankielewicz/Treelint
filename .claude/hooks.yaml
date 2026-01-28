@@ -1,0 +1,107 @@
+# DevForgeAI Hook Registry Configuration (Operational Location)
+#
+# This file is discovered by Claude Code Terminal for hook invocation.
+# Main configuration is stored at: devforgeai/config/hooks.yaml
+#
+# For complete schema reference, see:
+# .claude/skills/devforgeai-feedback/HOOK-SYSTEM.md
+
+# ============================================================================
+# Global Hook Settings
+# ============================================================================
+
+enabled: true
+
+global_rules:
+  trigger_on: all  # all | failures-only | none
+
+# ============================================================================
+# Post Tool Call Hooks (STORY-151)
+# ============================================================================
+
+post_tool_call:
+  hooks:
+    - name: post-subagent-recording
+      script: devforgeai/hooks/post-subagent-recording.sh
+      blocking: false
+      filter:
+        tool: Task
+        has_param: subagent_type
+      description: "Records subagent invocations to phase state file for audit trail"
+      tags: [phase-enforcement, audit, story-151]
+      metadata:
+        story_id: "STORY-151"
+        implementation_date: "2025-12-28"
+
+# ============================================================================
+# Command Hooks
+# ============================================================================
+
+hooks:
+  # Post-Development Feedback
+  - id: post-dev-feedback
+    name: "Post-Development Feedback"
+    operation_type: command
+    operation_pattern: "dev"
+    trigger_status: [success, partial]
+    trigger_conditions:
+      operation_duration_min_ms: 300000
+      user_approval_required: true
+    feedback_type: conversation
+    feedback_config:
+      mode: "focused"
+      questions:
+        - "What challenges did you encounter during TDD?"
+        - "Were acceptance criteria clear and testable?"
+        - "Did you defer any DoD items? Why?"
+    max_duration_ms: 5000
+    enabled: true
+    tags: [development, feedback, tdd, pilot]
+
+  # AI Analysis: Post-Development Architectural Review
+  - id: post-dev-ai-analysis
+    name: "Post-Development AI Architectural Analysis"
+    operation_type: command
+    operation_pattern: "^dev$"
+    trigger_status: [success, partial, failure]
+    trigger_conditions:
+      user_approval_required: false
+    feedback_type: ai_analysis
+    feedback_config:
+      mode: "architectural"
+      analysis_prompts:
+        - what_worked_well
+        - areas_for_improvement
+        - recommendations
+        - patterns_observed
+        - anti_patterns_detected
+        - constraint_analysis
+      constraint_check: "claude-code-terminal"
+      storage_path: "devforgeai/feedback/ai-analysis/"
+    max_duration_ms: 30000
+    enabled: true
+    tags: [ai-analysis, architectural, dev, framework-improvement]
+
+  # AI Analysis: Post-QA Architectural Review
+  - id: post-qa-ai-analysis
+    name: "Post-QA AI Architectural Analysis"
+    operation_type: command
+    operation_pattern: "^qa$"
+    trigger_status: [success, partial, failure]
+    trigger_conditions:
+      user_approval_required: false
+    feedback_type: ai_analysis
+    feedback_config:
+      mode: "architectural"
+      analysis_prompts:
+        - what_worked_well
+        - areas_for_improvement
+        - recommendations
+        - patterns_observed
+        - anti_patterns_detected
+        - constraint_analysis
+      constraint_check: "claude-code-terminal"
+      storage_path: "devforgeai/feedback/ai-analysis/"
+    max_duration_ms: 30000
+    enabled: true
+    tags: [ai-analysis, architectural, qa, framework-improvement]

@@ -1,0 +1,303 @@
+# Phase 3: Technical Specification Creation
+
+Generate technical specifications including API contracts, data models, business rules, and dependencies.
+
+## Overview
+
+This phase creates the technical foundation for implementation, defining APIs, data structures, business logic, and external dependencies.
+
+---
+
+## Step 3.1: Detect API Requirements
+
+**Objective:** Determine if story requires API endpoints
+
+**Keyword analysis on feature description and acceptance criteria:**
+
+```
+api_keywords = ["API", "endpoint", "REST", "GraphQL", "request", "response",
+                "POST", "GET", "PUT", "DELETE", "fetch", "call"]
+
+requires_api = any(keyword in feature_description.upper() or
+                   keyword in ac_text.upper()
+                   for keyword in api_keywords)
+```
+
+**If API detected or uncertain:**
+```
+AskUserQuestion(
+  questions=[{
+    question: "Does this story require API endpoints?",
+    header: "API needed",
+    options: [
+      {
+        label: "Yes - backend API",
+        description: "HTTP endpoints for data operations"
+      },
+      {
+        label: "No - frontend only",
+        description: "No backend API needed"
+      },
+      {
+        label: "No - backend logic without HTTP API",
+        description: "Business logic but no HTTP endpoints"
+      }
+    ],
+    multiSelect: false
+  }]
+)
+```
+
+---
+
+## Step 3.2: Generate API Contracts (If Needed)
+
+**Objective:** Design API contracts using api-designer subagent
+
+**Invoke API designer subagent:**
+
+```
+if requires_api:
+    Task(
+      subagent_type="api-designer",
+      description="Design API contracts",
+      prompt="""Design API contracts for user story following DevForgeAI standards.
+
+User Story: {user_story}
+
+Acceptance Criteria:
+{acceptance_criteria_list}
+
+Generate API contracts in OpenAPI 3.0 style:
+
+1. **HTTP Method and Endpoint Path**
+   - RESTful conventions (nouns for resources, verbs for actions)
+   - Example: POST /api/users, GET /api/users/{id}
+
+2. **Request Schema**
+   - Headers (Content-Type, Authorization)
+   - Query parameters (with types and constraints)
+   - Request body (JSON schema with validation rules)
+
+3. **Response Schemas**
+   - Success responses (200, 201, 204)
+   - Error responses (400, 401, 403, 404, 422, 500)
+   - Include all fields with types
+
+4. **Authentication Requirements**
+   - Auth method (Bearer token, API key, OAuth2)
+   - Required scopes/permissions
+
+5. **Validation Rules**
+   - Input validation (required fields, formats, ranges)
+   - Business rule validation
+
+Context: DevForgeAI framework, tech-stack.md compliance required
+
+Output Format: Markdown with JSON schemas
+"""
+    )
+```
+
+**Validate API designer output:**
+```
+API contract must include:
+- [ ] HTTP method (GET, POST, PUT, DELETE, PATCH)
+- [ ] Endpoint path (RESTful naming)
+- [ ] Request schema (if POST/PUT/PATCH)
+- [ ] Success response schema (200, 201, etc.)
+- [ ] Error response schemas (400, 401, 403, 404, 500)
+- [ ] Status codes documented
+- [ ] Authentication requirements specified
+- [ ] Validation rules defined
+```
+
+**Load technical specification guide for templates:**
+```
+Read(file_path=".claude/skills/devforgeai-story-creation/references/technical-specification-guide.md")
+```
+
+---
+
+## Step 3.3: Define Data Models
+
+**Objective:** Extract entities and define data structures
+
+**Extract entities from user story and acceptance criteria:**
+
+```
+# Look for nouns in user story
+# Example: "As a customer, I want to view my orders"
+# Entities: Customer, Order
+
+entities = extract_entities(user_story, acceptance_criteria)
+
+For each entity:
+    Define:
+    - Entity name
+    - Purpose (brief description)
+    - Attributes (fields):
+      - Field name
+      - Data type (String, Integer, UUID, DateTime, Boolean, etc.)
+      - Constraints (Required, Unique, Min/Max length, Format)
+      - Default value (if applicable)
+    - Relationships:
+      - One-to-many (e.g., User has many Orders)
+      - Many-to-many (e.g., User belongs to many Roles)
+      - One-to-one (e.g., User has one Profile)
+    - Primary key
+    - Foreign keys
+    - Indexes (for performance)
+```
+
+**Example data model:**
+```
+Entity: User
+Purpose: Represents a registered user of the system
+
+Attributes:
+  - id: UUID, Required, Primary Key, Auto-generated
+  - email: String(255), Required, Unique, Email format validation
+  - password_hash: String(255), Required, Bcrypt hashed
+  - name: String(100), Required
+  - created_at: DateTime, Required, Auto-generated
+  - updated_at: DateTime, Required, Auto-updated
+
+Relationships:
+  - Has many: Orders (one-to-many)
+  - Belongs to many: Roles (many-to-many via UserRoles table)
+
+Indexes:
+  - email (unique index for fast lookup)
+```
+
+---
+
+## Step 3.4: Document Business Rules
+
+**Objective:** Extract and document business logic rules
+
+**Extract rules from acceptance criteria:**
+
+```
+Business rules define:
+- Validation logic (e.g., "Password must be 8+ chars with uppercase, lowercase, number, special char")
+- Calculation formulas (e.g., "Total price = sum(item.price * item.quantity) + shipping_cost")
+- State transition rules (e.g., "Order can only be cancelled if status is 'Pending' or 'Processing'")
+- Constraints (e.g., "Maximum 10 items per order")
+- Defaults (e.g., "New user role defaults to 'Customer'")
+```
+
+**Example:**
+```
+Business Rules:
+1. Password must be at least 8 characters with uppercase, lowercase, number, and special character
+2. Email verification token expires after 24 hours
+3. Verification email sent asynchronously (background job queue)
+4. Unverified users cannot log in (authentication check blocks unverified accounts)
+5. Email addresses are case-insensitive (stored as lowercase)
+```
+
+---
+
+## Step 3.5: Identify Dependencies
+
+**Objective:** Document external services and infrastructure needs
+
+**Extract from acceptance criteria and technical requirements:**
+
+```
+Dependencies include:
+- External services (payment gateway, email service, SMS provider)
+- Third-party APIs (maps, weather, social media)
+- Database requirements (PostgreSQL, Redis, MongoDB)
+- Infrastructure (S3 for file storage, CDN for assets)
+- Background job queue (Celery, Bull, Hangfire)
+```
+
+**For each dependency:**
+```
+Document:
+- Service name
+- Purpose (why needed)
+- Integration method (REST API, SDK, library)
+- Authentication (API key, OAuth)
+- SLA requirements (uptime, response time)
+- Fallback behavior (what if service unavailable)
+```
+
+**Example:**
+```
+Dependencies:
+1. Email Service: SendGrid or SMTP
+   - Purpose: Send verification emails
+   - Integration: SendGrid SDK or nodemailer
+   - Authentication: API Key
+   - SLA: 99.9% uptime, <30 second delivery
+   - Fallback: Queue for retry (max 3 attempts)
+
+2. Background Job Queue: Redis + Bull (Node.js) or Celery (Python)
+   - Purpose: Async email sending
+   - Integration: In-process queue
+   - SLA: Process within 60 seconds
+   - Fallback: Dead letter queue for failed jobs
+```
+
+---
+
+## Subagent Coordination
+
+**Subagent used:** api-designer (conditional)
+
+**Invoked if:** API endpoints detected in feature description or acceptance criteria
+
+**Input provided:**
+- User story
+- Acceptance criteria
+- Context files (tech-stack.md for technology constraints)
+
+**Output expected:**
+- OpenAPI 3.0 style contract
+- HTTP method, endpoint path
+- Request/response schemas
+- Authentication requirements
+- Validation rules
+
+**Reference files used by subagent:**
+- technical-specification-guide.md (API contract templates, patterns)
+
+---
+
+## Output
+
+**Phase 3 produces:**
+- ✅ API contracts (if applicable)
+- ✅ Data models with attributes, constraints, relationships
+- ✅ Business rules documented
+- ✅ Dependencies identified with integration details
+
+---
+
+## Error Handling
+
+**Error 1: API contracts incomplete**
+- **Detection:** Missing request schema, response schemas, or status codes
+- **Recovery:** Re-invoke api-designer with specific feedback
+
+**Error 2: Data models vague**
+- **Detection:** Missing data types, constraints, or relationships
+- **Recovery:** Use AskUserQuestion to clarify entity structure
+
+**Error 3: Business rules ambiguous**
+- **Detection:** Rules contain "should", "might", "could" (not definitive)
+- **Recovery:** Refine to use "must", "will", "shall"
+
+See `error-handling.md` for comprehensive error recovery procedures.
+
+---
+
+## Next Phase
+
+**After Phase 3 completes →** Phase 4: UI Specification
+
+Load `ui-specification-creation.md` for Phase 4 workflow.

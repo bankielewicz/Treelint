@@ -1,0 +1,24 @@
+# DevForgeAI QA Automation Scripts - Python Dependencies
+
+# Coverage Analysis
+coverage>=7.0.0          # For parsing .coverage files (Python)
+lxml>=4.9.0              # For parsing XML coverage reports (Cobertura)
+
+# Complexity Analysis
+radon>=6.0.0             # Python cyclomatic complexity
+lizard>=1.17.0           # Multi-language complexity analysis
+
+# Code Quality
+jinja2>=3.1.0            # HTML report generation
+markdown>=3.5.0          # Markdown processing
+
+# Testing (for running tests during validation)
+pytest>=7.4.0            # Python test runner
+pytest-cov>=4.1.0        # Coverage plugin for pytest
+
+# Security Scanning (optional - scripts work without these)
+# bandit>=1.7.0          # Python security linter
+# safety>=2.3.0          # Dependency vulnerability scanner
+
+# Utilities
+colorama>=0.4.6          # Cross-platform colored terminal output (optional)

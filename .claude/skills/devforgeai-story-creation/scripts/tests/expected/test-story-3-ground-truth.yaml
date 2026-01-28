@@ -1,0 +1,228 @@
+# Ground Truth for Test Story 3 (Medium - API + Repository + DataModel + Business Rules)
+# Expected: 4 components (2 APIs, 1 Repository, 1 DataModel) + 3 business rules + 3 NFRs
+
+technical_specification:
+  format_version: "2.0"
+
+  components:
+    - type: "API"
+      name: "CreateUser"
+      endpoint: "/api/users"
+      method: "POST"
+      authentication:
+        required: true
+        method: "Bearer Token"
+      request:
+        content_type: "application/json"
+        schema:
+          email:
+            type: "string"
+            required: true
+            validation: "Email format, max 255 chars, unique"
+          password:
+            type: "string"
+            required: true
+            validation: "Min 8 chars, must include uppercase, lowercase, number, special char"
+          name:
+            type: "string"
+            required: true
+            validation: "2-100 chars"
+          role:
+            type: "enum"
+            required: true
+            values: ["customer", "admin", "moderator"]
+      response:
+        success:
+          status_code: 201
+          schema:
+            id: "UUID"
+            email: "string"
+            name: "string"
+            role: "string"
+            created_at: "ISO8601 DateTime"
+        errors:
+          - status_code: 400
+            condition: "Validation failed"
+            schema:
+              error: "Validation failed"
+              details: "Array of field errors"
+          - status_code: 409
+            condition: "Email already exists"
+            schema:
+              error: "Conflict"
+              message: "Email already exists"
+      requirements:
+        - id: "API-001"
+          description: "Must validate email format before creation"
+          testable: true
+          test_requirement: "Test: Invalid email format returns 400 with validation error"
+          priority: "Critical"
+        - id: "API-002"
+          description: "Must check email uniqueness before creation"
+          testable: true
+          test_requirement: "Test: Duplicate email returns 409 with 'Email already exists' error"
+          priority: "Critical"
+        - id: "API-003"
+          description: "Must validate password strength"
+          testable: true
+          test_requirement: "Test: Weak password returns 400 with password strength requirements"
+          priority: "Critical"
+
+    - type: "API"
+      name: "GetUser"
+      endpoint: "/api/users/{id}"
+      method: "GET"
+      authentication:
+        required: true
+        method: "Bearer Token"
+      request:
+        path_parameters:
+          - name: "id"
+            type: "UUID"
+            required: true
+      response:
+        success:
+          status_code: 200
+          schema:
+            id: "UUID"
+            email: "string"
+            name: "string"
+            role: "string"
+            created_at: "ISO8601 DateTime"
+        errors:
+          - status_code: 404
+            condition: "User not found"
+            schema:
+              error: "Not found"
+              message: "User with id {id} not found"
+      requirements:
+        - id: "API-004"
+          description: "Must NOT include password in response (security)"
+          testable: true
+          test_requirement: "Test: Response object does not contain password or passwordHash fields"
+          priority: "Critical"
+
+    - type: "Repository"
+      name: "UserRepository"
+      file_path: "src/Infrastructure/Repositories/UserRepository.cs"
+      interface: "IUserRepository"
+      data_access: "Dapper"
+      entity: "User"
+      table: "dbo.Users"
+      requirements:
+        - id: "REPO-001"
+          description: "Must use parameterized queries to prevent SQL injection"
+          testable: true
+          test_requirement: "Test: Query uses @parameters, not string concatenation"
+          priority: "Critical"
+        - id: "REPO-002"
+          description: "Must implement GetById, GetByEmail, Create, Update, Delete methods"
+          testable: true
+          test_requirement: "Test: All CRUD methods functional and return correct types"
+          priority: "High"
+        - id: "REPO-003"
+          description: "All database operations must use async methods"
+          testable: true
+          test_requirement: "Test: All repository methods return Task<T>, use async/await"
+          priority: "Medium"
+
+    - type: "DataModel"
+      name: "User"
+      table: "dbo.Users"
+      purpose: "Represents a user account with authentication and profile information"
+      fields:
+        - name: "Id"
+          type: "UUID"
+          constraints: "Primary Key, Auto-generated"
+          description: "Unique user identifier"
+        - name: "Email"
+          type: "String(255)"
+          constraints: "Required, Unique, Max 255 chars"
+          description: "User email address"
+          test_requirement: "Test: Email uniqueness enforced by database constraint"
+        - name: "PasswordHash"
+          type: "String(255)"
+          constraints: "Required, Max 255 chars"
+          description: "BCrypt hashed password (never plaintext)"
+          test_requirement: "Test: Database contains hashed password, not plaintext"
+        - name: "Name"
+          type: "String(100)"
+          constraints: "Required, Max 100 chars"
+          description: "User display name"
+        - name: "Role"
+          type: "Enum"
+          constraints: "Required, Values: customer|admin|moderator"
+          description: "User role for authorization"
+          test_requirement: "Test: Invalid role value throws exception or prevented by database constraint"
+        - name: "CreatedAt"
+          type: "DateTime"
+          constraints: "Required, Auto-generated"
+          description: "Account creation timestamp"
+        - name: "UpdatedAt"
+          type: "DateTime"
+          constraints: "Optional, Nullable, Auto-updated"
+          description: "Last modification timestamp"
+      indexes:
+        - name: "IX_Users_Email"
+          fields: ["Email"]
+          unique: true
+          purpose: "Fast email lookup, enforce uniqueness"
+        - name: "IX_Users_CreatedAt"
+          fields: ["CreatedAt"]
+          unique: false
+          purpose: "Fast sorting by registration date"
+
+  business_rules:
+    - id: "BR-001"
+      rule: "Email must be unique across all users"
+      trigger: "When user is created or email is updated"
+      validation: "Unique index on Email column, check before insert/update"
+      error_handling: "Return 409 Conflict with 'Email already exists' message"
+      test_requirement: "Test: Creating user with duplicate email returns 409 error"
+      priority: "Critical"
+
+    - id: "BR-002"
+      rule: "Passwords must be hashed before storage (never store plaintext)"
+      trigger: "When user is created or password is changed"
+      validation: "Hash password using BCrypt before database insert"
+      error_handling: "N/A (system enforced, not user error)"
+      test_requirement: "Test: Verify database contains hashed password (starts with $2a$ or $2b$ BCrypt prefix)"
+      priority: "Critical"
+
+    - id: "BR-003"
+      rule: "Role must be one of: customer, admin, moderator"
+      trigger: "When user is created or role is updated"
+      validation: "Enum validation in User entity"
+      error_handling: "Return 400 Bad Request with 'Invalid role' error"
+      test_requirement: "Test: Invalid role value returns 400 validation error"
+      priority: "High"
+
+  non_functional_requirements:
+    - id: "NFR-001"
+      category: "Performance"
+      requirement: "API response time must be under 500ms at p95 percentile"
+      metric: "p95 latency < 500ms"
+      test_requirement: "Test: Load test with 100 concurrent requests, measure p95 latency < 500ms"
+      priority: "High"
+
+    - id: "NFR-002"
+      category: "Performance"
+      requirement: "Database queries must complete in under 100ms for indexed lookups"
+      metric: "Query time < 100ms for GetById and GetByEmail"
+      test_requirement: "Test: Measure query execution time for indexed lookups, assert < 100ms"
+      priority: "Medium"
+
+    - id: "NFR-003"
+      category: "Security"
+      requirement: "Password hashing must use BCrypt with cost factor 12"
+      metric: "BCrypt cost factor = 12 (secure but performant)"
+      test_requirement: "Test: Verify BCrypt cost factor is 12 in password hash output"
+      priority: "Critical"
+
+# Component Inventory
+# Expected: 4 components
+#   - 2 APIs (CreateUser with 3 reqs, GetUser with 1 req)
+#   - 1 Repository (UserRepository) with 3 requirements
+#   - 1 DataModel (User) with 7 fields, 2 indexes
+# Expected: 3 business rules
+# Expected: 3 NFRs

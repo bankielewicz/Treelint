@@ -1,0 +1,171 @@
+# Ground Truth for Test Story 2 (Medium - Service + Workers + Config + Logging)
+# Expected: 5 components (1 Service, 2 Workers, 1 Configuration, 1 Logging)
+
+technical_specification:
+  format_version: "2.0"
+
+  components:
+    - type: "Service"
+      name: "AlertingService"
+      file_path: "src/Services/AlertingService.cs"
+      interface: "IHostedService"
+      lifecycle: "Singleton"
+      dependencies:
+        - "IAlertDetectionService"
+        - "IEmailService"
+      requirements:
+        - id: "SVC-001"
+          description: "Must implement OnStart and OnStop lifecycle methods"
+          testable: true
+          test_requirement: "Test: OnStart transitions service to Running state within 5 seconds"
+          priority: "Critical"
+        - id: "SVC-002"
+          description: "Must start all managed workers (AlertDetectionWorker, EmailSenderWorker) in OnStart"
+          testable: true
+          test_requirement: "Test: OnStart starts AlertDetectionWorker and EmailSenderWorker"
+          priority: "Critical"
+        - id: "SVC-003"
+          description: "Must handle worker exceptions without crashing service"
+          testable: true
+          test_requirement: "Test: Worker exception doesn't crash AlertingService, service remains Running"
+          priority: "High"
+
+    - type: "Worker"
+      name: "AlertDetectionWorker"
+      file_path: "src/Workers/AlertDetectionWorker.cs"
+      interface: "BackgroundService"
+      polling_interval_ms: 30000
+      dependencies:
+        - "IAlertDetectionService"
+      requirements:
+        - id: "WKR-001"
+          description: "Must poll database every 30 seconds for new alerts"
+          testable: true
+          test_requirement: "Test: Worker polls at 30s intervals until cancellation"
+          priority: "Critical"
+        - id: "WKR-002"
+          description: "Must handle database connection failures gracefully"
+          testable: true
+          test_requirement: "Test: Database connection failure logs error, retries next interval"
+          priority: "High"
+        - id: "WKR-003"
+          description: "Must start within 2 seconds of service start"
+          testable: true
+          test_requirement: "Test: Worker starts within 2 seconds of AlertingService.OnStart"
+          priority: "Medium"
+
+    - type: "Worker"
+      name: "EmailSenderWorker"
+      file_path: "src/Workers/EmailSenderWorker.cs"
+      interface: "BackgroundService"
+      polling_interval_ms: 10000
+      dependencies:
+        - "IEmailService"
+      requirements:
+        - id: "WKR-004"
+          description: "Must poll email queue every 10 seconds to send notifications"
+          testable: true
+          test_requirement: "Test: Worker polls email queue at 10s intervals"
+          priority: "Critical"
+        - id: "WKR-005"
+          description: "Must retry failed email sends up to 3 times with exponential backoff"
+          testable: true
+          test_requirement: "Test: Failed email retried 3 times with increasing delays (1s, 2s, 4s)"
+          priority: "High"
+        - id: "WKR-006"
+          description: "Must process queued emails via SMTP"
+          testable: true
+          test_requirement: "Test: Email sent via SMTP with configured host and credentials"
+          priority: "Critical"
+
+    - type: "Configuration"
+      name: "appsettings.json"
+      file_path: "src/appsettings.json"
+      required_keys:
+        - key: "AlertDetection.PollingIntervalSeconds"
+          type: "int"
+          default: 30
+          validation: "Range 10-300"
+          required: false
+          test_requirement: "Test: AlertDetection.PollingIntervalSeconds default is 30"
+        - key: "EmailSender.PollingIntervalSeconds"
+          type: "int"
+          default: 10
+          validation: "Range 5-60"
+          required: false
+          test_requirement: "Test: EmailSender.PollingIntervalSeconds default is 10"
+        - key: "ConnectionStrings.OmniWatchDb"
+          type: "string"
+          required: true
+          test_requirement: "Test: Configuration loads ConnectionStrings.OmniWatchDb"
+        - key: "Smtp.Host"
+          type: "string"
+          required: true
+          test_requirement: "Test: Configuration loads Smtp.Host"
+        - key: "Smtp.Port"
+          type: "int"
+          default: 587
+          required: false
+          test_requirement: "Test: Smtp.Port default is 587"
+        - key: "Smtp.Username"
+          type: "string"
+          required: true
+          test_requirement: "Test: Configuration loads Smtp.Username"
+        - key: "Smtp.Password"
+          type: "string"
+          required: true
+          test_requirement: "Test: Configuration loads Smtp.Password (encrypted storage)"
+
+    - type: "Logging"
+      name: "Serilog"
+      file_path: "src/Program.cs"
+      sinks:
+        - name: "File"
+          path: "logs/omniwatch-.txt"
+          rolling_interval: "Day"
+          retention_days: 30
+          test_requirement: "Test: Log file created in logs/ directory with date suffix, older than 30 days deleted"
+        - name: "EventLog"
+          source: "OmniWatch Service"
+          log_name: "Application"
+          test_requirement: "Test: Entry written to Windows Event Log under 'OmniWatch Service' source"
+        - name: "Database"
+          table: "dbo.Logs"
+          test_requirement: "Test: Log entry written to dbo.Logs table with structured data"
+
+  non_functional_requirements:
+    - id: "NFR-001"
+      category: "Performance"
+      requirement: "Service startup time must be under 5 seconds"
+      metric: "Startup time < 5s from OnStart to Running"
+      test_requirement: "Test: Measure time from OnStart call to Running state, assert < 5 seconds"
+      priority: "High"
+
+    - id: "NFR-002"
+      category: "Performance"
+      requirement: "Workers must start within 2 seconds of service start"
+      metric: "Worker start time < 2s after service OnStart"
+      test_requirement: "Test: Measure time from service OnStart to first worker poll, assert < 2 seconds"
+      priority: "Medium"
+
+    - id: "NFR-003"
+      category: "Reliability"
+      requirement: "Log writes should not block worker execution"
+      metric: "Async logging with <10ms overhead"
+      test_requirement: "Test: Measure worker iteration time with/without logging, difference < 10ms"
+      priority: "Medium"
+
+    - id: "NFR-004"
+      category: "Reliability"
+      requirement: "Service must handle worker exceptions without crashing"
+      metric: "100% worker exception isolation (service remains Running)"
+      test_requirement: "Test: Throw exception in worker, verify service state remains Running"
+      priority: "Critical"
+
+# Component Inventory
+# Expected: 5 components
+#   - 1 Service (AlertingService) with 3 requirements
+#   - 2 Workers (AlertDetectionWorker with 3 reqs, EmailSenderWorker with 3 reqs)
+#   - 1 Configuration (appsettings.json) with 7 keys
+#   - 1 Logging (Serilog) with 3 sinks
+# Expected: 4 NFRs

@@ -1,0 +1,1 @@
+HALT if you need clarification on any requirement or detect any ambiguity.  Use AskUserQuestion tool to ask questions.

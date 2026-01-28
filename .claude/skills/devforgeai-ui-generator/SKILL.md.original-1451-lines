@@ -1,0 +1,1451 @@
+---
+name: devforgeai-ui-generator
+description: This skill generates front-end UI specifications and code for Web, GUI, or Terminal interfaces within the DevForgeAI framework. It validates context files, respects architectural constraints, and interactively guides users through technology and styling decisions. Use when stories require UI components or when generating visual specifications from requirements.
+license: Complete terms in LICENSE.txt
+---
+
+# DevForgeAI UI Generator Skill
+
+This skill generates front-end user interface specifications and code by interactively guiding users through technology and styling decisions while enforcing DevForgeAI architectural constraints.
+
+---
+
+## CRITICAL: Extracting Parameters from Conversation Context
+
+**IMPORTANT:** Skills CANNOT accept runtime parameters. All information must be extracted from conversation context.
+
+### How Slash Commands Pass "Parameters" to Skills
+
+When `/create-ui` command invokes this skill, it provides context in two modes:
+
+**Story Mode:**
+1. Loads story file via @file reference: `@devforgeai/specs/Stories/STORY-XXX.story.md`
+2. States: "Story ID: STORY-XXX" and "Mode: story"
+3. Invokes: `Skill(command="devforgeai-ui-generator")`
+
+**Standalone Mode:**
+1. States: "Component description: Login form with validation" and "Mode: standalone"
+2. Invokes: `Skill(command="devforgeai-ui-generator")`
+
+**You must detect which mode and extract appropriate parameters from conversation.**
+
+### Mode Detection
+
+**Check conversation for indicators:**
+```
+IF conversation contains YAML frontmatter with "id: STORY-XXX":
+  MODE = "story"
+  Extract story ID from frontmatter
+
+ELSE IF conversation contains "devforgeai/specs/Stories/STORY-XXX":
+  MODE = "story"
+  Extract story ID from file path
+
+ELSE IF conversation contains "Component description:":
+  MODE = "standalone"
+  Extract description from statement
+
+ELSE IF conversation contains "Mode: story":
+  MODE = "story"
+  Search for story ID in conversation
+
+ELSE IF conversation contains "Mode: standalone":
+  MODE = "standalone"
+  Search for component description
+
+ELSE:
+  # Cannot determine - ask user
+  AskUserQuestion:
+  Question: "Should I generate UI for a story or standalone component?"
+  Header: "UI Generation Mode"
+  Options:
+    - "Story-based (use acceptance criteria from story)"
+    - "Standalone (I'll describe the component)"
+  multiSelect: false
+```
+
+### Story ID Extraction (Story Mode)
+
+**Methods:** Same as other skills (YAML frontmatter, file reference, explicit statement)
+
+### Component Description Extraction (Standalone Mode)
+
+**Look for description in conversation:**
+```
+Search for patterns:
+  - "Component description: [text]" → DESCRIPTION = [text]
+  - "Create UI for: [text]" → DESCRIPTION = [text]
+  - User's original argument captured in conversation
+```
+
+### Validation Before Proceeding
+
+Before starting UI generation, verify:
+- [ ] Mode determined (story or standalone)
+- [ ] If story mode: Story ID extracted, story content available
+- [ ] If standalone mode: Component description extracted
+- [ ] Ready to proceed with UI generation phases
+
+**If extraction fails:**
+```
+HALT with error:
+"Cannot determine UI generation mode from conversation context.
+
+Expected to find:
+  - Story mode: Story file loaded OR 'Story ID: STORY-XXX' stated
+  - Standalone mode: 'Component description: [text]' stated
+
+Please ensure context is provided via slash command or state explicitly."
+```
+
+---
+
+## When to Use
+
+Use this skill when:
+- A story requires UI components or front-end implementation
+- Generating a "visual spec" or "mockup-as-code" from requirements
+- Creating front-end code for web (React, Blazor, ASP.NET), GUI (Tkinter, WPF), or Terminal (ASCII)
+- Translating acceptance criteria into tangible UI components
+- The user explicitly requests UI generation or mockup creation
+
+**Workflow Integration:**
+- Invoke **after** `devforgeai-architecture` (requires context files)
+- Invoke **during** or **before** `devforgeai-development` (generates specs for TDD)
+- Can be invoked by `devforgeai-orchestration` when story contains UI requirements
+
+## Core Workflow
+
+Follow this 7-phase workflow sequentially. Do not skip phases unless explicitly justified.
+
+**Phase Summary:**
+1. **Context Validation** - Verify 6 context files exist and valid
+2. **Story Analysis** - Extract UI requirements (if story mode)
+3. **Interactive Discovery** - Guide user through technology/styling decisions
+4. **Template Loading** - Load framework-specific templates and best practices
+5. **Code Generation** - Generate component code respecting all constraints
+6. **Documentation** - Create spec summary, update story, **invoke ui-spec-formatter subagent**
+7. **Specification Validation** (NEW) - Validate completeness, resolve placeholders via user, check framework compliance
+
+**Quality Gates:**
+- Phase 1: HALT if context files missing
+- Phase 7: HALT if validation FAILED, warn if PARTIAL, proceed if SUCCESS
+- Phase 6 Step 3.5: Formatter validates and formats results for command display
+
+**Workflow Sequence:**
+```
+Phase 1-5: Generate UI specification and component files
+    ↓
+Phase 6: Document, update story, invoke formatter
+    ↓
+Phase 7: Self-validate specification (user resolves all issues)
+    ↓
+Phase 6 Step 3.5: Formatter creates display template
+    ↓
+Return formatted results to command
+```
+
+**Note:** Phase 7 is conceptually part of validation but executes between Phase 6 Step 3 and Step 3.5 in the actual sequence.
+
+### Phase 1: Context Validation
+
+**Objective:** Ensure DevForgeAI context files exist and are valid before proceeding.
+
+**Steps:**
+
+1. **Check Context Files:** Use Glob to verify all 6 required context files exist:
+   ```
+   Glob(pattern="devforgeai/specs/context/*.md")
+   ```
+   Required files:
+   - `tech-stack.md`
+   - `source-tree.md`
+   - `dependencies.md`
+   - `coding-standards.md`
+   - `architecture-constraints.md`
+   - `anti-patterns.md`
+
+2. **Validate Context:** Run the validation script:
+   ```
+   Bash(command="python .claude/skills/devforgeai-ui-generator/scripts/validate_context.py")
+   ```
+
+3. **Handle Missing Context:**
+   - If context files missing → HALT and inform user:
+     > "Context files are missing. Please invoke `devforgeai-architecture` skill first to create the required context files."
+   - If validation fails → HALT and report specific issues
+
+4. **Load Context Files:** Use Read tool to load critical context:
+   ```
+   Read(file_path="devforgeai/specs/context/tech-stack.md")
+   Read(file_path="devforgeai/specs/context/source-tree.md")
+   Read(file_path="devforgeai/specs/context/dependencies.md")
+   ```
+
+5. **Extract Constraints:**
+   - Parse `tech-stack.md` for approved UI frameworks/libraries
+   - Parse `source-tree.md` for correct output locations
+   - Parse `dependencies.md` for approved package versions
+
+**Output:** Context validated, constraints loaded into memory.
+
+---
+
+### Phase 2: Story Analysis (Optional)
+
+**Objective:** Extract UI requirements from story file if provided.
+
+**Steps:**
+
+1. **Check for Story Parameter:** Determine if user provided a story ID or path.
+
+2. **Locate Story File:**
+   - If story ID provided (e.g., `STORY-001`):
+     ```
+     Read(file_path="devforgeai/specs/Stories/{STORY-ID}.story.md")
+     ```
+   - If no story provided, skip to Phase 3.
+
+3. **Extract UI Requirements:**
+   - Parse **Acceptance Criteria** section (Given/When/Then format)
+   - Parse **Technical Specification** section for UI details
+   - Parse **Non-Functional Requirements** for UI performance/accessibility requirements
+   - Identify components mentioned (e.g., "login form", "dashboard", "data table")
+
+4. **Summarize Requirements:** Create a brief summary of:
+   - Components needed
+   - User interactions required
+   - Data displayed/collected
+   - Accessibility requirements
+
+**Output:** UI requirements summary (or skip if no story provided).
+
+---
+
+### Phase 3: Interactive Discovery
+
+**Objective:** Guide user through UI type, technology stack, and styling decisions using AskUserQuestion.
+
+**Important:** Respect context files at all times. If user requests technology not in `tech-stack.md`, use AskUserQuestion to resolve conflict.
+
+**Step 3.1: Determine UI Type**
+
+Use AskUserQuestion to ask:
+
+```
+AskUserQuestion(
+  questions: [{
+    question: "What type of UI are we building?",
+    header: "UI Type",
+    multiSelect: false,
+    options: [
+      {
+        label: "Web UI",
+        description: "Browser-based interface (React, Blazor, ASP.NET, HTML)"
+      },
+      {
+        label: "Native GUI",
+        description: "Desktop application (WPF, Tkinter, .NET MAUI)"
+      },
+      {
+        label: "Terminal UI",
+        description: "Command-line interface with formatted text/ASCII art"
+      }
+    ]
+  }]
+)
+```
+
+**Step 3.2: Define Technology & Style**
+
+Based on the answer from Step 3.1, ask a follow-up question.
+
+**If Web UI selected:**
+
+```
+AskUserQuestion(
+  questions: [
+    {
+      question: "What web technology should be used for this UI?",
+      header: "Web Tech",
+      multiSelect: false,
+      options: [
+        { label: "React", description: "Modern component-based framework" },
+        { label: "Blazor Server", description: "C# server-side rendering" },
+        { label: "Blazor WASM", description: "C# client-side WebAssembly" },
+        { label: "ASP.NET MVC", description: "Server-side MVC views" },
+        { label: "Plain HTML", description: "Static HTML/CSS/JS" }
+      ]
+    },
+    {
+      question: "What styling approach should be used?",
+      header: "Styling",
+      multiSelect: false,
+      options: [
+        { label: "Tailwind CSS", description: "Utility-first CSS framework" },
+        { label: "Bootstrap", description: "Component library with pre-built styles" },
+        { label: "Plain CSS", description: "Custom CSS from scratch" },
+        { label: "CSS Modules", description: "Scoped CSS per component" }
+      ]
+    },
+    {
+      question: "What theme/color scheme should be applied?",
+      header: "Theme",
+      multiSelect: false,
+      options: [
+        { label: "Dark Mode", description: "Dark background, light text" },
+        { label: "Light Mode", description: "Light background, dark text" },
+        { label: "Minimalist", description: "Clean, simple design with minimal colors" },
+        { label: "Vibrant", description: "Bold colors and gradients" }
+      ]
+    }
+  ]
+)
+```
+
+**If Native GUI selected:**
+
+```
+AskUserQuestion(
+  questions: [{
+    question: "What native GUI technology stack should be used?",
+    header: "GUI Tech",
+    multiSelect: false,
+    options: [
+      { label: "C# WPF", description: "Windows Presentation Foundation (XAML)" },
+      { label: "Python Tkinter", description: "Python's standard GUI library" },
+      { label: "C# .NET MAUI", description: "Cross-platform .NET UI framework" },
+      { label: "Python PyQt", description: "Python bindings for Qt framework" }
+    ]
+  }]
+)
+```
+
+**If Terminal UI selected:**
+
+```
+AskUserQuestion(
+  questions: [{
+    question: "What formatting style should be used for the terminal UI?",
+    header: "TUI Format",
+    multiSelect: false,
+    options: [
+      { label: "Box Drawing", description: "Unicode box-drawing characters for tables" },
+      { label: "Simple ASCII", description: "Plain dashes and pipes" },
+      { label: "Color Coded", description: "ANSI color codes for emphasis" },
+      { label: "Rich Tables", description: "Python rich library for advanced formatting" }
+    ]
+  }]
+)
+```
+
+**Step 3.3: Validate Against Context**
+
+After receiving user's technology choices:
+
+1. **Check tech-stack.md:** Verify chosen technology is approved.
+2. **If mismatch detected:**
+   ```
+   AskUserQuestion(
+     questions: [{
+       question: "You selected [CHOSEN_TECH], but tech-stack.md specifies [APPROVED_TECH]. Which should be used?",
+       header: "Tech Conflict",
+       multiSelect: false,
+       options: [
+         { label: "Use [CHOSEN_TECH]", description: "Update tech-stack.md and create ADR" },
+         { label: "Use [APPROVED_TECH]", description: "Follow existing standard" }
+       ]
+     }]
+   )
+   ```
+
+**Step 3.4: Define Components**
+
+Based on story requirements (if available) or user prompt, propose components:
+
+```
+AskUserQuestion(
+  questions: [{
+    question: "Based on the requirements, I suggest building these components: [LIST]. What elements should each component include?",
+    header: "Components",
+    multiSelect: false,
+    options: [
+      { label: "Use suggested components", description: "Build: [COMPONENT_LIST]" },
+      { label: "Modify components", description: "Specify custom components" },
+      { label: "Add more components", description: "Extend the suggested list" }
+    ]
+  }]
+)
+```
+
+If user selects "Modify" or "Add more", ask follow-up:
+```
+AskUserQuestion(
+  questions: [{
+    question: "Please describe the components you want to build (e.g., 'LoginForm: email input, password input, submit button')",
+    header: "Custom Components",
+    multiSelect: false,
+    options: [
+      { label: "Provide description", description: "I'll specify component details in text" }
+    ]
+  }]
+)
+```
+
+**Output:** Complete technology and component specification.
+
+---
+
+### Phase 4: Template & Best Practices Loading
+
+**Objective:** Load appropriate templates and best practices based on user's technology choices.
+
+**Steps:**
+
+1. **Determine Template Files:**
+   - Map user's technology choice to template file:
+     - React → `assets/web-template.jsx`
+     - Blazor → `assets/web-template.blazor.razor`
+     - ASP.NET MVC → `assets/web-template.aspnet.cshtml`
+     - Plain HTML → `assets/web-template.html`
+     - Python Tkinter → `assets/gui-template.py`
+     - C# WPF → `assets/gui-template.wpf.xaml`
+     - Terminal UI → `assets/tui-template.py`
+
+2. **Load Template:** Use Read tool:
+   ```
+   Read(file_path=".claude/skills/devforgeai-ui-generator/assets/{template-file}")
+   ```
+
+3. **Load Best Practices:** Use Read tool based on UI type:
+   ```
+   Read(file_path=".claude/skills/devforgeai-ui-generator/references/web_best_practices.md")
+   # or gui_best_practices.md or tui_best_practices.md
+   ```
+
+4. **Load Integration Guide:**
+   ```
+   Read(file_path=".claude/skills/devforgeai-ui-generator/references/devforgeai-integration-guide.md")
+   ```
+
+**Output:** Templates and best practices loaded into context.
+
+---
+
+### Phase 5: Code Generation
+
+**Objective:** Generate UI component code respecting all constraints and best practices.
+
+**Steps:**
+
+1. **Ensure Output Directory:** Run script to create output directory:
+   ```
+   Bash(command="python .claude/skills/devforgeai-ui-generator/scripts/ensure_spec_dir.py")
+   ```
+
+2. **Determine Output Location:**
+   - Parse `source-tree.md` for correct UI component location
+   - Default: `devforgeai/specs/ui/` (if not specified in source-tree.md)
+   - Follow any project-specific structure defined in source-tree.md
+
+3. **Generate Component Code:**
+   - Start with loaded template
+   - Apply user's styling choices
+   - Implement component structure from Phase 3
+   - Follow best practices from Phase 4
+   - Respect `coding-standards.md` conventions (indentation, naming, etc.)
+   - Add accessibility attributes (ARIA roles, labels, alt text)
+   - Include comments explaining key sections
+
+4. **Apply Anti-Pattern Prevention:**
+   - Check `anti-patterns.md` for forbidden patterns
+   - Avoid hardcoded values (use configuration/props)
+   - Ensure proper separation of concerns
+   - Follow dependency injection patterns if applicable
+
+5. **Confirm Filename:**
+   ```
+   AskUserQuestion(
+     questions: [{
+       question: "I have generated the code for [COMPONENT_NAME]. What filename should I use?",
+       header: "Filename",
+       multiSelect: false,
+       options: [
+         { label: "Use default", description: "Save as: devforgeai/specs/ui/[COMPONENT_NAME].[ext]" },
+         { label: "Custom path", description: "Specify a different filename/location" }
+       ]
+     }]
+   )
+   ```
+
+6. **Write File:** Use Write tool:
+   ```
+   Write(file_path="{confirmed-path}", content="{generated-code}")
+   ```
+
+7. **Confirm Completion:** Inform user:
+   > "✅ Generated [COMPONENT_NAME] and saved to [FILE_PATH]"
+
+**Output:** UI component code written to file.
+
+---
+
+### Phase 6: Documentation & Story Update
+
+**Objective:** Document the generated UI and update story file if applicable.
+
+**Steps:**
+
+1. **Generate UI Spec Summary:**
+   - Create a summary document listing:
+     - Components generated
+     - Technology stack used
+     - File locations
+     - Dependencies required
+     - Integration instructions
+
+2. **Write Summary File:**
+   ```
+   Write(
+     file_path="devforgeai/specs/ui/UI-SPEC-SUMMARY.md",
+     content="{ui-spec-summary}"
+   )
+   ```
+
+3. **Update Story File (if story provided):**
+   - Use Edit tool to add reference to generated UI components:
+   ```
+   Edit(
+     file_path="devforgeai/specs/Stories/{STORY-ID}.story.md",
+     old_string="## Technical Specification",
+     new_string="## Technical Specification\n\n### UI Components\n- Generated: [COMPONENT_LIST]\n- Location: devforgeai/specs/ui/\n- See: devforgeai/specs/ui/UI-SPEC-SUMMARY.md\n"
+   )
+   ```
+
+### Step 3.5: Invoke UI Spec Formatter Subagent (NEW)
+
+**Objective:** Generate user-facing display template with framework validation.
+
+**Invoke ui-spec-formatter subagent:**
+
+The formatter subagent validates the generated specification against framework constraints and creates a structured display template.
+
+```
+Task(
+  subagent_type="ui-spec-formatter",
+  description="Format and validate UI specification results",
+  prompt="Generate user-facing display template for UI generation workflow.
+
+**Context:**
+- Mode: ${MODE} (story|standalone)
+- Story ID: ${STORY_ID or 'standalone'}
+- UI Spec File: devforgeai/specs/ui/${SPEC_FILE_NAME}
+- Framework: ${FRAMEWORK} (from tech-stack.md)
+- Styling: ${STYLING_APPROACH} (user selected)
+- Component Count: ${COMPONENT_COUNT}
+- Generated Files: ${GENERATED_FILES_LIST}
+
+**Generated Files List:**
+${List all files created in Phase 5}
+
+**Requirements:**
+1. Read generated UI specification file
+2. Extract component details (type, framework, styling, accessibility, responsive)
+3. Load framework constraints from reference file (ui-result-formatting-guide.md)
+4. Validate against context files:
+   - tech-stack.md: Framework consistency
+   - source-tree.md: File location compliance
+   - dependencies.md: Package approval
+   - coding-standards.md: Component standards
+   - architecture-constraints.md: Layer boundaries
+   - anti-patterns.md: Forbidden patterns
+5. Determine appropriate display template (SUCCESS/PARTIAL/FAILED)
+6. Generate structured result with:
+   - Display template (formatted markdown)
+   - Component details (structured metadata)
+   - Validation issues (if any)
+   - Next steps (implementation guidance)
+
+**Output Format:**
+Return structured JSON following this schema:
+{
+  \"status\": \"SUCCESS|PARTIAL|FAILED\",
+  \"display\": {
+    \"template\": \"[Full formatted display text]\",
+    \"mode\": \"${MODE}\",
+    \"story_id\": \"${STORY_ID or null}\"
+  },
+  \"component_details\": {
+    \"component_type\": \"Form|Data Display|Navigation|etc\",
+    \"framework\": \"React|Vue|Angular|etc\",
+    \"styling\": \"Tailwind|CSS Modules|etc\",
+    \"accessibility\": \"WCAG 2.1 AA|AAA\",
+    \"responsive\": \"Mobile-first|Desktop-first|etc\",
+    \"state_management\": \"Redux|Zustand|Context API|etc\"
+  },
+  \"generated_files\": [\"file1.jsx\", \"file2.css\", ...],
+  \"validation\": {
+    \"status\": \"PASSED|WARNING|FAILED\",
+    \"issues\": [\"issue1\", \"issue2\", ...],
+    \"warnings\": [\"warning1\", \"warning2\", ...]
+  },
+  \"next_steps\": [\"step1\", \"step2\", \"step3\"]
+}
+
+**Framework Guardrails:**
+Follow constraints in .claude/skills/devforgeai-ui-generator/references/ui-result-formatting-guide.md reference file.
+
+**Validation Rules:**
+- Tech-stack consistency: STRICT (no substitution)
+- File structure compliance: STRICT (source-tree.md mandatory)
+- Accessibility requirements: STRICT (WCAG 2.1 AA minimum)
+- Component categorization: DETERMINISTIC (forms, displays, navigation, etc.)
+- Display tone: POSITIVE (use ✅ for success, ⚠️ for warnings, ❌ for failures)"
+)
+```
+
+**Capture subagent response:**
+
+```
+Store result as: formatter_result
+
+Expected structure:
+{
+  "status": "SUCCESS|PARTIAL|FAILED",
+  "display": { "template": "...", ... },
+  "component_details": { ... },
+  "generated_files": [...],
+  "validation": { "status": "...", "issues": [...], "warnings": [...] },
+  "next_steps": [...]
+}
+```
+
+**Handle formatter result:**
+
+```
+IF formatter_result.status == "FAILED":
+  HALT workflow
+  Display formatter_result.display.template
+  Report validation failures
+  Provide recovery steps
+  EXIT skill with error status
+
+ELSE IF formatter_result.status == "PARTIAL":
+  Display formatter_result.display.template (includes warnings)
+  Continue to Step 4
+
+ELSE: # SUCCESS
+  Continue to Step 4 with formatter_result
+```
+
+**Token Impact:**
+- Subagent invocation: ~500 tokens (in skill context)
+- Subagent execution: ~8K tokens (isolated context, not counted in main conversation)
+- Result returned: ~1.5K tokens (structured JSON with display template)
+- **Total skill context:** ~2K tokens for formatter integration
+
+**Output:** Structured display template ready for command to output, validation status determined.
+
+---
+
+4. **Return Formatter Results:**
+
+**Display template from ui-spec-formatter:**
+
+The formatter subagent (invoked in Step 3.5) has prepared a comprehensive display template that validates framework constraints and provides next steps.
+
+**Return to command:**
+- Display: formatter_result.display.template
+- Status: formatter_result.status
+- Validation: formatter_result.validation
+- Next Steps: formatter_result.next_steps
+
+**Command will output:**
+The /create-ui command receives this structured result and outputs the display template directly. No additional parsing, formatting, or validation needed in the command.
+
+**If status is PARTIAL:**
+- Display includes warnings about validation issues
+- User can review warnings and proceed or regenerate
+
+**If status is FAILED:**
+- Workflow halted at Step 3.5
+- Error details already communicated
+- Recovery steps provided to user
+
+5. **Complete Workflow:**
+
+UI generation workflow complete.
+
+**Results prepared:**
+- ✅ UI specification generated (Phase 5)
+- ✅ Documentation created (Phase 6 Steps 1-3)
+- ✅ Display template formatted (ui-spec-formatter subagent, Step 3.5)
+- ✅ Framework compliance validated (Phase 7)
+- ✅ Story updated (if story mode)
+- ✅ Summary document created
+
+**Returning to command:**
+The /create-ui command will display the formatter_result.display.template with:
+- Component details
+- Generated files list
+- Validation status
+- Next steps for implementation
+
+**If user needs additional components:**
+Run /create-ui again with new story ID or component description.
+
+**Output:** Documentation complete, story updated (if applicable), formatted results ready for display.
+
+---
+
+## Phase 7: Specification Validation (NEW)
+
+**Objective:** Validate generated UI specification for completeness and framework compliance. **Ask user to resolve ALL ambiguities** - never auto-fix.
+
+**Purpose:** Ensure specification is production-ready with no TODO/TBD content, all sections complete, and framework constraints validated. All issues resolved through explicit user decisions.
+
+**Core Principle:** **"Ask, Don't Assume"** - Never auto-fix anything, even if it seems minor.
+
+**When to Execute:** After Phase 6 Step 3 (documentation complete), before Step 3.5 (formatter invocation)
+
+---
+
+### Step 7.1: Specification Completeness Check
+
+**Read generated UI specification:**
+
+```
+Read(file_path="devforgeai/specs/ui/${SPEC_FILE_NAME}")
+```
+
+**Validate required sections exist:**
+
+Check specification includes:
+- [ ] Component hierarchy defined (parent/child relationships)
+- [ ] Props/API documented (types, defaults, required)
+- [ ] State management approach specified
+- [ ] Styling approach documented (classes, themes, responsive)
+- [ ] Accessibility considerations included (WCAG level, ARIA, keyboard nav)
+- [ ] Responsive behavior defined (breakpoints, mobile-first)
+- [ ] Test strategy outlined (unit, integration, accessibility)
+- [ ] Usage examples provided (code snippets)
+- [ ] Integration instructions included
+- [ ] Dependencies listed (npm packages, imports)
+
+**Record missing sections:**
+```
+missing_sections = [list of missing sections]
+
+IF missing_sections not empty:
+  VALIDATION_STATUS = "INCOMPLETE"
+  Proceed to Step 7.4 (user resolution)
+ELSE:
+  VALIDATION_STATUS = "COMPLETE"
+  Proceed to Step 7.2
+```
+
+---
+
+### Step 7.2: Placeholder Detection
+
+**Scan for placeholder content:**
+
+```
+Grep(
+  pattern="TODO|TBD|\\[FILL IN\\]|\\[TO BE DETERMINED\\]|\\[TBD\\]|\\[PLACEHOLDER\\]",
+  path="devforgeai/specs/ui/${SPEC_FILE_NAME}",
+  output_mode="content",
+  -n=true
+)
+```
+
+**Record placeholders found:**
+```
+placeholder_count = [count from Grep]
+placeholder_list = [list with line numbers and content]
+
+IF placeholder_count > 0:
+  VALIDATION_STATUS = "HAS_PLACEHOLDERS"
+  Proceed to Step 7.4 (user resolution)
+ELSE:
+  Proceed to Step 7.3
+```
+
+---
+
+### Step 7.3: Framework Constraint Validation
+
+**Validate against context files:**
+
+**1. Tech-Stack Consistency:**
+```
+Read(file_path="devforgeai/specs/context/tech-stack.md")
+
+Check specification uses approved framework:
+- Extract framework from spec
+- Compare to tech-stack.md approved frameworks
+- If mismatch: Record as validation issue (SEVERITY: HIGH)
+```
+
+**2. File Structure Compliance:**
+```
+Read(file_path="devforgeai/specs/context/source-tree.md")
+
+Check generated files follow structure:
+- Extract file paths from generated_files list
+- Compare to source-tree.md component location rules
+- If violations: Record as validation issue (SEVERITY: MEDIUM)
+```
+
+**3. Dependency Approval:**
+```
+Read(file_path="devforgeai/specs/context/dependencies.md")
+
+Check all packages are approved:
+- Extract dependencies from spec
+- Compare to dependencies.md approved packages
+- If unapproved: Record as validation issue (SEVERITY: LOW)
+```
+
+**4. Anti-Pattern Detection:**
+```
+Read(file_path="devforgeai/specs/context/anti-patterns.md")
+
+Scan specification for forbidden patterns:
+- Grep for common anti-patterns in generated code
+- Check for hardcoded values, prop drilling, inline styles, etc.
+- If detected: Record as validation issue (SEVERITY: HIGH)
+```
+
+**Compile validation results:**
+```
+validation_summary = {
+  "tech_stack": "PASSED|FAILED",
+  "file_structure": "PASSED|FAILED",
+  "dependencies": "PASSED|FAILED",
+  "anti_patterns": "PASSED|FAILED",
+  "issues": [
+    {severity: "HIGH", category: "tech_stack", description: "Spec uses Vue but tech-stack.md specifies React"},
+    {severity: "MEDIUM", category: "file_structure", description: "Component in wrong directory"},
+    {severity: "LOW", category: "dependencies", description: "react-icons not in dependencies.md"}
+  ]
+}
+```
+
+**Determine validation status:**
+```
+high_severity_count = count issues with severity "HIGH"
+medium_severity_count = count issues with severity "MEDIUM"
+low_severity_count = count issues with severity "LOW"
+
+IF high_severity_count > 0:
+  VALIDATION_STATUS = "FAILED"
+ELSE IF medium_severity_count > 0 OR low_severity_count > 0:
+  VALIDATION_STATUS = "WARNING"
+ELSE:
+  VALIDATION_STATUS = "PASSED"
+```
+
+---
+
+### Step 7.4: User Resolution of All Issues
+
+**CRITICAL: Never auto-fix. Always ask user.**
+
+**For Missing Sections:**
+
+```
+IF missing_sections not empty:
+
+  AskUserQuestion(
+    questions: [{
+      question: "The UI specification is missing ${missing_sections.length} required section(s): ${missing_sections.join(', ')}. How should I proceed?",
+      header: "Incomplete Spec",
+      multiSelect: false,
+      options: [
+        {
+          label: "Provide missing information",
+          description: "I'll answer questions to complete each section"
+        },
+        {
+          label: "Use framework defaults",
+          description: "Apply DevForgeAI standard defaults with my approval"
+        },
+        {
+          label: "Accept as-is",
+          description: "Mark as PARTIAL, I'll complete manually"
+        },
+        {
+          label: "Regenerate specification",
+          description: "Start Phase 5 over with different approach"
+        }
+      ]
+    }]
+  )
+
+  Handle response:
+
+  IF "Provide missing information":
+    FOR EACH missing section:
+      Ask specific question for that section
+
+      Example for Accessibility:
+        AskUserQuestion:
+          Question: "What accessibility level is required for this UI?"
+          Header: "Accessibility"
+          Options: [
+            "WCAG 2.1 AA (standard)",
+            "WCAG 2.1 AAA (strict)",
+            "Custom requirements (I'll specify)"
+          ]
+
+      Example for Responsive:
+        AskUserQuestion:
+          Question: "What responsive design approach should be used?"
+          Header: "Responsive"
+          Options: [
+            "Mobile-first (framework standard)",
+            "Desktop-first",
+            "Adaptive (different layouts per breakpoint)"
+          ]
+
+      Apply user's answers to spec via Edit tool
+
+    Re-validate completeness
+
+  ELSE IF "Use framework defaults":
+    Display defaults being applied:
+    "DevForgeAI Standard Defaults:
+    - Accessibility: WCAG 2.1 AA (minimum framework standard)
+    - Responsive: Mobile-first (progressive enhancement)
+    - Test Strategy: Test pyramid (70% unit, 20% integration, 10% E2E)
+    - State Management: ${extract from tech-stack.md}"
+
+    AskUserQuestion:
+      Question: "Apply these DevForgeAI standard defaults to specification?"
+      Header: "Confirm Defaults"
+      Options: [
+        "Yes, apply defaults",
+        "No, let me specify custom values",
+        "Show what each default means"
+      ]
+
+    IF user approves:
+      Edit spec to add sections with approved defaults
+      Document: "Added via user-approved framework defaults"
+
+    ELSE IF "Show what each default means":
+      Display detailed explanation of each default
+      Then re-ask approval question
+
+    ELSE:
+      Use "Provide missing information" flow
+
+  ELSE IF "Accept as-is":
+    Set SPEC_QUALITY = "PARTIAL"
+    Record: "User accepted incomplete spec"
+    Continue to formatter (will show warnings)
+
+  ELSE: # Regenerate
+    Display: "Regenerating specification with corrections..."
+    Return to Phase 5 Code Generation
+```
+
+**For Placeholders (max 10 to prevent endless loops):**
+
+```
+IF placeholder_count > 0:
+
+  Display first 3 placeholders as preview:
+  "Found ${placeholder_count} placeholder(s):
+  1. Line ${line1}: ${text1}
+  2. Line ${line2}: ${text2}
+  3. Line ${line3}: ${text3}
+  ${placeholder_count > 3 ? '... and ' + (placeholder_count - 3) + ' more' : ''}"
+
+  AskUserQuestion(
+    questions: [{
+      question: "The UI specification has ${placeholder_count} placeholder(s). How should I proceed?",
+      header: "Placeholders",
+      multiSelect: false,
+      options: [
+        { label: "Resolve now", description: "I'll provide values for each placeholder" },
+        { label: "Accept as-is", description: "Leave placeholders, I'll resolve manually" },
+        { label: "Show all placeholders", description: "Display complete list before deciding" }
+      ]
+    }]
+  )
+
+  Handle response:
+
+  IF "Resolve now":
+    FOR EACH placeholder (max 10):
+      AskUserQuestion(
+        questions: [{
+          question: "Line ${line_num}: '${placeholder_text}'. What should this be?",
+          header: "Placeholder ${index}/${total}",
+          multiSelect: false,
+          options: [
+            { label: "Provide value", description: "I'll specify the correct value" },
+            { label: "Skip this one", description: "Leave as TODO for manual resolution" }
+          ]
+        }]
+      )
+
+      IF user provides value:
+        Edit(file_path="devforgeai/specs/ui/${SPEC_FILE_NAME}",
+             old_string="${LINE_WITH_PLACEHOLDER}",
+             new_string="${LINE_WITH_USER_VALUE}")
+
+      ELSE:
+        Skip (leave placeholder, will mark as PARTIAL)
+
+    Re-scan for remaining placeholders after edits
+
+  ELSE IF "Accept as-is":
+    Set SPEC_QUALITY = "PARTIAL"
+    Record: "User accepted placeholders"
+    Continue to formatter (will show warnings)
+
+  ELSE: # Show all placeholders
+    Display full Grep output with line numbers
+    Then re-ask "Resolve now" vs "Accept as-is" question
+```
+
+**For Framework Violations:**
+
+```
+IF validation_summary has HIGH severity issues:
+
+  Display issues summary:
+  "❌ Framework Validation detected ${high_severity_count} critical issue(s):
+  ${For each HIGH severity issue: display category, description}"
+
+  AskUserQuestion(
+    questions: [{
+      question: "Found ${high_severity_count} critical validation issue(s). How should I proceed?",
+      header: "Critical Issues",
+      multiSelect: false,
+      options: [
+        { label: "Fix issues now", description: "I'll resolve each violation" },
+        { label: "Show detailed report", description: "Display all issues with context" },
+        { label: "Accept with warnings", description: "Proceed with PARTIAL status (not recommended)" },
+        { label: "Regenerate specification", description: "Start over with corrected constraints" }
+      ]
+    }]
+  )
+
+  Handle response:
+
+  IF "Fix issues now":
+    FOR EACH HIGH severity issue:
+      Ask specific resolution question
+
+      Example for tech-stack mismatch:
+        AskUserQuestion:
+          Question: "Spec uses Vue but tech-stack.md specifies React. Which is correct?"
+          Header: "Tech Conflict"
+          Options: [
+            "Use React (follow tech-stack.md)",
+            "Use Vue (update tech-stack.md and create ADR)",
+            "Skip (accept this violation)"
+          ]
+
+      Apply user's decision:
+        IF "Use React":
+          Edit spec to change framework to React
+          Update all framework references
+
+        ELSE IF "Use Vue":
+          Display: "This requires updating tech-stack.md and creating ADR"
+          Ask: "Update tech-stack.md now or handle manually?"
+          If update: Edit tech-stack.md, create ADR stub
+
+        ELSE: # Skip
+          Record as accepted violation
+
+    Re-validate against context files after fixes
+
+  ELSE IF "Show detailed report":
+    Display full validation_summary with line numbers and context
+    Then re-ask the original question
+
+  ELSE IF "Accept with warnings":
+    Display warning:
+    "⚠️ Proceeding with critical violations is not recommended.
+    This may cause issues during implementation (/dev) or QA (/qa)."
+
+    Confirm:
+    AskUserQuestion:
+      Question: "Confirm: Accept critical violations and mark as PARTIAL?"
+      Options: ["Yes, I understand the risks", "No, let me fix them"]
+
+    IF confirmed:
+      Set SPEC_QUALITY = "PARTIAL"
+      Record: "User accepted HIGH severity violations"
+    ELSE:
+      Return to "Fix issues now" flow
+
+  ELSE: # Regenerate
+    Display: "Returning to Phase 5 Code Generation with corrections..."
+    Return to Phase 5 with corrected constraints
+
+ELSE IF validation_summary has MEDIUM or LOW severity issues:
+
+  Display warnings summary:
+  "⚠️ Validation detected ${medium_severity_count + low_severity_count} warning(s):
+  ${For each issue: display severity, category, description}"
+
+  AskUserQuestion(
+    questions: [{
+      question: "These warnings won't block UI generation but should be addressed. Proceed?",
+      header: "Warnings",
+      multiSelect: false,
+      options: [
+        { label: "Proceed with warnings", description: "Mark as PARTIAL and continue" },
+        { label: "Fix warnings now", description: "Resolve each warning" },
+        { label: "Show details", description: "Display full validation report" }
+      ]
+    }]
+  )
+
+  IF "Proceed with warnings":
+    Set SPEC_QUALITY = "PARTIAL"
+    Continue to formatter
+
+  ELSE IF "Fix warnings now":
+    [Use same resolution flow as HIGH severity issues]
+
+  ELSE: # Show details
+    Display detailed validation_summary
+    Re-ask the question
+```
+
+---
+
+### Step 7.5: Prepare Validation Context for Formatter
+
+**Compile validation context (all decisions user-made):**
+
+```
+validation_context = {
+  "spec_file": "devforgeai/specs/ui/${SPEC_FILE_NAME}",
+  "spec_quality": "${SPEC_QUALITY}",
+  "validation_summary": validation_summary,
+  "user_decisions": [
+    # Document all user decisions made in Step 7.4
+    "Accepted placeholder at line 42 (color scheme - user will specify later)",
+    "Resolved tech-stack conflict: Chose React over Vue",
+    "Applied framework defaults with approval (accessibility: WCAG 2.1 AA, responsive: mobile-first)"
+  ],
+  "remaining_issues": {
+    "missing_sections": missing_sections,
+    "unresolved_placeholders": [placeholders user chose to skip],
+    "accepted_violations": [violations user accepted]
+  },
+  "framework_compliance": {
+    "tech_stack": validation_summary.tech_stack,
+    "file_structure": validation_summary.file_structure,
+    "dependencies": validation_summary.dependencies,
+    "anti_patterns": validation_summary.anti_patterns
+  }
+}
+```
+
+**Quality gate before formatter:**
+
+```
+IF SPEC_QUALITY == "FAILED":
+  # User declined to fix critical violations
+  HALT workflow immediately
+
+  Display error:
+  "❌ UI Specification Validation FAILED
+
+  Critical Issues (user declined to fix):
+  ${List HIGH severity issues}
+
+  Cannot proceed with specification containing unresolved critical violations.
+
+  Recovery Options:
+  - Regenerate specification: Return to Phase 5
+  - Fix issues manually: Edit devforgeai/specs/ui/${SPEC_FILE_NAME}
+  - Run /create-ui again after corrections"
+
+  EXIT skill with error status
+
+ELSE IF SPEC_QUALITY == "PARTIAL":
+  # Has warnings, placeholders, or user-accepted issues
+  Display notice:
+  "⚠️ Specification marked as PARTIAL
+
+  User Decisions:
+  ${List user_decisions}
+
+  Remaining Issues:
+  ${List remaining_issues}
+
+  Proceeding to formatter (will include warnings in display)"
+
+  Continue to Phase 6 Step 3.5 (formatter invocation)
+
+ELSE: # PASSED
+  # All validations passed, no issues
+  Display:
+  "✅ Specification validation PASSED
+
+  All framework constraints satisfied.
+  No placeholders or missing sections.
+
+  Proceeding to formatter..."
+
+  Continue to Phase 6 Step 3.5 (formatter invocation)
+```
+
+**Pass validation context to formatter:**
+
+Include validation_context in formatter prompt (Phase 6 Step 3.5) so formatter knows:
+- What user decided (accepted warnings, resolved placeholders, etc.)
+- What issues remain (for PARTIAL display)
+- What quality level to report (SUCCESS/PARTIAL/FAILED)
+
+**Output:** All issues resolved through user decisions, validation context prepared, quality status determined, ready for formatter invocation.
+
+**Token Impact:**
+- Step 7.1: ~1K tokens (read spec, check sections)
+- Step 7.2: ~500 tokens (grep placeholders)
+- Step 7.3: ~3K tokens (read 4 context files, validate)
+- Step 7.4: Variable (2-10K tokens depending on issue count and user interaction)
+- Step 7.5: ~500 tokens (compile context)
+- **Total Phase 7:** ~7-15K tokens (user interaction-heavy, acceptable for comprehensive validation)
+
+**Note:** Phase 7 executes BEFORE Phase 6 Step 3.5 in the actual workflow sequence. Validation happens first, then formatter is invoked with validation results.
+
+---
+
+## Integration with Other DevForgeAI Skills
+
+### devforgeai-architecture
+- **Dependency:** Requires context files created by architecture skill
+- **Flow:** architecture → ui-generator
+
+### devforgeai-development
+- **Integration:** UI specs serve as input for TDD implementation
+- **Flow:** ui-generator → development (tests written for UI components)
+
+### devforgeai-orchestration
+- **Invocation:** Orchestration can invoke ui-generator when story has UI requirements
+- **Flow:** orchestration detects UI story → invokes ui-generator → proceeds to development
+
+### devforgeai-qa
+- **Validation:** QA validates generated UI against acceptance criteria
+- **Flow:** development → qa (checks UI implementation matches spec)
+
+---
+
+## Bundled Resources
+
+### Scripts
+
+**`scripts/ensure_spec_dir.py`**
+- Creates `devforgeai/specs/ui/` directory if it doesn't exist
+- Used in Phase 5 before writing generated code
+
+**`scripts/validate_context.py`**
+- Validates all 6 context files exist and are non-empty
+- Checks for placeholder content (TODO, TBD)
+- Used in Phase 1 for context validation
+
+### References
+
+**`references/devforgeai-integration-guide.md`**
+- Detailed guide on integrating with DevForgeAI workflow
+- Context file requirements and how to respect them
+- Common integration patterns
+
+**`references/web_best_practices.md`**
+- Semantic HTML guidelines
+- Accessibility (ARIA roles, alt text, keyboard navigation)
+- Form validation patterns
+- Responsive design principles
+
+**`references/gui_best_practices.md`**
+- Layout organization (logical grouping)
+- Component naming conventions
+- Tab order and keyboard shortcuts
+- Platform-specific guidelines (WPF, Tkinter)
+
+**`references/tui_best_practices.md`**
+- Column alignment and formatting
+- Box-drawing characters for tables
+- ANSI color usage for readability
+- Terminal width considerations
+
+**`references/ui-result-formatting-guide.md`** (NEW - 2025-11-05)
+- Framework constraints for ui-spec-formatter subagent
+- Display template guidelines (success/partial/failed templates)
+- Context file validation rules (tech-stack, source-tree, dependencies, etc.)
+- Component categorization logic (deterministic)
+- Severity levels and error scenarios
+- Testing checklist for subagent behavior
+- Prevents subagent from operating in silo (framework-aware design)
+
+### Assets (Templates)
+
+**`assets/web-template.html`**
+- Boilerplate HTML5 structure
+- Semantic tags and accessibility attributes
+
+**`assets/web-template.jsx`**
+- React functional component template
+- PropTypes/TypeScript interface placeholder
+
+**`assets/web-template.blazor.razor`**
+- Blazor component with @page directive
+- @code block structure
+
+**`assets/web-template.aspnet.cshtml`**
+- ASP.NET Core MVC View template
+- @model declaration and sections
+
+**`assets/gui-template.py`**
+- Python Tkinter application boilerplate
+- Main window setup and event loop
+
+**`assets/gui-template.wpf.xaml`**
+- WPF Window with Grid layout
+- Namespace declarations
+
+**`assets/tui-template.py`**
+- Python function for formatted terminal output
+- Table rendering with column alignment
+
+---
+
+## Usage Examples
+
+### Example 1: Web UI from Story
+
+```
+User: "Generate UI for STORY-042 which requires a login form"
+
+Skill executes:
+1. Validates context files ✓
+2. Reads STORY-042.story.md
+3. Asks: "What type of UI?" → User selects "Web UI"
+4. Asks: "Web technology?" → User selects "React"
+5. Asks: "Styling?" → User selects "Tailwind CSS"
+6. Asks: "Theme?" → User selects "Dark Mode"
+7. Generates LoginForm.jsx with email/password fields
+8. Saves to devforgeai/specs/ui/LoginForm.jsx
+9. Updates STORY-042.story.md with UI reference
+```
+
+### Example 2: Native GUI without Story
+
+```
+User: "Create a settings dialog for the application"
+
+Skill executes:
+1. Validates context files ✓
+2. (No story provided, skip Phase 2)
+3. Asks: "What type of UI?" → User selects "Native GUI"
+4. Asks: "GUI technology?" → User selects "C# WPF"
+5. Asks: "Components?" → User describes "Tabs for General, Advanced, About"
+6. Generates SettingsDialog.xaml with TabControl
+7. Saves to devforgeai/specs/ui/SettingsDialog.xaml
+8. Creates UI-SPEC-SUMMARY.md
+```
+
+### Example 3: Terminal UI for Data Display
+
+```
+User: "Generate a terminal table to display server status"
+
+Skill executes:
+1. Validates context files ✓
+2. (No story provided)
+3. Asks: "What type of UI?" → User selects "Terminal UI"
+4. Asks: "Formatting style?" → User selects "Box Drawing"
+5. Asks: "Components?" → "Status table: server name, uptime, CPU, memory"
+6. Generates format_server_status.py with box-drawing table
+7. Saves to devforgeai/specs/ui/format_server_status.py
+```
+
+---
+
+## Quality Standards
+
+Generated UI code must:
+- ✅ Follow `coding-standards.md` conventions
+- ✅ Respect `tech-stack.md` approved technologies
+- ✅ Place files according to `source-tree.md` structure
+- ✅ Use dependencies from `dependencies.md` only
+- ✅ Avoid patterns listed in `anti-patterns.md`
+- ✅ Include accessibility attributes (ARIA, alt text)
+- ✅ Follow best practices from references/
+- ✅ Be properly commented and documented
+- ✅ Match story acceptance criteria (if story provided)
+
+---
+
+## Error Handling
+
+**Context files missing:**
+- HALT immediately
+- Inform user to run `devforgeai-architecture` first
+
+**Technology conflict (user choice vs tech-stack.md):**
+- Use AskUserQuestion to resolve
+- If user wants new tech → guide them to create ADR
+- If keeping existing → use approved tech
+
+**Invalid story file:**
+- Warn user but continue (skip Phase 2)
+- Proceed with interactive discovery
+
+**Write permission errors:**
+- Report error with specific path
+- Suggest checking directory permissions
+- Ask user for alternative output location
+
+---
+
+## Token Efficiency
+
+**Use native tools exclusively for file operations:**
+- ✅ Read(file_path=...) for reading files
+- ✅ Write(file_path=...) for creating files
+- ✅ Edit(file_path=...) for modifying files
+- ✅ Glob(pattern=...) for finding files
+- ✅ Grep(pattern=...) for searching content
+- ❌ Never use `cat`, `grep`, `find`, `sed`, `echo` via Bash
+
+**Load references progressively:**
+- Load only the best practices file relevant to UI type
+- Don't load all reference files upfront
+- Load integration guide only when needed
+
+**Estimated token usage per execution:**
+- Phase 1 (Context Validation): ~8,000 tokens
+- Phase 2 (Story Analysis): ~5,000 tokens (if story provided)
+- Phase 3 (Interactive Discovery): ~3,000 tokens
+- Phase 4 (Template Loading): ~4,000 tokens
+- Phase 5 (Code Generation): ~10,000 tokens
+- Phase 6 (Documentation): ~5,000 tokens
+- **Total: ~35,000 tokens per component** (efficient single-session execution)
+
+---
+
+## Summary
+
+The `devforgeai-ui-generator` skill provides an interactive, constraint-aware UI generation workflow that:
+- Validates DevForgeAI context files before proceeding
+- Respects architectural constraints (tech-stack, source-tree, dependencies)
+- Guides users through technology and styling decisions
+- Generates production-ready UI component code
+- Integrates seamlessly with other DevForgeAI skills
+- Updates story documentation automatically
+- Follows token-efficient native tool usage patterns
+
+Invoke this skill when UI components are needed, and let it guide you through a structured, context-aware generation process.

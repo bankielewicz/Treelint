@@ -1,0 +1,285 @@
+# Contract: devforgeai-story-creation <-> requirements-analyst
+# Version: 1.0.0
+# Date: 2025-11-06
+# Purpose: Define expected input/output format for story requirements generation
+# Related: RCA-007 (Multi-File Story Creation Violation)
+
+contract_version: "1.0.0"
+skill: devforgeai-story-creation
+subagent: requirements-analyst
+phase: "Phase 2: Requirements Analysis"
+rca_reference: "RCA-007"
+
+# Input specification
+input:
+  feature_description:
+    type: string
+    description: "Feature description from user or epic"
+    required: true
+    min_length: 10
+    max_length: 5000
+    example: "User authentication with email and password, including password reset flow"
+
+  story_metadata:
+    type: object
+    description: "Story metadata from Phase 1 (Story Discovery)"
+    required: true
+    properties:
+      story_id:
+        type: string
+        required: true
+        pattern: "^STORY-\\d{3}$"
+        example: "STORY-042"
+        description: "Unique story identifier"
+
+      epic_id:
+        type: string
+        required: false
+        pattern: "^EPIC-\\d{3}$|null"
+        example: "EPIC-002"
+        description: "Parent epic identifier (null if standalone)"
+
+      priority:
+        type: enum
+        required: true
+        values: ["Critical", "High", "Medium", "Low"]
+        example: "High"
+        description: "Story priority level"
+
+      points:
+        type: integer
+        required: true
+        values: [1, 2, 3, 5, 8, 13]
+        example: 8
+        description: "Story complexity (Fibonacci sequence)"
+
+# Output specification
+output_format: markdown_content
+output_type: text/markdown
+max_output_length: 50000
+
+output_sections:
+  user_story:
+    format: "As a [role], I want [action], so that [benefit]"
+    required: true
+    validation:
+      - Must identify specific persona (not generic "user")
+      - Action must be clear and measurable
+      - Benefit must explain business value
+
+  acceptance_criteria:
+    format: "Array of Given/When/Then scenarios"
+    required: true
+    min_count: 3
+    structure:
+      - title: string (clear, testable)
+      - given: string (context/initial state)
+      - when: string (action/trigger)
+      - then: string (expected outcome)
+    validation:
+      - All criteria must be testable (can verify pass/fail)
+      - Cover happy path + edge cases
+      - Each criterion independent (test in isolation)
+
+  edge_cases:
+    format: "Numbered list of edge case scenarios"
+    required: true
+    min_count: 2
+    structure:
+      - scenario: string (edge case description)
+      - handling: string (expected behavior)
+    validation:
+      - Cover unusual inputs, boundary conditions, error states
+      - Each has clear handling strategy
+
+  data_validation_rules:
+    format: "Numbered list of validation rules"
+    required: false
+    min_count: 0
+    structure:
+      - parameter: string (input/data field)
+      - rule: string (validation rule)
+
+  nfrs:
+    format: "Object with performance, security, reliability, scalability"
+    required: true
+    structure:
+      performance:
+        target: string (measurable metric)
+        example: "< 100ms response time (p95)"
+      security:
+        target: string (measurable metric)
+        example: "SQL injection prevention via parameterized queries"
+      reliability:
+        target: string (measurable metric)
+        example: "99.9% uptime"
+      scalability:
+        target: string (measurable metric)
+        example: "Support 10,000 concurrent users"
+    validation:
+      - All targets MUST be measurable
+      - Prohibited vague terms: ["fast", "secure", "reliable", "scalable", "performant"]
+
+# Constraints (CRITICAL - RCA-007 Fix)
+constraints:
+  no_file_creation:
+    enabled: true
+    description: "Subagent MUST NOT create files - parent skill handles file creation"
+    prohibited_tools:
+      - Write
+      - Edit (on non-existent files)
+      - Bash (with output redirection >, >>)
+    rationale: "Phase 5 of parent skill assembles content into story-template.md"
+
+  content_only:
+    enabled: true
+    description: "Return text content, not file references or file paths"
+    rationale: "Output is assembled with other sections (tech spec, UI spec) into single .story.md"
+
+  single_output:
+    enabled: true
+    description: "Return single markdown text block, not multiple file artifacts"
+    rationale: "DevForgeAI enforces single-file design principle per story"
+
+  max_output_length:
+    value: 50000
+    description: "Output must fit in Phase 5 assembly (story-template.md has ~60K capacity)"
+    enforcement: strict
+
+# Validation rules
+validation:
+  check_sections_present:
+    enabled: true
+    required_sections:
+      - "User Story"
+      - "Acceptance Criteria"
+      - "Edge Cases"
+      - "Non-Functional Requirements"
+    enforcement: strict
+    error_message: "Subagent output missing required sections"
+
+  check_no_file_paths:
+    enabled: true
+    prohibited_patterns:
+      - "File created:"
+      - "\\.md created"
+      - "STORY-\\d+-.*\\.md"
+      - "Writing to file"
+      - "Saved to disk"
+      - "Created file:"
+      - "Successfully wrote"
+      - "Document generated:"
+      - "SUMMARY\\.md"
+      - "QUICK-START\\.md"
+      - "VALIDATION-CHECKLIST\\.md"
+      - "FILE-INDEX\\.md"
+      - "DELIVERY-SUMMARY\\.md"
+      - "Write\\(file_path="
+      - "Edit\\(file_path="
+      - "Bash\\(command=\\\"cat >"
+    enforcement: critical
+    error_message: "Subagent created files instead of returning content (RCA-007 violation)"
+
+  check_ac_format:
+    enabled: true
+    required_keywords: ["Given", "When", "Then"]
+    min_count: 3
+    enforcement: strict
+    error_message: "Acceptance criteria must follow Given/When/Then format (minimum 3)"
+
+  check_nfr_measurability:
+    enabled: true
+    prohibited_vague_terms:
+      - "fast"
+      - "secure"
+      - "scalable"
+      - "performant"
+      - "reliable"
+      - "quickly"
+      - "efficiently"
+    enforcement: warning
+    error_message: "NFRs contain vague terms - must be measurable (e.g., '< 100ms' not 'fast')"
+
+# Error handling
+error_handling:
+  on_file_creation_detected:
+    action: re_invoke
+    max_retries: 2
+    strict_mode_prompt: true
+    fallback: "HALT with manual intervention required"
+    log: true
+
+  on_missing_sections:
+    action: ask_user_question
+    prompt_user_options:
+      - "Re-invoke subagent"
+      - "Manually provide content for missing sections"
+      - "Skip missing sections (not recommended)"
+    fallback: "re_invoke"
+
+  on_invalid_ac_format:
+    action: re_invoke
+    max_retries: 1
+    enhanced_examples: true
+    fallback: "ask_user_question"
+
+  on_vague_nfrs:
+    action: log_and_continue
+    warning_message: "NFRs contain vague terms - recommend making measurable"
+    suggest_improvements: true
+
+# Monitoring
+monitoring:
+  log_violations:
+    enabled: true
+    log_path: "devforgeai/logs/rca-007-violations.log"
+    log_format: |
+      [VIOLATION DETECTED]
+      Timestamp: {timestamp}
+      Story ID: {story_id}
+      Subagent: {subagent_name}
+      Parent Skill: {skill_name}
+      Phase: {phase}
+      Violation Type: {type}
+      Pattern Matched: {pattern}
+      Output Snippet: {snippet}
+      Recovery Action: {action}
+      Recovery Result: {result}
+      ---
+
+  track_retries:
+    enabled: true
+    max_retries_before_alert: 2
+    alert_message: "Subagent {subagent_name} failed {retry_count} times - review prompt constraints"
+
+  performance_tracking:
+    enabled: true
+    warn_if_execution_exceeds: "5 minutes"
+    log_execution_time: true
+
+  success_rate:
+    enabled: true
+    track_metric: "first_attempt_success_rate"
+    target: 90
+    alert_if_below: 80
+
+# Usage instructions
+usage:
+  parent_skill_reads:
+    - "Load contract in Phase 2: Read(file_path='{contract_path}')"
+    - "Parse YAML: import yaml; contract = yaml.safe_load(contract_content)"
+    - "Validate subagent output against contract.validation rules"
+    - "Apply contract.error_handling on violations"
+
+  subagent_awareness:
+    - "Subagent prompt should reference contract: 'Contract Reference: {contract_path}'"
+    - "Subagent does NOT read contract directly (prompt includes all constraints)"
+    - "Parent skill enforces contract, not subagent"
+
+# Version history
+changelog:
+  - version: "1.0.0"
+    date: "2025-11-06"
+    changes: "Initial contract definition for RCA-007 fix (requirements-analyst)"
+    author: "DevForgeAI Framework"
+    breaking_changes: false

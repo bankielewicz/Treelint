@@ -1,0 +1,42 @@
+---
+template-id: skill-passed
+operation-type: skill
+success-status: passed
+version: "1.0"
+description: "Template for successful skill execution"
+---
+
+# Template: Skill Success Retrospective
+
+This template collects feedback when a skill completes successfully.
+
+## Field Mappings
+
+field-mappings:
+  workflow-clarity:
+    question-id: "skill_passed_01"
+    section: "## Workflow Clarity"
+
+  subagent-effectiveness:
+    question-id: "skill_passed_02"
+    section: "## Subagent Coordination"
+
+  output-quality:
+    question-id: "skill_passed_03"
+    section: "## Output Quality"
+
+  improvements:
+    question-id: "skill_passed_04"
+    section: "## Improvement Suggestions"
+
+## Template Sections
+
+- # Skill Retrospective: {operation}
+- ## Workflow Clarity
+- ## Subagent Coordination
+- ## Output Quality
+- ## Improvement Suggestions
+- ## Context (auto-populated)
+- ## Performance Metrics (auto-populated)
+- ## User Sentiment (auto-populated)
+- ## Actionable Insights (auto-extracted)

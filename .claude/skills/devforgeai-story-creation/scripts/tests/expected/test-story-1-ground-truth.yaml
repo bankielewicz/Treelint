@@ -1,0 +1,79 @@
+# Ground Truth for Test Story 1 (Simple)
+# This is the PERFECT v2.0 migration (100% accurate)
+# Used to measure AI migration accuracy
+
+technical_specification:
+  format_version: "2.0"
+
+  components:
+    - type: "Worker"
+      name: "AlertDetectionWorker"
+      file_path: "src/Workers/AlertDetectionWorker.cs"
+      interface: "BackgroundService"
+      polling_interval_ms: 30000
+      requirements:
+        - id: "WKR-001"
+          description: "Must run continuous polling loop with 30s interval and cancellation support"
+          testable: true
+          test_requirement: "Test: Worker polls at 30s intervals until CancellationToken signals stop"
+          priority: "Critical"
+        - id: "WKR-002"
+          description: "Must handle exceptions without stopping worker"
+          testable: true
+          test_requirement: "Test: Exception in poll iteration doesn't crash worker, logs error, continues"
+          priority: "High"
+        - id: "WKR-003"
+          description: "Must support graceful shutdown via cancellation token"
+          testable: true
+          test_requirement: "Test: Worker shuts down within 5 seconds when CancellationToken is cancelled"
+          priority: "High"
+
+    - type: "Configuration"
+      name: "appsettings.json"
+      file_path: "src/appsettings.json"
+      required_keys:
+        - key: "PollingIntervalSeconds"
+          type: "int"
+          default: 30
+          validation: "Range 10-300"
+          required: false
+          test_requirement: "Test: PollingIntervalSeconds default is 30 when not specified"
+        - key: "ConnectionStrings.OmniWatchDb"
+          type: "string"
+          required: true
+          test_requirement: "Test: Configuration loads ConnectionStrings.OmniWatchDb without exception"
+
+  non_functional_requirements:
+    - id: "NFR-001"
+      category: "Performance"
+      requirement: "Worker polling should complete within 2 seconds"
+      metric: "Poll execution time < 2s"
+      test_requirement: "Test: Measure poll iteration time, assert < 2 seconds"
+      priority: "Medium"
+
+    - id: "NFR-002"
+      category: "Performance"
+      requirement: "Startup time should be under 1 second"
+      metric: "Worker startup < 1s"
+      test_requirement: "Test: Measure time from StartAsync call to first poll, assert < 1 second"
+      priority: "Medium"
+
+    - id: "NFR-003"
+      category: "Reliability"
+      requirement: "Worker must survive exceptions without crashing"
+      metric: "100% exception recovery (worker continues after exception)"
+      test_requirement: "Test: Throw exception in ExecuteAsync, verify worker continues to next poll"
+      priority: "Critical"
+
+    - id: "NFR-004"
+      category: "Reliability"
+      requirement: "Graceful shutdown within 5 seconds when cancellation requested"
+      metric: "Shutdown time < 5s"
+      test_requirement: "Test: Signal cancellation, measure time until worker stops, assert < 5 seconds"
+      priority: "High"
+
+# Component Inventory for Accuracy Calculation
+# Expected: 2 components (1 Worker, 1 Configuration)
+# Expected: 3 Worker requirements
+# Expected: 2 Configuration keys
+# Expected: 4 NFRs

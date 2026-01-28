@@ -1,0 +1,152 @@
+---
+name: devforgeai-qa
+description: Validates code quality through hybrid progressive validation (light checks during development, deep analysis after completion). Enforces test coverage (95%/85%/80% strict thresholds), detects anti-patterns, validates spec compliance, and analyzes code quality metrics. Use when validating implementations, ensuring quality standards, or preparing for release.
+tools: Read, Write, Edit, Glob, Grep, Bash, Task
+model: claude-model: opus-4-5-20251001
+---
+
+# DevForgeAI QA Skill
+
+Quality validation enforcing architectural constraints, coverage thresholds, and code standards through progressive validation.
+
+---
+
+## ⚠️ EXECUTION MODEL: This Skill Expands Inline
+
+**After invocation, YOU (Claude) execute these instructions phase by phase.**
+
+**When you invoke this skill:**
+1. This SKILL.md content is now in your conversation
+2. You execute each phase sequentially
+3. You display results as you work through phases
+4. You complete with success/failure report
+
+**Do NOT:**
+- ❌ Wait passively for skill to "return results"
+- ❌ Assume skill is executing elsewhere
+- ❌ Stop workflow after invocation
+
+**Proceed to "Parameter Extraction" section below and begin execution.**
+
+---
+
+## Parameter Extraction
+
+Extracts story ID and mode (light/deep) from conversation context.
+
+**See `references/parameter-extraction.md`** for extraction algorithm (YAML frontmatter, file reference, explicit statement, status inference).
+
+---
+
+## CRITICAL: Definition of Done Protocol
+
+**Step 2.5 (Deferral Validation) CANNOT be skipped.**
+
+Deferred DoD items MUST have user approval, story/ADR references, and deferral-validator subagent validation.
+
+**PROHIBITED:** Autonomous deferrals, manual validation shortcuts, token optimization bypasses.
+
+**Rationale:** RCA-007 - Manual validation missed STORY-004→005→006 chain, causing work loss.
+
+**See `references/dod-protocol.md`** for protocol requirements and enforcement.
+
+---
+
+## Validation Modes
+
+### Light (~10K tokens, 2-3 min)
+- Build/syntax checks
+- Test execution (100% pass required)
+- Critical anti-patterns only
+- Deferral validation (if deferrals exist)
+
+### Deep (~65K tokens, 8-12 min)
+- Complete coverage analysis (95%/85%/80% thresholds)
+- Comprehensive anti-pattern detection
+- Full spec compliance (AC, API, NFRs)
+- Code quality metrics
+- Security scanning (OWASP Top 10)
+- Deferral validation (if deferrals exist)
+
+---
+
+## QA Workflow (5 Phases)
+
+**⚠️ EXECUTION STARTS HERE - You are now executing the skill's workflow.**
+
+Load workflow references on-demand for implementation details.
+
+### Phase 1: Test Coverage Analysis
+**Ref:** `references/coverage-analysis-workflow.md` (7 steps)
+**Guide:** `references/coverage-analysis.md`
+**Blocks on:** Business <95%, Application <85%, Overall <80%
+
+### Phase 2: Anti-Pattern Detection
+**Ref:** `references/anti-pattern-detection-workflow.md` (4 steps)
+**Guides:** `references/anti-pattern-detection.md`, `references/security-scanning.md`
+**Blocks on:** CRITICAL violations (security, architecture, library substitution)
+
+### Phase 3: Spec Compliance Validation
+**Ref:** `references/spec-compliance-workflow.md` (6 steps, includes Step 2.5)
+**Guides:** `references/spec-validation.md`, `references/deferral-decision-tree.md`, `references/dod-protocol.md`
+**Subagent:** deferral-validator (Step 2.5 - MANDATORY if deferrals exist)
+**Blocks on:** Missing AC tests, API violations, CRITICAL/HIGH deferral violations
+
+### Phase 4: Code Quality Metrics
+**Ref:** `references/code-quality-workflow.md` (5 steps)
+**Guide:** `references/quality-metrics.md`
+**Blocks on:** Extreme violations (duplication >20%, MI <50)
+
+### Phase 5: QA Report Generation
+**Ref:** `references/report-generation.md` (6 steps)
+**Guide:** `references/qa-result-formatting-guide.md`
+**Subagent:** qa-result-interpreter (formats display)
+**Output:** Report, story status update, formatted display
+
+---
+
+## Automation Scripts
+
+**6 Python scripts** in `scripts/`:
+1. generate_coverage_report.py
+2. detect_duplicates.py
+3. analyze_complexity.py
+4. security_scan.py
+5. validate_spec_compliance.py
+6. generate_test_stubs.py
+
+**See `references/automation-scripts.md`** for usage.
+
+---
+
+## Subagents
+
+**deferral-validator** (Phase 3 Step 2.5): Validates deferrals (MANDATORY)
+**qa-result-interpreter** (Phase 5 Step 6): Generates formatted display
+
+---
+
+## Integration
+
+**Invoked by:** devforgeai-development, /qa command, devforgeai-orchestration
+**Invokes:** deferral-validator, qa-result-interpreter
+**Outputs to:** devforgeai-development, devforgeai-release, user
+
+---
+
+## Success Criteria
+
+**Light:** Build passes, tests pass, no CRITICAL, deferrals valid, <10K tokens
+**Deep:** Coverage thresholds met, no CRITICAL/HIGH, spec compliant, quality acceptable, deferrals valid, status="QA Approved", <65K tokens
+
+---
+
+## Reference Files (17 total)
+
+**Workflows (8):** parameter-extraction, dod-protocol, coverage-analysis-workflow, anti-pattern-detection-workflow, spec-compliance-workflow, code-quality-workflow, report-generation, automation-scripts
+
+**Guides (9):** coverage-analysis, anti-pattern-detection, deferral-decision-tree, language-specific-tooling, qa-result-formatting-guide, quality-metrics, security-scanning, spec-validation, validation-procedures
+
+---
+
+**Token efficiency:** Entry ~1.5K, Light ~3.8K, Deep ~11K (7x improvement via progressive disclosure)

@@ -1,0 +1,41 @@
+---
+template-id: subagent-failed
+operation-type: subagent
+success-status: failed
+version: "1.0"
+description: "Template for failed subagent execution"
+---
+
+# Template: Subagent Failure Retrospective
+
+This template collects feedback when a subagent encounters errors.
+
+## Field Mappings
+
+field-mappings:
+  error-type:
+    question-id: "subagent_failed_01"
+    section: "## Error Type"
+
+  root-cause:
+    question-id: "subagent_failed_02"
+    section: "## Root Cause"
+
+  recovery:
+    question-id: "subagent_failed_03"
+    section: "## Recovery Steps"
+
+  improvements:
+    question-id: "subagent_failed_04"
+    section: "## Improvements Needed"
+
+## Template Sections
+
+- # Subagent Failure: {operation}
+- ## Error Type
+- ## Root Cause
+- ## Recovery Steps
+- ## Improvements Needed
+- ## Context (auto-populated)
+- ## User Sentiment (auto-populated)
+- ## Actionable Insights (auto-extracted)

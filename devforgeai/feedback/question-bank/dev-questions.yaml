@@ -1,0 +1,844 @@
+# DevForgeAI Question Bank - DEV Operation Type
+# Comprehensive questions for TDD development workflow
+# 100+ questions covering passed, failed, and partial success scenarios
+
+operation_type: dev
+
+# ============================================================================
+# PASSED OPERATION QUESTIONS (40 questions)
+# ============================================================================
+passed:
+  # Confidence & Workflow Questions (10)
+  - id: "dev_pass_conf_01"
+    priority: 2
+    category: "confidence"
+    text: "How confident are you with the TDD implementation?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_conf_02"
+    priority: 2
+    category: "confidence"
+    text: "Did the Red→Green→Refactor cycle feel natural?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_conf_03"
+    priority: 3
+    category: "confidence"
+    text: "Were you able to predict test failures?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_conf_04"
+    priority: 2
+    category: "confidence"
+    text: "How comfortable are you with the testing framework?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_conf_05"
+    priority: 3
+    category: "confidence"
+    text: "Did you need help understanding what tests to write?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_conf_06"
+    priority: 2
+    category: "confidence"
+    text: "How would you rate your implementation quality?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_conf_07"
+    priority: 3
+    category: "confidence"
+    text: "Did you refactor effectively after green phase?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_conf_08"
+    priority: 1
+    category: "confidence"
+    text: "Was testing adequate for the feature?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_conf_09"
+    priority: 3
+    category: "confidence"
+    text: "Could you explain your implementation to someone else?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_conf_10"
+    priority: 2
+    category: "confidence"
+    text: "How satisfied are you with the code design?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+  # Code Quality Questions (10)
+  - id: "dev_pass_qual_01"
+    priority: 1
+    category: "optimization"
+    text: "Did you follow the coding standards from context files?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_qual_02"
+    priority: 2
+    category: "optimization"
+    text: "How would you rate the code readability?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_qual_03"
+    priority: 3
+    category: "optimization"
+    text: "Are there any code smells you noticed?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_qual_04"
+    priority: 2
+    category: "optimization"
+    text: "Did you apply clean architecture principles?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_qual_05"
+    priority: 3
+    category: "optimization"
+    text: "Would you recommend this code for production?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_qual_06"
+    priority: 2
+    category: "optimization"
+    text: "How maintainable do you think the code is?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_qual_07"
+    priority: 3
+    category: "optimization"
+    text: "Did you use dependency injection throughout?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_qual_08"
+    priority: 2
+    category: "optimization"
+    text: "Are error cases properly handled?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_qual_09"
+    priority: 3
+    category: "optimization"
+    text: "Did you validate all inputs?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_qual_10"
+    priority: 2
+    category: "optimization"
+    text: "How well does this feature integrate with existing code?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+  # Next Steps Questions (10)
+  - id: "dev_pass_next_01"
+    priority: 1
+    category: "next-steps"
+    text: "Is this feature ready for QA review?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_next_02"
+    priority: 2
+    category: "next-steps"
+    text: "What's the next story you want to implement?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_next_03"
+    priority: 3
+    category: "next-steps"
+    text: "Do you have any blockers for the next phase?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_next_04"
+    priority: 2
+    category: "next-steps"
+    text: "Did you identify any technical debt?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_next_05"
+    priority: 3
+    category: "next-steps"
+    text: "Would a refactoring sprint help?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_next_06"
+    priority: 2
+    category: "next-steps"
+    text: "Are there related features you'd like to add?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_next_07"
+    priority: 1
+    category: "next-steps"
+    text: "Should we proceed to QA or iterate more?"
+    response_type: "multiple_choice"
+    options: ["Proceed to QA", "One more iteration", "Need feedback first"]
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_next_08"
+    priority: 3
+    category: "next-steps"
+    text: "Did you document the implementation?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_next_09"
+    priority: 2
+    category: "next-steps"
+    text: "Should we create follow-up stories?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_next_10"
+    priority: 3
+    category: "next-steps"
+    text: "What did you learn from this implementation?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  # Behavior & Outcomes Questions (10)
+  - id: "dev_pass_behav_01"
+    priority: 2
+    category: "optimization"
+    text: "Did unexpected behaviors occur during implementation?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_behav_02"
+    priority: 3
+    category: "optimization"
+    text: "Were acceptance criteria fully met?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_behav_03"
+    priority: 2
+    category: "optimization"
+    text: "Did the workflow help identify edge cases?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_behav_04"
+    priority: 3
+    category: "optimization"
+    text: "Did you find the TDD workflow helpful?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_behav_05"
+    priority: 2
+    category: "optimization"
+    text: "How much time did refactoring take?"
+    response_type: "multiple_choice"
+    options: ["<10%", "10-20%", "20-30%", ">30%"]
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_behav_06"
+    priority: 3
+    category: "optimization"
+    text: "Were there any surprising test failures?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_behav_07"
+    priority: 2
+    category: "optimization"
+    text: "Did test-first approach improve design?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_behav_08"
+    priority: 3
+    category: "optimization"
+    text: "Would you use the same approach next time?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_behav_09"
+    priority: 2
+    category: "optimization"
+    text: "How well did tests document behavior?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_pass_behav_10"
+    priority: 3
+    category: "optimization"
+    text: "Should we adjust our testing strategy?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+# ============================================================================
+# FAILED OPERATION QUESTIONS (35 questions)
+# ============================================================================
+failed:
+  # Investigation Questions (15)
+  - id: "dev_fail_inv_01"
+    priority: 1
+    category: "investigation"
+    text: "Which test failed?"
+    response_type: "open_text"
+    requires_context: true
+    first_time_only: false
+
+  - id: "dev_fail_inv_02"
+    priority: 1
+    category: "investigation"
+    text: "What was the error category?"
+    response_type: "multiple_choice"
+    options: ["Syntax error", "Test failure", "Dependency issue", "Integration failure", "Performance issue"]
+    requires_context: true
+    first_time_only: false
+
+  - id: "dev_fail_inv_03"
+    priority: 2
+    category: "investigation"
+    text: "Can you reproduce the error consistently?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "dev_fail_inv_04"
+    priority: 2
+    category: "investigation"
+    text: "Did the error occur in red, green, or refactor phase?"
+    response_type: "multiple_choice"
+    options: ["Red (test writing)", "Green (implementation)", "Refactor (cleanup)", "Unsure"]
+    requires_context: true
+    first_time_only: false
+
+  - id: "dev_fail_inv_05"
+    priority: 1
+    category: "investigation"
+    text: "Is this a blocker or can you continue?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "dev_fail_inv_06"
+    priority: 2
+    category: "investigation"
+    text: "Did context files help identify the issue?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "dev_fail_inv_07"
+    priority: 2
+    category: "investigation"
+    text: "Is Git repository available?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "dev_fail_inv_08"
+    priority: 2
+    category: "investigation"
+    text: "Are dependencies installed?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "dev_fail_inv_09"
+    priority: 1
+    category: "investigation"
+    text: "What debugging steps did you try?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_fail_inv_10"
+    priority: 2
+    category: "investigation"
+    text: "Did you check error message stack trace?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "dev_fail_inv_11"
+    priority: 3
+    category: "investigation"
+    text: "Is this a known issue?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_fail_inv_12"
+    priority: 2
+    category: "investigation"
+    text: "Did you check anti-patterns.md for guidance?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_fail_inv_13"
+    priority: 2
+    category: "investigation"
+    text: "Is this test-specific or implementation-specific?"
+    response_type: "multiple_choice"
+    options: ["Test issue", "Implementation issue", "Both", "Unclear"]
+    requires_context: true
+    first_time_only: false
+
+  - id: "dev_fail_inv_14"
+    priority: 3
+    category: "investigation"
+    text: "Do you need debugging tools?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_fail_inv_15"
+    priority: 1
+    category: "investigation"
+    text: "Error message clarity - how helpful was it?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+  # Resolution Questions (10)
+  - id: "dev_fail_res_01"
+    priority: 2
+    category: "optimization"
+    text: "What would help resolve this?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_fail_res_02"
+    priority: 1
+    category: "optimization"
+    text: "Do you need help with troubleshooting?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_fail_res_03"
+    priority: 2
+    category: "optimization"
+    text: "Should we simplify the test first?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_fail_res_04"
+    priority: 2
+    category: "optimization"
+    text: "Do you need to review acceptance criteria?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_fail_res_05"
+    priority: 3
+    category: "optimization"
+    text: "Should we defer this and move on?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_fail_res_06"
+    priority: 2
+    category: "optimization"
+    text: "Can you fix this in next iteration?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_fail_res_07"
+    priority: 1
+    category: "optimization"
+    text: "Should we create a follow-up story?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_fail_res_08"
+    priority: 2
+    category: "optimization"
+    text: "Is this a framework issue or user error?"
+    response_type: "multiple_choice"
+    options: ["Framework issue", "User error", "Environmental", "Unknown"]
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_fail_res_09"
+    priority: 3
+    category: "optimization"
+    text: "Would documentation help?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_fail_res_10"
+    priority: 2
+    category: "optimization"
+    text: "Should we file a bug report?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  # Learning Questions (10)
+  - id: "dev_fail_learn_01"
+    priority: 3
+    category: "next-steps"
+    text: "What did you learn from this failure?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_fail_learn_02"
+    priority: 3
+    category: "next-steps"
+    text: "How can we prevent this in future?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_fail_learn_03"
+    priority: 2
+    category: "next-steps"
+    text: "Should we update documentation?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_fail_learn_04"
+    priority: 3
+    category: "next-steps"
+    text: "Does the test properly cover this scenario?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_fail_learn_05"
+    priority: 2
+    category: "next-steps"
+    text: "Would better error messages help?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_fail_learn_06"
+    priority: 3
+    category: "next-steps"
+    text: "Should we add validation checks?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_fail_learn_07"
+    priority: 2
+    category: "next-steps"
+    text: "Is this a common issue?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_fail_learn_08"
+    priority: 3
+    category: "next-steps"
+    text: "Should we add this to ADR?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_fail_learn_09"
+    priority: 2
+    category: "next-steps"
+    text: "Are there related tests to check?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_fail_learn_10"
+    priority: 3
+    category: "next-steps"
+    text: "What's your confidence for retry?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+# ============================================================================
+# PARTIAL SUCCESS QUESTIONS (25 questions)
+# ============================================================================
+partial:
+  # Incomplete Items Investigation (10)
+  - id: "dev_partial_inv_01"
+    priority: 1
+    category: "investigation"
+    text: "Which items are still incomplete?"
+    response_type: "open_text"
+    requires_context: true
+    first_time_only: false
+
+  - id: "dev_partial_inv_02"
+    priority: 1
+    category: "investigation"
+    text: "What is blocking completion?"
+    response_type: "open_text"
+    requires_context: true
+    first_time_only: false
+
+  - id: "dev_partial_inv_03"
+    priority: 2
+    category: "investigation"
+    text: "Are the incomplete items dependencies for other work?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "dev_partial_inv_04"
+    priority: 2
+    category: "investigation"
+    text: "Can you complete these in next iteration?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "dev_partial_inv_05"
+    priority: 2
+    category: "investigation"
+    text: "Is this a scope creep issue?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_partial_inv_06"
+    priority: 1
+    category: "investigation"
+    text: "Do you have a plan for remaining work?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_partial_inv_07"
+    priority: 2
+    category: "investigation"
+    text: "What would help complete this?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_partial_inv_08"
+    priority: 2
+    category: "investigation"
+    text: "Are incomplete parts testable?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_partial_inv_09"
+    priority: 3
+    category: "investigation"
+    text: "Did you hit time constraints?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_partial_inv_10"
+    priority: 2
+    category: "investigation"
+    text: "Should these be separate stories?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  # Progress & Next Steps (15)
+  - id: "dev_partial_next_01"
+    priority: 1
+    category: "next-steps"
+    text: "Estimate % complete?"
+    response_type: "multiple_choice"
+    options: ["25%", "50%", "75%", "90%"]
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_partial_next_02"
+    priority: 1
+    category: "next-steps"
+    text: "Should we pause and review?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_partial_next_03"
+    priority: 2
+    category: "next-steps"
+    text: "Can we push to QA with current state?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_partial_next_04"
+    priority: 2
+    category: "next-steps"
+    text: "Should we split into multiple stories?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_partial_next_05"
+    priority: 1
+    category: "next-steps"
+    text: "What's your priority for next work?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_partial_next_06"
+    priority: 2
+    category: "next-steps"
+    text: "Do you need to adjust acceptance criteria?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_partial_next_07"
+    priority: 3
+    category: "next-steps"
+    text: "Should we create deferral story?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_partial_next_08"
+    priority: 2
+    category: "next-steps"
+    text: "Can you deliver partial feature safely?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_partial_next_09"
+    priority: 2
+    category: "next-steps"
+    text: "Is there risk in completing later?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_partial_next_10"
+    priority: 1
+    category: "next-steps"
+    text: "When can you resume this work?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_partial_next_11"
+    priority: 3
+    category: "next-steps"
+    text: "Does this need technical review?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_partial_next_12"
+    priority: 2
+    category: "next-steps"
+    text: "Should we update acceptance criteria?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_partial_next_13"
+    priority: 3
+    category: "next-steps"
+    text: "Is technical debt acceptable?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_partial_next_14"
+    priority: 2
+    category: "next-steps"
+    text: "Should blockers be documented?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "dev_partial_next_15"
+    priority: 1
+    category: "next-steps"
+    text: "Confidence in completing next?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false

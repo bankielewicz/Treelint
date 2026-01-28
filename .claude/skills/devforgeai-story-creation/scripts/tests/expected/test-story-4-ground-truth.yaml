@@ -1,0 +1,439 @@
+# Ground Truth for Test Story 4 (Complex - Full Stack with 11 components)
+# This is the PERFECT v2.0 migration - 100% accurate reference
+
+technical_specification:
+  format_version: "2.0"
+
+  components:
+    # Service Components
+    - type: "Service"
+      name: "AlertingService"
+      interface: "IHostedService"
+      file_path: "src/Services/AlertingService.cs"
+      lifecycle: "Singleton"
+      dependencies:
+        - "IAlertDetectionService"
+        - "IEmailService"
+        - "ILogger<AlertingService>"
+      requirements:
+        - id: "SVC-001"
+          description: "Must implement OnStart and OnStop lifecycle methods"
+          testable: true
+          test_requirement: "Test: OnStart transitions service to Running state within 5 seconds"
+          priority: "Critical"
+        - id: "SVC-002"
+          description: "Must start all managed workers in OnStart"
+          testable: true
+          test_requirement: "Test: OnStart starts AlertDetectionWorker and EmailSenderWorker"
+          priority: "Critical"
+        - id: "SVC-003"
+          description: "Must handle worker exceptions without crashing service"
+          testable: true
+          test_requirement: "Test: Worker exception doesn't crash service, service remains Running"
+          priority: "High"
+
+    # Worker Components
+    - type: "Worker"
+      name: "AlertDetectionWorker"
+      interface: "BackgroundService"
+      file_path: "src/Workers/AlertDetectionWorker.cs"
+      polling_interval_ms: 30000
+      dependencies:
+        - "IAlertDetectionService"
+      requirements:
+        - id: "WKR-001"
+          description: "Must poll database every 30 seconds for new alerts"
+          testable: true
+          test_requirement: "Test: Worker polls at 30s intervals until CancellationToken signals stop"
+          priority: "Critical"
+        - id: "WKR-002"
+          description: "Must handle database connection failures gracefully"
+          testable: true
+          test_requirement: "Test: Database connection failure logs error, retries next interval"
+          priority: "High"
+        - id: "WKR-003"
+          description: "Must log all detection activities"
+          testable: true
+          test_requirement: "Test: Worker writes log entry for each poll iteration"
+          priority: "Medium"
+
+    - type: "Worker"
+      name: "EmailSenderWorker"
+      interface: "BackgroundService"
+      file_path: "src/Workers/EmailSenderWorker.cs"
+      polling_interval_ms: 10000
+      dependencies:
+        - "IEmailService"
+      requirements:
+        - id: "WKR-004"
+          description: "Must poll email queue every 10 seconds"
+          testable: true
+          test_requirement: "Test: Worker polls email queue at 10s intervals"
+          priority: "Critical"
+        - id: "WKR-005"
+          description: "Must retry failed email sends up to 3 times with exponential backoff"
+          testable: true
+          test_requirement: "Test: Failed email retried 3 times with delays 1s, 2s, 4s"
+          priority: "High"
+        - id: "WKR-006"
+          description: "Must send emails via SMTP using configured credentials"
+          testable: true
+          test_requirement: "Test: Email sent via SMTP with Smtp.Host and Smtp.Username from config"
+          priority: "Critical"
+
+    # API Components
+    - type: "API"
+      name: "CreateAlert"
+      endpoint: "/api/alerts"
+      method: "POST"
+      authentication:
+        required: true
+        method: "Bearer Token"
+      requirements:
+        - id: "API-001"
+          description: "Must validate severity enum (Info, Warning, Error)"
+          testable: true
+          test_requirement: "Test: Invalid severity returns 400 with validation error"
+          priority: "Critical"
+        - id: "API-002"
+          description: "Must validate message length (max 500 chars)"
+          testable: true
+          test_requirement: "Test: Message >500 chars returns 400 with validation error"
+          priority: "High"
+        - id: "API-003"
+          description: "Must return 201 Created with alert object including Id"
+          testable: true
+          test_requirement: "Test: Successful creation returns 201 with alert Id, severity, message"
+          priority: "High"
+
+    - type: "API"
+      name: "ListAlerts"
+      endpoint: "/api/alerts"
+      method: "GET"
+      authentication:
+        required: true
+        method: "Bearer Token"
+      requirements:
+        - id: "API-004"
+          description: "Must support pagination with page and limit query params"
+          testable: true
+          test_requirement: "Test: GET /api/alerts?page=2&limit=20 returns 20 alerts from page 2"
+          priority: "High"
+        - id: "API-005"
+          description: "Must support filtering by severity and status"
+          testable: true
+          test_requirement: "Test: GET /api/alerts?severity=Error returns only Error severity alerts"
+          priority: "Medium"
+        - id: "API-006"
+          description: "Must return pagination metadata (total_items, total_pages)"
+          testable: true
+          test_requirement: "Test: Response includes pagination object with page, limit, total_items, total_pages"
+          priority: "Medium"
+
+    - type: "API"
+      name: "ResolveAlert"
+      endpoint: "/api/alerts/{id}/resolve"
+      method: "PATCH"
+      authentication:
+        required: true
+        method: "Bearer Token"
+      requirements:
+        - id: "API-007"
+          description: "Must set ResolvedAt timestamp when alert resolved"
+          testable: true
+          test_requirement: "Test: PATCH /api/alerts/{id}/resolve sets ResolvedAt to current UTC timestamp"
+          priority: "Critical"
+        - id: "API-008"
+          description: "Must prevent modification of already resolved alerts"
+          testable: true
+          test_requirement: "Test: PATCH on resolved alert returns 422 Unprocessable Entity"
+          priority: "High"
+        - id: "API-009"
+          description: "Must require assigned user or admin authorization"
+          testable: true
+          test_requirement: "Test: Non-assigned user receives 403 Forbidden when resolving alert"
+          priority: "High"
+
+    # Repository Components
+    - type: "Repository"
+      name: "AlertRepository"
+      interface: "IAlertRepository"
+      file_path: "src/Infrastructure/Repositories/AlertRepository.cs"
+      data_access: "Dapper"
+      entity: "Alert"
+      table: "dbo.Alerts"
+      requirements:
+        - id: "REPO-001"
+          description: "Must use parameterized queries to prevent SQL injection"
+          testable: true
+          test_requirement: "Test: Query uses @parameters, not string concatenation"
+          priority: "Critical"
+        - id: "REPO-002"
+          description: "Must implement GetById, GetAll, Create, Update, MarkAsResolved methods"
+          testable: true
+          test_requirement: "Test: All CRUD methods functional and return correct types"
+          priority: "High"
+        - id: "REPO-003"
+          description: "All methods must be async (return Task<T>)"
+          testable: true
+          test_requirement: "Test: All repository methods return Task<T>, use async/await"
+          priority: "Medium"
+
+    - type: "Repository"
+      name: "UserRepository"
+      interface: "IUserRepository"
+      file_path: "src/Infrastructure/Repositories/UserRepository.cs"
+      data_access: "Dapper"
+      entity: "User"
+      table: "dbo.Users"
+      requirements:
+        - id: "REPO-004"
+          description: "Must implement GetById and GetByEmail for user lookups"
+          testable: true
+          test_requirement: "Test: GetById and GetByEmail return User or null correctly"
+          priority: "High"
+        - id: "REPO-005"
+          description: "Must validate user exists before returning for alert assignment"
+          testable: true
+          test_requirement: "Test: GetById returns null for non-existent user ID"
+          priority: "Medium"
+
+    # DataModel Component
+    - type: "DataModel"
+      name: "Alert"
+      table: "dbo.Alerts"
+      purpose: "Represents an alert instance with severity, message, assignment, and resolution tracking"
+      fields:
+        - name: "Id"
+          type: "UUID"
+          constraints: "Primary Key, Auto-generated"
+          description: "Unique alert identifier"
+        - name: "Severity"
+          type: "Enum"
+          constraints: "Required, Values: Info|Warning|Error"
+          description: "Alert severity level"
+          test_requirement: "Test: Invalid severity throws ArgumentException"
+        - name: "Message"
+          type: "String(500)"
+          constraints: "Required, Max 500 chars"
+          description: "Alert message text"
+          test_requirement: "Test: Message >500 chars throws ValidationException"
+        - name: "AssignedToUserId"
+          type: "UUID"
+          constraints: "Optional, FK to Users.Id"
+          description: "User assigned to handle this alert"
+          test_requirement: "Test: Invalid user ID violates foreign key constraint"
+        - name: "CreatedAt"
+          type: "DateTime"
+          constraints: "Required, Auto-generated"
+          description: "Alert creation timestamp"
+        - name: "ResolvedAt"
+          type: "DateTime"
+          constraints: "Optional, Nullable"
+          description: "Alert resolution timestamp (null until resolved)"
+          test_requirement: "Test: ResolvedAt is null for unresolved alerts"
+        - name: "ResolutionNotes"
+          type: "String(1000)"
+          constraints: "Optional, Max 1000 chars"
+          description: "Notes added when alert resolved"
+      indexes:
+        - name: "IX_Alerts_Severity"
+          fields: ["Severity"]
+          unique: false
+          purpose: "Fast filtering by severity"
+        - name: "IX_Alerts_CreatedAt"
+          fields: ["CreatedAt"]
+          unique: false
+          purpose: "Fast sorting by creation date"
+        - name: "IX_Alerts_AssignedToUserId"
+          fields: ["AssignedToUserId"]
+          unique: false
+          purpose: "Fast user alert queries"
+
+    # Configuration Component
+    - type: "Configuration"
+      name: "appsettings.json"
+      file_path: "src/appsettings.json"
+      required_keys:
+        - key: "ConnectionStrings.OmniWatchDb"
+          type: "string"
+          required: true
+          test_requirement: "Test: Configuration loads ConnectionStrings.OmniWatchDb"
+        - key: "AlertDetection.PollingIntervalSeconds"
+          type: "int"
+          default: 30
+          validation: "Range 10-300"
+          required: false
+          test_requirement: "Test: AlertDetection.PollingIntervalSeconds defaults to 30"
+        - key: "EmailSender.PollingIntervalSeconds"
+          type: "int"
+          default: 10
+          validation: "Range 5-60"
+          required: false
+          test_requirement: "Test: EmailSender.PollingIntervalSeconds defaults to 10"
+        - key: "EmailSender.MaxRetries"
+          type: "int"
+          default: 3
+          validation: "Range 1-5"
+          required: false
+          test_requirement: "Test: EmailSender.MaxRetries defaults to 3"
+        - key: "Smtp.Host"
+          type: "string"
+          required: true
+          test_requirement: "Test: Configuration loads Smtp.Host"
+        - key: "Smtp.Port"
+          type: "int"
+          default: 587
+          required: false
+          test_requirement: "Test: Smtp.Port defaults to 587"
+        - key: "Smtp.Username"
+          type: "string"
+          required: true
+          test_requirement: "Test: Configuration loads Smtp.Username"
+        - key: "Smtp.Password"
+          type: "string"
+          required: true
+          test_requirement: "Test: Configuration loads Smtp.Password (encrypted storage validated)"
+        - key: "Logging.LogLevel.Default"
+          type: "string"
+          default: "Information"
+          required: false
+          test_requirement: "Test: Logging.LogLevel.Default defaults to Information"
+
+    # Logging Component
+    - type: "Logging"
+      name: "Serilog"
+      file_path: "src/Program.cs"
+      sinks:
+        - name: "File"
+          path: "logs/omniwatch-.txt"
+          rolling_interval: "Day"
+          retention_days: 30
+          test_requirement: "Test: Log file created in logs/ with date suffix, files >30 days deleted"
+        - name: "EventLog"
+          source: "OmniWatch Service"
+          log_name: "Application"
+          test_requirement: "Test: Entry written to Windows Event Log under 'OmniWatch Service' source"
+        - name: "Database"
+          table: "dbo.Logs"
+          test_requirement: "Test: Log entry written to dbo.Logs with structured data (timestamp, level, message)"
+
+  business_rules:
+    - id: "BR-001"
+      rule: "Alert severity must be Info, Warning, or Error (no other values)"
+      trigger: "When alert created or updated"
+      validation: "Enum validation in Alert entity"
+      error_handling: "Throw ArgumentException with 'Invalid severity' message"
+      test_requirement: "Test: Creating alert with severity 'Debug' throws ArgumentException"
+      priority: "Critical"
+
+    - id: "BR-002"
+      rule: "Alert message maximum 500 characters"
+      trigger: "When alert created or message updated"
+      validation: "String length check in Alert.SetMessage method"
+      error_handling: "Throw ValidationException with 'Message exceeds 500 characters'"
+      test_requirement: "Test: 501-character message throws ValidationException"
+      priority: "High"
+
+    - id: "BR-003"
+      rule: "Resolved alerts cannot be modified (immutable after resolution)"
+      trigger: "When attempting to update alert with ResolvedAt != null"
+      validation: "Check ResolvedAt in Update method before allowing changes"
+      error_handling: "Return 422 Unprocessable Entity with 'Cannot modify resolved alert'"
+      test_requirement: "Test: Updating resolved alert returns 422 error"
+      priority: "High"
+
+    - id: "BR-004"
+      rule: "Assigned user ID must reference valid existing user"
+      trigger: "When alert created with assignedToUserId"
+      validation: "Foreign key constraint + UserRepository.GetById check"
+      error_handling: "Return 400 Bad Request with 'User not found'"
+      test_requirement: "Test: Creating alert with non-existent userId returns 400"
+      priority: "High"
+
+  non_functional_requirements:
+    # Performance NFRs
+    - id: "NFR-001"
+      category: "Performance"
+      requirement: "Service startup time must be under 5 seconds"
+      metric: "Startup time < 5s from OnStart to Running"
+      test_requirement: "Test: Measure time from OnStart call to Running state, assert < 5 seconds"
+      priority: "High"
+
+    - id: "NFR-002"
+      category: "Performance"
+      requirement: "API response time p95 latency < 500ms"
+      metric: "p95 latency < 500ms for all endpoints"
+      test_requirement: "Test: Load test 100 concurrent requests, measure p95 latency < 500ms"
+      priority: "High"
+
+    - id: "NFR-003"
+      category: "Performance"
+      requirement: "Worker polling completes within 2 seconds per iteration"
+      metric: "Poll iteration time < 2s"
+      test_requirement: "Test: Measure worker poll iteration time, assert < 2 seconds"
+      priority: "Medium"
+
+    - id: "NFR-004"
+      category: "Performance"
+      requirement: "Database indexed queries < 100ms"
+      metric: "Query time < 100ms for indexed lookups"
+      test_requirement: "Test: Measure query execution time for GetById, assert < 100ms"
+      priority: "Medium"
+
+    - id: "NFR-005"
+      category: "Performance"
+      requirement: "Support 100 concurrent API users without degradation"
+      metric: "100 concurrent requests with <5% error rate"
+      test_requirement: "Test: Stress test with 100 concurrent users, verify error rate <5%"
+      priority: "High"
+
+    # Security NFRs
+    - id: "NFR-006"
+      category: "Security"
+      requirement: "All database queries use parameterized queries (prevent SQL injection)"
+      metric: "Zero string concatenation in SQL queries"
+      test_requirement: "Test: Code analysis detects no SQL string concatenation in repositories"
+      priority: "Critical"
+
+    - id: "NFR-007"
+      category: "Security"
+      requirement: "Never store plaintext passwords"
+      metric: "100% password hashing before storage"
+      test_requirement: "Test: Verify database contains BCrypt hashed passwords, not plaintext"
+      priority: "Critical"
+
+    - id: "NFR-008"
+      category: "Security"
+      requirement: "All API endpoints require valid Bearer token authentication"
+      metric: "100% authentication enforcement"
+      test_requirement: "Test: All 3 API endpoints return 401 Unauthorized without valid token"
+      priority: "Critical"
+
+    # Reliability NFRs
+    - id: "NFR-009"
+      category: "Reliability"
+      requirement: "Workers survive exceptions without crashing service"
+      metric: "100% exception isolation (service remains Running after worker exception)"
+      test_requirement: "Test: Throw exception in worker ExecuteAsync, verify service state remains Running"
+      priority: "Critical"
+
+    - id: "NFR-010"
+      category: "Reliability"
+      requirement: "Graceful shutdown within 10 seconds when shutdown requested"
+      metric: "Shutdown time < 10s for service and all workers"
+      test_requirement: "Test: Signal cancellation, measure time until all workers stopped, assert < 10s"
+      priority: "High"
+
+# Component Inventory for Accuracy Measurement
+# Expected: 11 components
+#   - 1 Service (AlertingService) with 3 requirements
+#   - 2 Workers (AlertDetectionWorker with 3 reqs, EmailSenderWorker with 3 reqs)
+#   - 3 APIs (CreateAlert with 3 reqs, ListAlerts with 3 reqs, ResolveAlert with 3 reqs)
+#   - 2 Repositories (AlertRepository with 3 reqs, UserRepository with 2 reqs)
+#   - 1 DataModel (Alert) with 7 fields and 3 indexes
+#   - 1 Configuration (appsettings.json) with 9 keys
+#   - 1 Logging (Serilog) with 3 sinks
+# Expected: 4 business rules
+# Expected: 10 NFRs (5 Performance, 3 Security, 2 Reliability)
+# Total requirements across all components: 32

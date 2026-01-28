@@ -1,0 +1,837 @@
+# DevForgeAI Question Bank - QA Operation Type
+# Comprehensive questions for quality assurance validation workflows
+# 100+ questions covering passed, failed, and partial success scenarios
+
+operation_type: qa
+
+# ============================================================================
+# PASSED OPERATION QUESTIONS (35 questions)
+# ============================================================================
+passed:
+  # Quality Metrics Questions (10)
+  - id: "qa_pass_metric_01"
+    priority: 1
+    category: "confidence"
+    text: "Are all coverage thresholds met?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_metric_02"
+    priority: 1
+    category: "confidence"
+    text: "Overall quality score acceptable?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_metric_03"
+    priority: 2
+    category: "confidence"
+    text: "Were security thresholds met?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_metric_04"
+    priority: 2
+    category: "confidence"
+    text: "Were performance requirements met?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_metric_05"
+    priority: 1
+    category: "confidence"
+    text: "Ready for next phase?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_metric_06"
+    priority: 2
+    category: "confidence"
+    text: "Any additional testing needed?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_metric_07"
+    priority: 3
+    category: "confidence"
+    text: "How comprehensive was the testing?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_metric_08"
+    priority: 2
+    category: "confidence"
+    text: "Were edge cases covered?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_metric_09"
+    priority: 2
+    category: "confidence"
+    text: "Integration testing adequate?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_metric_10"
+    priority: 3
+    category: "confidence"
+    text: "Code quality acceptable?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+  # Validation Process Questions (10)
+  - id: "qa_pass_proc_01"
+    priority: 2
+    category: "optimization"
+    text: "Were all acceptance criteria validated?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_proc_02"
+    priority: 2
+    category: "optimization"
+    text: "Were anti-patterns detected?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_proc_03"
+    priority: 1
+    category: "optimization"
+    text: "Were context files respected?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_proc_04"
+    priority: 2
+    category: "optimization"
+    text: "Were all security checks passed?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_proc_05"
+    priority: 3
+    category: "optimization"
+    text: "How clear were validation results?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_proc_06"
+    priority: 2
+    category: "optimization"
+    text: "Did validation catch issues early?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_proc_07"
+    priority: 3
+    category: "optimization"
+    text: "Validation process improvements?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_proc_08"
+    priority: 2
+    category: "optimization"
+    text: "Were build warnings handled?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_proc_09"
+    priority: 2
+    category: "optimization"
+    text: "Was documentation reviewed?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_proc_10"
+    priority: 3
+    category: "optimization"
+    text: "Would you recommend passing?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  # Next Steps Questions (15)
+  - id: "qa_pass_next_01"
+    priority: 1
+    category: "next-steps"
+    text: "Ready for release?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_next_02"
+    priority: 2
+    category: "next-steps"
+    text: "Any pre-release checks needed?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_next_03"
+    priority: 2
+    category: "next-steps"
+    text: "Should we smoke test?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_next_04"
+    priority: 1
+    category: "next-steps"
+    text: "Deployment confidence level?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_next_05"
+    priority: 2
+    category: "next-steps"
+    text: "Any follow-up stories needed?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_next_06"
+    priority: 3
+    category: "next-steps"
+    text: "Should we create ADR?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_next_07"
+    priority: 2
+    category: "next-steps"
+    text: "Document validation results?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_next_08"
+    priority: 2
+    category: "next-steps"
+    text: "Are there related tests to run?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_next_09"
+    priority: 3
+    category: "next-steps"
+    text: "Should deployment be phased?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_next_10"
+    priority: 2
+    category: "next-steps"
+    text: "Rollback plan in place?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_next_11"
+    priority: 1
+    category: "next-steps"
+    text: "When to proceed with release?"
+    response_type: "multiple_choice"
+    options: ["Immediately", "After review", "Scheduled", "On-demand"]
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_next_12"
+    priority: 3
+    category: "next-steps"
+    text: "Monitoring alerts configured?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_next_13"
+    priority: 2
+    category: "next-steps"
+    text: "Should we do performance testing?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_next_14"
+    priority: 3
+    category: "next-steps"
+    text: "Load testing completed?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_pass_next_15"
+    priority: 2
+    category: "next-steps"
+    text: "What's next priority?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+# ============================================================================
+# FAILED OPERATION QUESTIONS (40 questions)
+# ============================================================================
+failed:
+  # Coverage Failure Investigation (15)
+  - id: "qa_fail_cov_01"
+    priority: 1
+    category: "investigation"
+    text: "Coverage threshold failure - which metric?"
+    response_type: "multiple_choice"
+    options: ["Line coverage", "Branch coverage", "Function coverage", "Multiple"]
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_fail_cov_02"
+    priority: 1
+    category: "investigation"
+    text: "Which files have low coverage?"
+    response_type: "open_text"
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_fail_cov_03"
+    priority: 2
+    category: "investigation"
+    text: "Current coverage percentage?"
+    response_type: "open_text"
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_fail_cov_04"
+    priority: 2
+    category: "investigation"
+    text: "Gap from target threshold?"
+    response_type: "open_text"
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_fail_cov_05"
+    priority: 2
+    category: "investigation"
+    text: "Are missing tests in critical paths?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_fail_cov_06"
+    priority: 2
+    category: "investigation"
+    text: "Is coverage dropping trend?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_fail_cov_07"
+    priority: 3
+    category: "investigation"
+    text: "Are untested edge cases acceptable?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_fail_cov_08"
+    priority: 2
+    category: "investigation"
+    text: "Should threshold be adjusted?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_fail_cov_09"
+    priority: 3
+    category: "investigation"
+    text: "Are there old untested functions?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_fail_cov_10"
+    priority: 2
+    category: "investigation"
+    text: "Did you check test fixtures?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_fail_cov_11"
+    priority: 2
+    category: "investigation"
+    text: "Are mocks causing false gaps?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_fail_cov_12"
+    priority: 1
+    category: "investigation"
+    text: "Can you add tests to reach threshold?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_fail_cov_13"
+    priority: 3
+    category: "investigation"
+    text: "Are integration tests missing?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_fail_cov_14"
+    priority: 2
+    category: "investigation"
+    text: "Should we refactor for testability?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_fail_cov_15"
+    priority: 2
+    category: "investigation"
+    text: "Is there legacy code needing tests?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  # Anti-Pattern & Quality Failure Investigation (15)
+  - id: "qa_fail_anti_01"
+    priority: 1
+    category: "investigation"
+    text: "Which anti-patterns detected?"
+    response_type: "open_text"
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_fail_anti_02"
+    priority: 1
+    category: "investigation"
+    text: "Anti-pattern severity?"
+    response_type: "multiple_choice"
+    options: ["Critical", "High", "Medium", "Low"]
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_fail_anti_03"
+    priority: 2
+    category: "investigation"
+    text: "Are anti-patterns blocking release?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_fail_anti_04"
+    priority: 2
+    category: "investigation"
+    text: "Code complexity too high?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_fail_anti_05"
+    priority: 2
+    category: "investigation"
+    text: "Code duplication detected?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_fail_anti_06"
+    priority: 2
+    category: "investigation"
+    text: "Security vulnerabilities found?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_fail_anti_07"
+    priority: 1
+    category: "investigation"
+    text: "Compliance violations detected?"
+    response_type: "open_text"
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_fail_anti_08"
+    priority: 2
+    category: "investigation"
+    text: "Were coding standards violated?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_fail_anti_09"
+    priority: 2
+    category: "investigation"
+    text: "Is context file usage correct?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_fail_anti_10"
+    priority: 3
+    category: "investigation"
+    text: "Are there hardcoded values?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_fail_anti_11"
+    priority: 2
+    category: "investigation"
+    text: "Did code bypass architecture?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_fail_anti_12"
+    priority: 3
+    category: "investigation"
+    text: "Are documentation standards met?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_fail_anti_13"
+    priority: 2
+    category: "investigation"
+    text: "Are there performance issues?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_fail_anti_14"
+    priority: 3
+    category: "investigation"
+    text: "Error handling adequate?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_fail_anti_15"
+    priority: 2
+    category: "investigation"
+    text: "Input validation present?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  # Resolution & Next Steps (10)
+  - id: "qa_fail_res_01"
+    priority: 1
+    category: "optimization"
+    text: "Can you fix these issues?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_fail_res_02"
+    priority: 2
+    category: "optimization"
+    text: "Timeline to fix?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_fail_res_03"
+    priority: 1
+    category: "optimization"
+    text: "Should we defer and iterate?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_fail_res_04"
+    priority: 2
+    category: "optimization"
+    text: "Need to create follow-up story?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_fail_res_05"
+    priority: 2
+    category: "optimization"
+    text: "Should we request exception?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_fail_res_06"
+    priority: 3
+    category: "optimization"
+    text: "Document findings in ADR?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_fail_res_07"
+    priority: 2
+    category: "optimization"
+    text: "Is this rework or new work?"
+    response_type: "multiple_choice"
+    options: ["Rework current", "New story", "Defer", "Accept as-is"]
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_fail_res_08"
+    priority: 3
+    category: "optimization"
+    text: "Confidence in fix?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_fail_res_09"
+    priority: 2
+    category: "optimization"
+    text: "Need additional review?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_fail_res_10"
+    priority: 1
+    category: "optimization"
+    text: "What's blocking you?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+# ============================================================================
+# PARTIAL SUCCESS QUESTIONS (25 questions)
+# ============================================================================
+partial:
+  # Mixed Results Investigation (12)
+  - id: "qa_partial_inv_01"
+    priority: 1
+    category: "investigation"
+    text: "Which validations passed?"
+    response_type: "open_text"
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_partial_inv_02"
+    priority: 1
+    category: "investigation"
+    text: "Which validations failed?"
+    response_type: "open_text"
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_partial_inv_03"
+    priority: 2
+    category: "investigation"
+    text: "Are failures blockers for release?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_partial_inv_04"
+    priority: 2
+    category: "investigation"
+    text: "Can blockers be addressed quickly?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_partial_inv_05"
+    priority: 2
+    category: "investigation"
+    text: "Are some failures acceptable?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_partial_inv_06"
+    priority: 1
+    category: "investigation"
+    text: "Plan to address failures?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_partial_inv_07"
+    priority: 2
+    category: "investigation"
+    text: "Are there exceptions documented?"
+    response_type: "yes_no"
+    requires_context: true
+    first_time_only: false
+
+  - id: "qa_partial_inv_08"
+    priority: 3
+    category: "investigation"
+    text: "Should thresholds be adjusted?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_partial_inv_09"
+    priority: 2
+    category: "investigation"
+    text: "Is risk acceptable?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_partial_inv_10"
+    priority: 2
+    category: "investigation"
+    text: "Require additional testing?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_partial_inv_11"
+    priority: 3
+    category: "investigation"
+    text: "Create follow-up story?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_partial_inv_12"
+    priority: 2
+    category: "investigation"
+    text: "Need stakeholder approval?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  # Next Steps (13)
+  - id: "qa_partial_next_01"
+    priority: 1
+    category: "next-steps"
+    text: "Approve or request changes?"
+    response_type: "multiple_choice"
+    options: ["Approve", "Request changes", "Conditional approve", "Reject"]
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_partial_next_02"
+    priority: 2
+    category: "next-steps"
+    text: "Can we stage a partial release?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_partial_next_03"
+    priority: 2
+    category: "next-steps"
+    text: "Phased rollout approach?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_partial_next_04"
+    priority: 1
+    category: "next-steps"
+    text: "Timeline for next iteration?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_partial_next_05"
+    priority: 2
+    category: "next-steps"
+    text: "Should we defer to next sprint?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_partial_next_06"
+    priority: 3
+    category: "next-steps"
+    text: "Document exceptions?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_partial_next_07"
+    priority: 2
+    category: "next-steps"
+    text: "Create risk mitigation plan?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_partial_next_08"
+    priority: 2
+    category: "next-steps"
+    text: "Monitoring required?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_partial_next_09"
+    priority: 1
+    category: "next-steps"
+    text: "Confidence in quality?"
+    response_type: "rating"
+    scale: "1-5"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_partial_next_10"
+    priority: 3
+    category: "next-steps"
+    text: "Update QA procedures?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_partial_next_11"
+    priority: 2
+    category: "next-steps"
+    text: "Should we add more tests?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_partial_next_12"
+    priority: 2
+    category: "next-steps"
+    text: "Plan additional validation?"
+    response_type: "yes_no"
+    requires_context: false
+    first_time_only: false
+
+  - id: "qa_partial_next_13"
+    priority: 1
+    category: "next-steps"
+    text: "When should we retry?"
+    response_type: "open_text"
+    requires_context: false
+    first_time_only: false

@@ -1,0 +1,15 @@
+{
+  "story_id": "STORY-120",
+  "phase": 3,
+  "phase_name": "Refactor",
+  "timestamp": "2025-12-21T15:30:00Z",
+  "progress_percentage": 67,
+  "dod_completion": {
+    "implementation": [5, 8],
+    "quality": [2, 6],
+    "testing": [3, 5],
+    "documentation": [1, 4]
+  },
+  "last_action": "code-reviewer subagent completed",
+  "next_action": "Phase 4: Integration Testing"
+}

@@ -1,0 +1,195 @@
+{
+  "story_id": "STORY-004",
+  "test_type": "integration",
+  "execution_timestamp": "2026-01-28T23:45:30Z",
+  "overall_status": "PASSED",
+  "summary": {
+    "total_tests": 50,
+    "passed": 50,
+    "failed": 0,
+    "exit_code": 0,
+    "execution_time_seconds": 0.75,
+    "pass_rate_percent": 100
+  },
+  "acceptance_criteria_results": {
+    "AC#1": {
+      "title": "Basic Exact Match Search Executes Against Index",
+      "tests_count": 10,
+      "passed": 10,
+      "status": "PASSED",
+      "test_files": ["test_ac1_exact_match.rs"]
+    },
+    "AC#2": {
+      "title": "Type Filtering Narrows Results",
+      "tests_count": 9,
+      "passed": 9,
+      "status": "PASSED",
+      "test_files": ["test_ac2_type_filter.rs"]
+    },
+    "AC#3": {
+      "title": "Case-Insensitive Search Works",
+      "tests_count": 9,
+      "passed": 9,
+      "status": "PASSED",
+      "test_files": ["test_ac3_case_insensitive.rs"]
+    },
+    "AC#4": {
+      "title": "Regex Pattern Search Works",
+      "tests_count": 13,
+      "passed": 13,
+      "status": "PASSED",
+      "test_files": ["test_ac4_regex_search.rs"]
+    },
+    "AC#5": {
+      "title": "Auto-Indexing on First Search When Index Missing",
+      "tests_count": 10,
+      "passed": 10,
+      "status": "PASSED",
+      "test_files": ["test_ac5_auto_index.rs"]
+    }
+  },
+  "component_integration_coverage": {
+    "cli_to_index_storage": {
+      "component": "src/cli/commands/search.rs -> src/index/storage.rs",
+      "integration_points_tested": 6,
+      "status": "VERIFIED",
+      "test_evidence": [
+        "CLI parses search command arguments",
+        "Search command passes filters to IndexStorage::query()",
+        "IndexStorage returns results with correct schema",
+        "Exit codes propagated correctly",
+        "Query metadata reflects all applied filters",
+        "Results serialized to JSON/text format"
+      ]
+    },
+    "index_storage_to_symbol_extractor": {
+      "component": "src/index/storage.rs -> src/parser/symbols.rs",
+      "integration_points_tested": 6,
+      "status": "VERIFIED",
+      "test_evidence": [
+        "Symbols extracted from Python files",
+        "Symbols extracted from TypeScript files",
+        "Symbols extracted from Rust files",
+        "Symbol attributes correctly populated",
+        "Unsupported files skipped safely",
+        "Binary files ignored safely"
+      ]
+    },
+    "filesystem_to_auto_index": {
+      "component": "File walkdir -> SQLite index creation",
+      "integration_points_tested": 5,
+      "status": "VERIFIED",
+      "test_evidence": [
+        "Project walkdir scans all files",
+        "Creates .treelint/index.db when missing",
+        "Indexes supported language files",
+        "Progress shown on stderr",
+        "Subsequent searches reuse existing index"
+      ]
+    }
+  },
+  "business_rules_validation": {
+    "BR-001": {
+      "rule": "Filters combine with AND logic",
+      "verified": true,
+      "tests": [
+        "test_search_type_filter_combined_with_name_uses_and_logic",
+        "test_search_regex_combined_with_case_insensitive"
+      ]
+    },
+    "BR-002": {
+      "rule": "Invalid regex returns error (exit 1), not panic",
+      "verified": true,
+      "tests": [
+        "test_search_invalid_regex_returns_exit_1",
+        "test_search_invalid_regex_no_panic"
+      ]
+    },
+    "BR-003": {
+      "rule": "Exit codes: 0=results, 1=error, 2=no results",
+      "verified": true,
+      "tests": [
+        "test_search_exit_code_0_when_results_found",
+        "test_search_exit_code_2_when_no_results",
+        "test_search_invalid_regex_returns_exit_1"
+      ]
+    }
+  },
+  "technical_requirements_validation": {
+    "SVC-001": {
+      "requirement": "Query execution replaces placeholder logic with real index query",
+      "status": "VERIFIED",
+      "evidence": "All AC#1 tests pass - query execution against real SQLite index"
+    },
+    "SVC-002": {
+      "requirement": "Type filtering by passing SymbolType to IndexSearch::query()",
+      "status": "VERIFIED",
+      "evidence": "All AC#2 tests pass - type filters applied correctly"
+    },
+    "SVC-003": {
+      "requirement": "Case-insensitive search using query_by_name_case_insensitive()",
+      "status": "VERIFIED",
+      "evidence": "All AC#3 tests pass - case variants returned with -i flag"
+    },
+    "SVC-004": {
+      "requirement": "Regex search by compiling pattern and filtering results",
+      "status": "VERIFIED",
+      "evidence": "All AC#4 tests pass - regex patterns matched correctly"
+    },
+    "SVC-005": {
+      "requirement": "Auto-index detection and build on missing index",
+      "status": "VERIFIED",
+      "evidence": "All AC#5 tests pass - index created and reused automatically"
+    },
+    "SVC-006": {
+      "requirement": "Combine multiple filters with AND logic",
+      "status": "VERIFIED",
+      "evidence": "Multi-filter tests show correct AND behavior across type, case, regex"
+    }
+  },
+  "edge_cases_covered": [
+    "Empty index returns exit 2",
+    "Empty project returns exit 2",
+    "Unicode symbols handled correctly",
+    "Regex special characters handled correctly",
+    "Combined filters on empty results handled correctly",
+    "Binary files skipped silently",
+    "Unsupported files skipped silently",
+    "Invalid regex shows helpful error message",
+    "Type filter excludes non-matching types",
+    "Case-sensitive search is default"
+  ],
+  "test_quality_metrics": {
+    "test_isolation": "Each test uses separate TempDir - VERIFIED",
+    "no_shared_state": "Independent test execution - VERIFIED",
+    "real_file_usage": "Real Python/TypeScript/Rust files in tests - VERIFIED",
+    "process_execution": "assert_cmd for real CLI binary - VERIFIED",
+    "schema_validation": "serde_json for JSON parsing - VERIFIED",
+    "metadata_verification": "All tests validate query metadata - VERIFIED"
+  },
+  "warnings": [
+    {
+      "type": "deprecation",
+      "severity": "low",
+      "message": "Command::cargo_bin is deprecated, use cargo_bin_cmd! macro",
+      "impact": "functional - tests work but suggest future refactoring"
+    },
+    {
+      "type": "unused_import",
+      "severity": "low",
+      "message": "Some test utilities imported but not used",
+      "impact": "code cleanliness - no functional impact"
+    }
+  ],
+  "recommendations": [
+    "Verify performance thresholds in production (NFR-001, NFR-002)",
+    "Consider stress testing with 100K+ symbol indexes",
+    "Add rustdoc examples using test patterns",
+    "Update deprecated cargo_bin to cargo_bin_cmd! macro",
+    "Clean up unused test imports"
+  ],
+  "report_files": {
+    "detailed_report": "STORY-004-integration-test-report.md",
+    "test_results": "STORY-004-test-results.json"
+  }
+}

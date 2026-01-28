@@ -1,0 +1,129 @@
+# Language-Agnostic Runtime Smoke Test Configuration
+# =============================================================================
+# This file defines smoke test commands for each supported language.
+# Framework-agnostic design per tech-stack.md (lines 7-11).
+#
+# To add a new language:
+#   1. Add a new entry under 'languages:' with all required fields
+#   2. No code changes required - configuration-driven extensibility
+#
+# Required fields per language:
+#   - detection_pattern: Regex/keyword to detect language in tech-stack.md
+#   - smoke_test_command: Command to execute for smoke test
+#   - entry_point_source: File that defines the entry point
+#   - remediation: Guidance when smoke test fails
+#
+# Source: STORY-266, RCA-002
+# =============================================================================
+
+# Global configuration
+timeout_seconds: 10  # Maximum execution time before TIMEOUT violation
+
+# Supported languages (6 total per tech-stack.md lines 121-188)
+languages:
+
+  # -----------------------------------------------------------------------------
+  # Python (Python 3.9+)
+  # -----------------------------------------------------------------------------
+  python:
+    detection_pattern: "Python"
+    smoke_test_command: "python -m {package_name} --help"
+    entry_point_source: "pyproject.toml or setup.py"
+    remediation: |
+      Create src/{package}/__main__.py with CLI entry point.
+      Example:
+        def main():
+            print("CLI initialized")
+        if __name__ == "__main__":
+            main()
+
+  # -----------------------------------------------------------------------------
+  # Node.js (Node.js 18+)
+  # -----------------------------------------------------------------------------
+  nodejs:
+    detection_pattern: "Node.js|Node"
+    smoke_test_command: "node {entry_point} --help"
+    entry_point_source: "package.json (main or bin field)"
+    remediation: |
+      Verify package.json has 'main' or 'bin' entry.
+      Example package.json:
+        {
+          "main": "dist/index.js",
+          "bin": { "myapp": "./bin/cli.js" }
+        }
+      Ensure entry file exists and is executable.
+
+  # -----------------------------------------------------------------------------
+  # .NET (C# .NET 6.0+)
+  # -----------------------------------------------------------------------------
+  dotnet:
+    detection_pattern: "\\.NET|C#|dotnet"
+    smoke_test_command: "dotnet run --project {project_path} -- --help"
+    entry_point_source: "*.csproj file"
+    remediation: |
+      Verify .csproj exists with valid OutputType.
+      For CLI apps, ensure Program.cs has Main method.
+      Example:
+        <PropertyGroup>
+          <OutputType>Exe</OutputType>
+          <TargetFramework>net8.0</TargetFramework>
+        </PropertyGroup>
+
+  # -----------------------------------------------------------------------------
+  # Go (Go 1.20+)
+  # -----------------------------------------------------------------------------
+  go:
+    detection_pattern: "Go |Golang"
+    smoke_test_command: "go run {main_path} --help"
+    entry_point_source: "main.go or cmd/*/main.go"
+    remediation: |
+      Verify main.go exists in project root or cmd/ directory.
+      File must have:
+        package main
+        func main() { ... }
+      Check go.mod exists for module definition.
+
+  # -----------------------------------------------------------------------------
+  # Java (Java 11+)
+  # -----------------------------------------------------------------------------
+  java:
+    detection_pattern: "Java "
+    smoke_test_command: "java -jar {artifact_path} --help"
+    entry_point_source: "pom.xml or build.gradle"
+    remediation: |
+      Verify JAR artifact is built:
+        Maven: mvn package
+        Gradle: gradle build
+      Ensure MANIFEST.MF has Main-Class attribute.
+      Check target/*.jar or build/libs/*.jar exists.
+
+  # -----------------------------------------------------------------------------
+  # Rust (Rust 1.70+)
+  # -----------------------------------------------------------------------------
+  rust:
+    detection_pattern: "Rust"
+    smoke_test_command: "cargo run -- --help"
+    entry_point_source: "Cargo.toml"
+    remediation: |
+      Verify Cargo.toml has [[bin]] section or src/main.rs exists.
+      Example Cargo.toml:
+        [[bin]]
+        name = "myapp"
+        path = "src/main.rs"
+      Run 'cargo build' to compile before smoke test.
+
+# =============================================================================
+# Extensibility Example: Adding Kotlin Support
+# =============================================================================
+# Uncomment and modify to add Kotlin support:
+#
+#   kotlin:
+#     detection_pattern: "Kotlin"
+#     smoke_test_command: "kotlin {main_path} --help"
+#     entry_point_source: "build.gradle.kts"
+#     remediation: |
+#       Verify Kotlin compiler installed and main function exists.
+#       Example:
+#         fun main(args: Array<String>) { ... }
+#
+# =============================================================================

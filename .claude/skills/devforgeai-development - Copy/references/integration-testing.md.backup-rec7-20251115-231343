@@ -1,0 +1,244 @@
+# Phase 4: Integration & Validation
+
+**Purpose:** Create and execute integration tests for cross-component interactions.
+
+**Execution Order:** After Phase 3 (Refactor phase) - code quality improved
+
+**Expected Outcome:** All tests GREEN, coverage thresholds met, build succeeds
+
+**Token Cost:** ~1,000 tokens in skill context (~40,000 in isolated subagent context)
+
+---
+
+## Overview
+
+Phase 4 validates that the implementation integrates correctly with other components and meets quality thresholds.
+
+**Core Principle:** Verify system-level behavior, not just unit behavior.
+
+---
+
+## Phase 4: Integration & Validation
+
+**Delegate integration testing to integration-tester subagent.**
+
+### Step 1: Invoke integration-tester Subagent [MANDATORY]
+
+```
+Task(
+  subagent_type="integration-tester",
+  description="Run full test suite with coverage",
+  prompt="Execute comprehensive integration testing and validation.
+
+  Implementation and tests available in conversation.
+
+  Test execution:
+  1. Run full test suite: {TEST_COVERAGE_COMMAND}
+  2. Validate coverage meets thresholds:
+     - Business logic: 95% minimum
+     - Application layer: 85% minimum
+     - Infrastructure: 80% minimum
+  3. Check for regressions (existing tests still pass)
+  4. Validate build succeeds: {BUILD_COMMAND}
+  5. Run linter if available
+  6. Check for integration issues (cross-component interactions)
+
+  Context files:
+  - devforgeai/specs/context/coding-standards.md (coverage requirements)
+  - devforgeai/specs/context/architecture-constraints.md (layer boundaries)
+
+  Return:
+  - Test results (total, passed, failed, coverage %)
+  - Coverage by layer (business/application/infrastructure)
+  - Build status (success/failure)
+  - Linter issues (if applicable)
+  - Integration issues found"
+)
+```
+
+### Step 2: Parse Subagent Response [MANDATORY]
+
+```javascript
+result = extract_from_subagent_output(response)
+
+test_results = result["test_results"]
+coverage = result["coverage"]
+build_status = result["build_status"]
+
+Display: "✓ Phase 4 (Integration): Full validation by integration-tester"
+Display: "  - Tests: {test_results['passed']}/{test_results['total']} passing"
+Display: "  - Coverage: {coverage['overall']}%"
+Display: "    • Business logic: {coverage['business']}%"
+Display: "    • Application: {coverage['application']}%"
+Display: "    • Infrastructure: {coverage['infrastructure']}%"
+Display: "  - Build: {build_status}"
+
+# Validate coverage thresholds
+IF coverage['business'] < 95:
+    Display: "  ⚠️ Business logic coverage below 95% threshold"
+    coverage_issues = true
+
+IF coverage['application'] < 85:
+    Display: "  ⚠️ Application coverage below 85% threshold"
+    coverage_issues = true
+
+IF coverage['infrastructure'] < 80:
+    Display: "  ⚠️ Infrastructure coverage below 80% threshold"
+    coverage_issues = true
+
+IF coverage_issues:
+    # Ask user how to proceed
+    AskUserQuestion:
+        question: "Coverage below thresholds. How to proceed?"
+        header: "Coverage"
+        options:
+            - label: "Add more tests now"
+              description: "Re-invoke test-automator to fill coverage gaps"
+            - label: "Defer to QA"
+              description: "Mark as incomplete DoD item, address in QA phase"
+            - label: "Accept (document why)"
+              description: "Justify why lower coverage acceptable for this story"
+        multiSelect: false
+
+    # Handle user response appropriately
+
+IF test_results['failed'] > 0:
+    Display: "❌ {test_results['failed']} tests failing"
+    HALT development
+
+IF build_status != "SUCCESS":
+    Display: "❌ Build failed"
+    HALT development
+
+Display: "✓ Ready for Phase 5 (Git Workflow / Change Tracking)"
+```
+
+---
+
+## Subagents Invoked
+
+**integration-tester:**
+- Runs full test suite with coverage analysis
+- Validates coverage thresholds (95%/85%/80%)
+- Checks build success
+- Detects integration issues
+- Reports linter violations
+
+---
+
+## Success Criteria
+
+Phase 4 succeeds when:
+- [ ] All tests pass (100% pass rate)
+- [ ] Coverage meets thresholds:
+  - Business logic: ≥95%
+  - Application layer: ≥85%
+  - Infrastructure: ≥80%
+- [ ] Build succeeds
+- [ ] No integration issues detected
+- [ ] Linter passes (if applicable)
+
+---
+
+## Coverage Threshold Enforcement
+
+**Coverage below thresholds triggers user decision:**
+
+**Option 1: Add more tests now**
+- Re-invoke test-automator subagent
+- Focus on uncovered code paths
+- Run coverage again after new tests added
+
+**Option 2: Defer to QA**
+- Mark as incomplete DoD item: "Test coverage: {X}% (below {threshold}%) - Deferred to STORY-XXX"
+- Create follow-up story for coverage improvement
+- Document in Implementation Notes
+
+**Option 3: Accept with justification**
+- Document why lower coverage acceptable (e.g., generated code, trivial getters/setters)
+- Add to Implementation Notes
+- Proceed to Phase 5
+
+---
+
+## ✅ PHASE 4 COMPLETION CHECKPOINT
+
+**Before proceeding to Phase 4.5 (Deferral Challenge), verify ALL steps executed:**
+
+### Mandatory Steps Executed
+
+- [ ] **Step 1:** integration-tester subagent invoked
+  - Verification: Full test suite executed with coverage
+  - Output: Test results and coverage percentages displayed
+
+- [ ] **Step 2:** Integration test results parsed and validated
+  - Verification: Coverage thresholds checked (95%/85%/80%)
+  - Verification: Build status confirmed
+  - Output: Test results, coverage by layer, build status displayed
+
+### Success Criteria
+
+- [ ] All tests pass (100% pass rate)
+- [ ] Coverage meets thresholds:
+  - [ ] Business logic: ≥95%
+  - [ ] Application layer: ≥85%
+  - [ ] Infrastructure: ≥80%
+- [ ] Build succeeds
+- [ ] No integration issues detected
+- [ ] Linter passes (if applicable)
+- [ ] Ready for deferral validation
+
+### Checkpoint Validation
+
+**IF ANY ITEM UNCHECKED:**
+```
+❌ PHASE 4 INCOMPLETE - Review missing steps above
+⚠️  DO NOT PROCEED TO PHASE 4.5 until all checkpoints pass
+
+Common issues:
+  - Coverage below thresholds ← Add more tests or justify lower coverage
+  - Integration test failures ← Fix API contracts, DI config, timing issues
+  - Build failures ← Check compilation errors, dependencies
+
+If coverage below thresholds:
+  - Option 1: Add more tests now (re-invoke test-automator)
+  - Option 2: Defer to QA (mark as incomplete DoD item)
+  - Option 3: Accept with justification (document why acceptable)
+```
+
+**IF ALL ITEMS CHECKED:**
+```
+✅ PHASE 4 COMPLETE - Integration Testing Done
+
+Tests: {passed}/{total} passing (100%)
+Coverage: Business {X}%, Application {Y}%, Infrastructure {Z}%
+Build: SUCCESS
+Integration: No issues detected
+
+All quality thresholds met. Ready for deferral validation.
+
+**Update Progress Tracker:**
+Mark "Execute Phase 4" todo as "completed"
+
+Next: Load phase-4.5-deferral-challenge.md and execute Phase 4.5 (Deferral Challenge)
+```
+
+---
+
+## Common Issues
+
+**Issue 1: Integration test failures**
+- Check API contracts match specification
+- Verify dependency injection configuration
+- Validate database schema matches models
+- Check for timing issues (async operations)
+
+**Issue 2: Build failures**
+- Check for compilation errors
+- Verify dependencies installed ({INSTALL_COMMAND})
+- Check for syntax errors missed by tests
+
+**Issue 3: Coverage gaps**
+- Identify uncovered branches (if/else, switch)
+- Add tests for edge cases
+- Check for unreachable code (dead code elimination)

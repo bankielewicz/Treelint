@@ -1,0 +1,142 @@
+# Skill Output Schemas - DevForgeAI Framework
+# STORY-301: Schema Validation for Skill Outputs
+#
+# Purpose: Define validation schemas for skill handoff boundaries
+# (brainstorm → ideation → epic → story)
+#
+# Status: LOCKED
+# Version: 1.0
+# Last Updated: 2026-01-23
+
+---
+
+schemas:
+  # =============================================================================
+  # Brainstorm Document Schema
+  # Validates output from devforgeai-brainstorming skill
+  # Used by: devforgeai-ideation skill (input validation)
+  # =============================================================================
+  brainstorm:
+    description: "Schema for brainstorm session documents"
+    format: "Markdown with YAML frontmatter"
+
+    required_fields:
+      - "id"              # BRAINSTORM-NNN format
+      - "title"           # Session title
+      - "status"          # Active, Complete, Archived
+      - "problem_statement"  # Core problem being addressed
+      - "created"         # ISO 8601 date
+      - "updated"         # ISO 8601 date
+
+    id_pattern: "^BRAINSTORM-\\d{3,}$"
+
+    required_sections:
+      # All 7 possible sections - minimum 3 required
+      - "Stakeholder Analysis"
+      - "Problem Statement"
+      - "Root Cause Analysis"
+      - "Hypothesis Register"
+      - "Impact-Effort Matrix"
+      - "Solution Space"
+      - "Next Steps"
+
+    min_sections: 3  # Minimum 3 of 7 sections required
+
+    validation_rules:
+      - rule: "Document must have YAML frontmatter between --- delimiters"
+      - rule: "All required_fields must be present in frontmatter"
+      - rule: "id must match id_pattern regex"
+      - rule: "At least min_sections (3) of required_sections must exist as ## headers"
+
+  # =============================================================================
+  # Ideation Output Schema
+  # Validates output from devforgeai-ideation skill
+  # Used by: create-epic command (input validation)
+  # =============================================================================
+  ideation:
+    description: "Schema for ideation session output"
+    format: "Structured output with features array"
+
+    required_fields:
+      - "features"           # Array of decomposed features
+      - "total_points"       # Sum of all feature points
+      - "priority_rankings"  # Prioritized feature list
+
+    features:
+      type: "array"
+      min_items: 3  # Minimum 3 features required
+      item_schema:
+        required:
+          - "name"             # Feature name
+          - "description"      # Feature description
+          - "estimated_points" # Story points estimate
+        optional:
+          - "priority"         # Priority ranking (1-5)
+          - "dependencies"     # List of dependent features
+
+    validation_rules:
+      - rule: "features array must contain at least min_items (3) items"
+      - rule: "Each feature must have name, description, and estimated_points"
+      - rule: "total_points must equal sum of all feature estimated_points"
+      - rule: "priority_rankings must include all features"
+
+    # Error format for validation failures
+    error_format:
+      field_name: "Name of the field that failed validation"
+      expected: "What was expected"
+      actual: "What was found"
+      error_message: "Human-readable error description"
+
+  # =============================================================================
+  # Epic Document Schema
+  # Validates output from create-epic command
+  # Used by: devforgeai-story-creation skill (input validation)
+  # =============================================================================
+  epic:
+    description: "Schema for epic definition documents"
+    format: "Markdown with YAML frontmatter"
+
+    required_fields:
+      - "id"           # EPIC-NNN format
+      - "title"        # Epic title
+      - "status"       # Draft, Active, Complete, Archived
+      - "priority"     # P1, P2, P3, P4
+      - "total_points" # Sum of all story points
+      - "target_date"  # Target completion date (ISO 8601)
+
+    id_pattern: "^EPIC-\\d{3,}$"
+
+    required_sections:
+      features:
+        min_items: 1  # Minimum 1 feature required
+        description: "Features section with decomposed work items"
+      dependencies:
+        required: true
+        allow_empty: true  # Dependencies section may be empty
+        description: "Dependencies section listing blocking items"
+
+    validation_rules:
+      - rule: "Document must have YAML frontmatter between --- delimiters"
+      - rule: "All required_fields must be present in frontmatter"
+      - rule: "id must match id_pattern regex (EPIC-NNN, minimum 3 digits)"
+      - rule: "Features section must contain at least 1 feature"
+      - rule: "Dependencies section must exist (may be empty)"
+      - rule: "total_points must be non-negative integer"
+      - rule: "priority must be one of: P1, P2, P3, P4"
+
+# =============================================================================
+# Validation Status Enum
+# =============================================================================
+validation_status:
+  enum:
+    - "PASSED"   # All validations passed
+    - "FAILED"   # One or more required validations failed
+    - "WARN"     # Legacy document or optional validation warnings
+
+# =============================================================================
+# Schema Version and Backward Compatibility
+# =============================================================================
+schema_version: "1.0"
+backward_compatibility:
+  reference: "schema-backward-compatibility.md"
+  legacy_mode: "WARN"  # Documents without format_version trigger WARN mode

@@ -1,0 +1,204 @@
+# Contract: devforgeai-story-creation <-> api-designer
+# Version: 1.0.0
+# Date: 2025-11-06
+# Purpose: Define expected input/output format for API contract generation
+# Related: RCA-007 (Multi-File Story Creation Violation)
+
+contract_version: "1.0.0"
+skill: devforgeai-story-creation
+subagent: api-designer
+phase: "Phase 3: Technical Specification (conditional)"
+rca_reference: "RCA-007"
+
+# Input specification
+input:
+  feature_description:
+    type: string
+    required: true
+    min_length: 10
+    description: "Feature description with API requirements"
+
+  user_story:
+    type: string
+    required: true
+    description: "User story from Phase 2 (requirements-analyst output)"
+
+  acceptance_criteria:
+    type: array
+    required: true
+    description: "Acceptance criteria from Phase 2 (requirements-analyst output)"
+    min_count: 3
+
+  detected_endpoints:
+    type: array
+    required: true
+    description: "Endpoints detected in AC (GET /api/users, POST /api/login, etc.)"
+    min_count: 1
+
+# Output specification
+output_format: yaml
+output_type: text/yaml
+max_output_length: 30000
+
+output_sections:
+  openapi_spec:
+    format: "OpenAPI 3.0 YAML specification"
+    required: true
+    structure:
+      - openapi: "3.0.0"
+      - info: {title, version}
+      - paths: {endpoints with methods, params, responses}
+      - components: {schemas, securitySchemes}
+    validation:
+      - Must be valid OpenAPI 3.0 YAML
+      - All endpoints from detected_endpoints must be documented
+      - All request/response schemas defined in components.schemas
+      - All schemas inline (no external $ref to separate files)
+
+# Constraints (CRITICAL - RCA-007 Fix)
+constraints:
+  no_file_creation:
+    enabled: true
+    description: "Return YAML text, not api-spec.yaml file"
+    prohibited_tools:
+      - Write
+      - Edit
+      - Bash (with output redirection)
+    rationale: "Parent skill embeds YAML in .story.md Technical Specification section"
+
+  yaml_text_only:
+    enabled: true
+    description: "Return YAML as text string, parent skill embeds in .story.md"
+    rationale: "Single-file design principle (no separate api-spec.yaml)"
+
+  inline_schemas:
+    enabled: true
+    description: "All schemas in single YAML (no separate schema files)"
+    rationale: "Embedded in story document, not standalone API spec"
+
+  max_output_length:
+    value: 30000
+    description: "Fits in Technical Specification section of story-template.md"
+    enforcement: strict
+
+# Validation rules
+validation:
+  check_openapi_version:
+    enabled: true
+    required_version: "3.0.0"
+    enforcement: strict
+    error_message: "Must use OpenAPI 3.0.0 specification"
+
+  check_all_endpoints_documented:
+    enabled: true
+    enforcement: strict
+    error_message: "All detected endpoints must be documented in paths section"
+
+  check_no_file_references:
+    enabled: true
+    prohibited_patterns:
+      - "api-spec\\.yaml"
+      - "schema.*\\.yaml"
+      - "endpoints\\.md"
+      - "File created:"
+      - "\\.yaml created"
+      - "Writing to file"
+      - "Saved to disk"
+      - "Write\\(file_path="
+      - "Edit\\(file_path="
+    enforcement: critical
+    error_message: "API designer created files instead of returning YAML text (RCA-007 violation)"
+
+  check_inline_schemas:
+    enabled: true
+    enforcement: strict
+    error_message: "All schemas must be inline in components.schemas (no external files)"
+    validation_logic: "No $ref to external files (only #/components/schemas/... allowed)"
+
+  check_yaml_validity:
+    enabled: true
+    enforcement: strict
+    error_message: "Output must be valid YAML (parseable by yaml.safe_load)"
+
+# Error handling
+error_handling:
+  on_invalid_yaml:
+    action: re_invoke
+    max_retries: 1
+    provide_yaml_example: true
+    fallback: "ask_user_question"
+
+  on_file_creation_detected:
+    action: re_invoke
+    max_retries: 2
+    strict_mode_prompt: true
+    fallback: "HALT with manual intervention required"
+    log: true
+
+  on_missing_endpoints:
+    action: re_invoke
+    max_retries: 1
+    enhanced_prompt: "List all detected endpoints that must be documented"
+    fallback: "ask_user_question"
+
+  on_external_schema_refs:
+    action: re_invoke
+    max_retries: 1
+    guidance: "Move all $ref external files to inline components.schemas"
+    fallback: "ask_user_question"
+
+# Monitoring
+monitoring:
+  log_violations:
+    enabled: true
+    log_path: "devforgeai/logs/rca-007-violations.log"
+    log_format: |
+      [VIOLATION DETECTED]
+      Timestamp: {timestamp}
+      Story ID: {story_id}
+      Subagent: api-designer
+      Parent Skill: devforgeai-story-creation
+      Phase: Phase 3 (Technical Specification)
+      Violation Type: {type}
+      Pattern Matched: {pattern}
+      Output Snippet: {snippet}
+      Recovery Action: {action}
+      Recovery Result: {result}
+      ---
+
+  track_retries:
+    enabled: true
+    max_retries_before_alert: 2
+    alert_message: "api-designer failed {retry_count} times - review prompt constraints"
+
+  performance_tracking:
+    enabled: true
+    warn_if_execution_exceeds: "3 minutes"
+    log_execution_time: true
+
+  success_rate:
+    enabled: true
+    track_metric: "first_attempt_success_rate"
+    target: 90
+    alert_if_below: 80
+
+# Usage instructions
+usage:
+  parent_skill_reads:
+    - "Load contract in Phase 3 Step 3.2: Read(file_path=contract_path)"
+    - "Parse YAML: import yaml; contract = yaml.safe_load(contract_content)"
+    - "Validate api-designer output against contract.validation rules"
+    - "Apply contract.error_handling on violations"
+
+  subagent_awareness:
+    - "Subagent prompt references contract (Phase 1 enhancement already includes)"
+    - "Subagent does NOT read contract directly"
+    - "Parent skill enforces contract via Step 3.2.5 validation"
+
+# Version history
+changelog:
+  - version: "1.0.0"
+    date: "2025-11-06"
+    changes: "Initial contract definition for RCA-007 fix (api-designer)"
+    author: "DevForgeAI Framework"
+    breaking_changes: false

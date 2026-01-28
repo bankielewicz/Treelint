@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "devforgeai-epic-schema-v1",
+  "title": "ParsedEpic",
+  "description": "JSON schema for parsed epic metadata from YAML frontmatter",
+  "type": "object",
+  "required": ["epic_id", "title", "status"],
+  "properties": {
+    "epic_id": {
+      "type": "string",
+      "pattern": "^EPIC-\\d{3}$",
+      "description": "Epic identifier in format EPIC-NNN (e.g., EPIC-015)"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "Epic title (1-200 characters)"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["Planning", "In Progress", "Complete", "On Hold"],
+      "description": "Current epic status"
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["Critical", "High", "Medium", "Low"],
+      "description": "Priority level"
+    },
+    "created": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "Creation date in YYYY-MM-DD format"
+    },
+    "complexity": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Complexity score (positive integer)"
+    },
+    "estimated_sprints": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Estimated sprints to complete"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9-]+$",
+        "maxLength": 50
+      },
+      "description": "Array of tags for categorization"
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Feature"
+      },
+      "description": "Array of extracted features from epic"
+    },
+    "file_path": {
+      "type": "string",
+      "description": "Relative path to the epic file"
+    },
+    "linked_stories": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^STORY-\\d{3}$"
+      },
+      "description": "Array of linked story IDs"
+    }
+  },
+  "definitions": {
+    "Feature": {
+      "type": "object",
+      "required": ["feature_id", "title"],
+      "properties": {
+        "feature_id": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?$",
+          "description": "Feature number (e.g., '1' or '1.1' for sub-features)"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Feature title"
+        },
+        "description": {
+          "type": "string",
+          "description": "Feature description text"
+        },
+        "dependencies": {
+          "type": "string",
+          "description": "Dependencies on other features"
+        },
+        "estimated_points": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Estimated story points"
+        },
+        "linked_story": {
+          "type": "string",
+          "pattern": "^STORY-\\d{3}$",
+          "description": "Linked story ID if specified in feature header"
+        }
+      }
+    }
+  }
+}
