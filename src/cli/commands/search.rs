@@ -18,7 +18,7 @@ use crate::index::storage::IndexStorage;
 use crate::output::json::{SearchOutput, SearchQuery, SearchResult, SearchStats};
 use crate::output::text::TextFormatter;
 use crate::output::OutputRouter;
-use crate::parser::{Language, Symbol, SymbolExtractor};
+use crate::parser::{extract_lines_context, ContextMode, Language, Symbol, SymbolExtractor};
 
 /// The index directory name
 const INDEX_DIR: &str = ".treelint";
@@ -138,15 +138,28 @@ fn filter_symbols(
 /// # Arguments
 ///
 /// * `symbols` - The symbols to convert
-/// * `signatures_only` - If true, set body to None
-fn symbols_to_search_results(symbols: &[Symbol], signatures_only: bool) -> Vec<SearchResult> {
+/// * `context_mode` - The context extraction mode
+/// * `source_cache` - Optional cache of file contents for line-based context extraction
+fn symbols_to_search_results(
+    symbols: &[Symbol],
+    context_mode: &ContextMode,
+    source_cache: &HashMap<String, String>,
+) -> Vec<SearchResult> {
     symbols
         .iter()
         .map(|s| {
-            let body = if signatures_only {
-                None
-            } else {
-                Some(s.body.clone().unwrap_or_default())
+            let body = match context_mode {
+                ContextMode::Signatures => None,
+                ContextMode::Full => Some(s.body.clone().unwrap_or_default()),
+                ContextMode::Lines(n) => {
+                    // For lines mode, extract context from source file
+                    if let Some(source) = source_cache.get(&s.file_path) {
+                        extract_lines_context(source, s.line_start, s.line_end, *n)
+                    } else {
+                        // Fallback to stored body if source not available
+                        Some(s.body.clone().unwrap_or_default())
+                    }
+                }
             };
 
             SearchResult {
@@ -186,12 +199,14 @@ fn collect_languages(symbols: &[Symbol]) -> Vec<String> {
 /// # Arguments
 ///
 /// * `args` - The search arguments
+/// * `context_mode` - The resolved context mode
 /// * `results` - The search results
 /// * `files_searched` - Number of files searched
 /// * `elapsed_ms` - Search duration in milliseconds
 /// * `languages` - Languages that were searched
 fn build_search_output(
     args: &SearchArgs,
+    context_mode: &ContextMode,
     results: Vec<SearchResult>,
     files_searched: u64,
     elapsed_ms: u64,
@@ -202,11 +217,7 @@ fn build_search_output(
         symbol_type: args.symbol_type.as_ref().map(|t| t.as_str().to_string()),
         case_insensitive: if args.ignore_case { Some(true) } else { None },
         regex: if args.regex { Some(true) } else { None },
-        context_mode: if args.signatures {
-            "signatures".to_string()
-        } else {
-            "full".to_string()
-        },
+        context_mode: context_mode.to_json_string(),
     };
 
     let stats = SearchStats {
@@ -254,6 +265,43 @@ fn output_text(
     print!("{}", output);
 }
 
+/// Resolve the context mode from search arguments.
+///
+/// Priority:
+/// 1. If --signatures is set, return Signatures mode
+/// 2. If --context is set, parse it (N or "full")
+/// 3. Otherwise, default to Full mode
+fn resolve_context_mode(args: &SearchArgs) -> ContextMode {
+    if args.signatures {
+        return ContextMode::Signatures;
+    }
+
+    if let Some(ref context_value) = args.context {
+        // Already validated by clap, so this should always succeed
+        ContextMode::from_cli_value(context_value).unwrap_or_default()
+    } else {
+        // Default to full semantic context
+        ContextMode::Full
+    }
+}
+
+/// Build a cache of source file contents for context extraction.
+///
+/// Only loads files that are needed for the matching symbols.
+fn build_source_cache(symbols: &[Symbol]) -> HashMap<String, String> {
+    let mut cache = HashMap::new();
+
+    for symbol in symbols {
+        if !cache.contains_key(&symbol.file_path) {
+            if let Ok(content) = fs::read_to_string(&symbol.file_path) {
+                cache.insert(symbol.file_path.clone(), content);
+            }
+        }
+    }
+
+    cache
+}
+
 /// Execute the search command with the given arguments.
 ///
 /// # Arguments
@@ -270,6 +318,9 @@ pub fn execute(args: SearchArgs) -> anyhow::Result<()> {
     // Resolve output format via OutputRouter (TTY auto-detection)
     let router = OutputRouter::new();
     let resolved_format = router.resolve_format(args.format);
+
+    // Resolve context mode from arguments
+    let context_mode = resolve_context_mode(&args);
 
     // Validate regex pattern first if regex mode is enabled
     let regex_pattern = validate_regex_pattern(&args.symbol, args.regex, &resolved_format);
@@ -305,22 +356,35 @@ pub fn execute(args: SearchArgs) -> anyhow::Result<()> {
     let elapsed = start.elapsed().as_millis() as u64;
     let files_searched = storage.get_file_count()? as u64;
 
+    // Build source cache for line-based context extraction
+    let source_cache = if context_mode.is_lines() {
+        build_source_cache(&results)
+    } else {
+        HashMap::new()
+    };
+
     // Convert to search results and output
-    let search_results = symbols_to_search_results(&results, args.signatures);
+    let search_results = symbols_to_search_results(&results, &context_mode, &source_cache);
     let has_results = !search_results.is_empty();
     let total_files = files_searched.max(files_indexed as u64);
 
     match resolved_format {
         OutputFormat::Json => {
-            let search_output =
-                build_search_output(&args, search_results, total_files, elapsed, languages);
+            let search_output = build_search_output(
+                &args,
+                &context_mode,
+                search_results,
+                total_files,
+                elapsed,
+                languages,
+            );
             output_json(&search_output)?;
         }
         OutputFormat::Text => {
             output_text(
                 &args.symbol,
                 &search_results,
-                args.signatures,
+                context_mode.is_signatures(),
                 elapsed,
                 total_files,
                 router.is_tty(),

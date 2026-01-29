@@ -26,9 +26,11 @@
 //! # Ok::<(), treelint::TreelintError>(())
 //! ```
 
+pub mod context;
 pub mod languages;
 pub mod queries;
 pub mod symbols;
 
+pub use context::{extract_lines_context, ContextMode};
 pub use languages::Language;
 pub use symbols::{Parser, Symbol, SymbolExtractor, SymbolType, Visibility};

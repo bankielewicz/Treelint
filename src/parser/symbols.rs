@@ -379,6 +379,45 @@ impl SymbolExtractor {
         parent_class: Option<&str>,
     ) {
         match node.kind() {
+            "decorated_definition" => {
+                // Handle decorated functions/classes - pass the outer node for correct line ranges
+                if let Some(definition) = node.child_by_field_name("definition") {
+                    match definition.kind() {
+                        "function_definition" => {
+                            if let Some(symbol) = self.extract_python_function_with_decorators(
+                                node,
+                                definition,
+                                source,
+                                file_path,
+                                parent_class,
+                            ) {
+                                symbols.push(symbol);
+                            }
+                        }
+                        "class_definition" => {
+                            if let Some(class_symbol) = self.extract_python_class_with_decorators(
+                                node, definition, source, file_path,
+                            ) {
+                                let class_name = class_symbol.name.clone();
+                                symbols.push(class_symbol);
+
+                                // Extract methods from class body
+                                if let Some(body) = definition.child_by_field_name("body") {
+                                    self.walk_python_node(
+                                        body,
+                                        source,
+                                        file_path,
+                                        symbols,
+                                        Some(&class_name),
+                                    );
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                return; // Don't recurse further - we've handled the definition
+            }
             "function_definition" => {
                 if let Some(symbol) =
                     self.extract_python_function(node, source, file_path, parent_class)
@@ -449,9 +488,114 @@ impl SymbolExtractor {
         )
     }
 
+    /// Extract a Python function symbol with decorators.
+    ///
+    /// Uses the outer decorated_definition node for line ranges to include decorators,
+    /// but extracts the function name from the inner function_definition node.
+    fn extract_python_function_with_decorators(
+        &self,
+        outer_node: Node,
+        inner_node: Node,
+        source: &[u8],
+        file_path: &str,
+        parent_class: Option<&str>,
+    ) -> Option<Symbol> {
+        let name_node = inner_node.child_by_field_name("name")?;
+        let name = self.node_text(name_node, source)?;
+
+        let symbol_type = if parent_class.is_some() {
+            SymbolType::Method
+        } else {
+            SymbolType::Function
+        };
+
+        let visibility = self.determine_python_visibility(&name);
+        let signature = self.extract_python_function_signature(inner_node, source);
+
+        // Use outer_node for line ranges to include decorators
+        Some(Symbol {
+            name,
+            symbol_type,
+            visibility,
+            file_path: file_path.to_string(),
+            line_start: outer_node.start_position().row + 1,
+            line_end: outer_node.end_position().row + 1,
+            signature,
+            body: None,
+            language: Language::Python,
+        })
+    }
+
+    /// Extract a Python class symbol with decorators.
+    fn extract_python_class_with_decorators(
+        &self,
+        outer_node: Node,
+        inner_node: Node,
+        source: &[u8],
+        file_path: &str,
+    ) -> Option<Symbol> {
+        let name_node = inner_node.child_by_field_name("name")?;
+        let name = self.node_text(name_node, source)?;
+
+        let visibility = self.determine_python_visibility(&name);
+        let signature = self.extract_python_class_signature(inner_node, source);
+
+        // Use outer_node for line ranges to include decorators
+        Some(Symbol {
+            name,
+            symbol_type: SymbolType::Class,
+            visibility,
+            file_path: file_path.to_string(),
+            line_start: outer_node.start_position().row + 1,
+            line_end: outer_node.end_position().row + 1,
+            signature,
+            body: None,
+            language: Language::Python,
+        })
+    }
+
     /// Extract Python function signature.
+    ///
+    /// For Python, we need to find the colon that ends the function signature,
+    /// which comes after the closing parenthesis and optional return type annotation.
+    /// Example: `def foo(x: int, y: str) -> bool:` should extract up to but not including the final `:`.
     fn extract_python_function_signature(&self, node: Node, source: &[u8]) -> Option<String> {
-        self.extract_signature_until(node, source, SIGNATURE_DELIMITER_COLON)
+        let start = node.start_byte();
+        let text = std::str::from_utf8(&source[start..]).ok()?;
+
+        // Find the closing paren of the function parameters
+        let mut paren_depth = 0;
+        let mut after_paren_end = 0;
+
+        for (i, ch) in text.char_indices() {
+            match ch {
+                '(' => paren_depth += 1,
+                ')' => {
+                    paren_depth -= 1;
+                    if paren_depth == 0 {
+                        after_paren_end = i + 1;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        if after_paren_end == 0 {
+            // No closing paren found, fall back to simple extraction
+            return self.extract_signature_until(node, source, SIGNATURE_DELIMITER_COLON);
+        }
+
+        // Now find the colon that comes after the closing paren (and optional return type)
+        // Skip any return type annotation (-> Type)
+        let after_paren = &text[after_paren_end..];
+        if let Some(colon_pos) = after_paren.find(':') {
+            let sig = text[..after_paren_end + colon_pos].trim();
+            return Some(sig.to_string());
+        }
+
+        // Fallback: return up to the closing paren
+        Some(text[..after_paren_end].trim().to_string())
     }
 
     /// Extract a Python class symbol.

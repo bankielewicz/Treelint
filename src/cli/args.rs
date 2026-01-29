@@ -47,12 +47,15 @@ pub struct SearchArgs {
     #[arg(long = "format", value_enum)]
     pub format: Option<OutputFormat>,
 
-    /// Number of context lines to include
-    #[arg(long = "context", default_value = "0")]
-    pub context: u32,
+    /// Context mode: number of lines (e.g., "5") or "full" for complete semantic unit.
+    /// Default is "full" when not specified.
+    /// Cannot be used with --signatures.
+    #[arg(long = "context", conflicts_with = "signatures", value_parser = parse_context_value)]
+    pub context: Option<String>,
 
-    /// Only return function/method signatures
-    #[arg(long = "signatures")]
+    /// Only return function/method signatures (body is omitted).
+    /// Cannot be used with --context.
+    #[arg(long = "signatures", conflicts_with = "context")]
     pub signatures: bool,
 }
 
@@ -115,5 +118,39 @@ fn non_empty_string(s: &str) -> Result<String, String> {
         Err("symbol cannot be empty".to_string())
     } else {
         Ok(s.to_string())
+    }
+}
+
+/// Parse and validate the --context argument value.
+///
+/// Accepts:
+/// - A positive integer (e.g., "5") for N lines of context
+/// - "full" (case-insensitive) for complete semantic unit
+///
+/// Rejects:
+/// - Zero ("0") - context lines must be positive per BR-002
+/// - Negative numbers
+/// - Non-numeric, non-"full" values
+fn parse_context_value(s: &str) -> Result<String, String> {
+    let trimmed = s.trim();
+
+    // Accept "full" keyword (case-insensitive)
+    if trimmed.eq_ignore_ascii_case("full") {
+        return Ok(trimmed.to_lowercase());
+    }
+
+    // Try to parse as integer
+    match trimmed.parse::<i64>() {
+        Ok(n) if n <= 0 => Err(format!(
+            "invalid value '{}' for '--context <CONTEXT>': context lines must be a positive integer (greater than 0). \
+             Use '--context 1' or higher, or '--context full' for complete semantic unit.",
+            s
+        )),
+        Ok(_) => Ok(trimmed.to_string()),
+        Err(_) => Err(format!(
+            "invalid value '{}' for '--context <CONTEXT>': expected a positive integer or 'full'. \
+             Examples: '--context 5' for 5 lines, '--context full' for complete semantic unit.",
+            s
+        )),
     }
 }
