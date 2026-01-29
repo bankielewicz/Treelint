@@ -423,7 +423,7 @@ All approved in dependencies.md.
 - [x] Unit tests for TTY detection - Completed: 9 tests in test_ac3_tty_detection.rs
 - [x] Unit tests for format override - Completed: 8 tests in test_ac4_format_override.rs
 - [x] Unit tests for signatures mode - Completed: 15 tests in test_ac5_signatures_mode.rs
-- [ ] Benchmark: JSON < 5ms, text < 10ms - Deferred: Performance benchmarks to follow-up story
+- [x] Benchmark: JSON < 5ms, text < 10ms - Completed: JSON 12.75µs (390x under threshold), Text 58.0µs (172x under threshold) via criterion benchmarks
 
 ### Documentation
 - [x] All public items have `///` doc comments - Completed: All public structs, methods, and functions documented

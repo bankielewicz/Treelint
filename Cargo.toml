@@ -52,6 +52,10 @@ tempfile = "3.10"
 assert_cmd = "2.0"
 predicates = "3.1"
 
+# Benchmarking (per dependencies.md)
+# Using 0.4 for Rust 1.75 compatibility (0.5 requires Rust 1.81+)
+criterion = { version = "0.4", features = ["html_reports"] }
+
 [[test]]
 name = "story_002"
 path = "tests/story_002_tests/mod.rs"
@@ -73,3 +77,7 @@ strip = true
 [[bin]]
 name = "treelint"
 path = "src/main.rs"
+
+[[bench]]
+name = "output_benchmarks"
+harness = false

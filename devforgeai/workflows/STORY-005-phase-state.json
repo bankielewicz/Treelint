@@ -1,6 +1,6 @@
 {
   "story_id": "STORY-005",
-  "current_phase": "08",
+  "current_phase": "10",
   "workflow_started": "2026-01-28T13:05:42Z",
   "blocking_status": false,
   "phases": {
@@ -113,23 +113,37 @@
       "checkpoint_passed": true
     },
     "08": {
-      "status": "pending",
+      "status": "completed",
       "subagents_required": [],
-      "subagents_invoked": []
+      "subagents_invoked": [],
+      "started_at": "2026-01-29T12:35:00Z",
+      "completed_at": "2026-01-29T12:36:30Z",
+      "checkpoint_passed": true,
+      "commit_hash": "337f5803cdb00bbfe652a81e052c24057530f06b"
     },
     "09": {
-      "status": "pending",
+      "status": "completed",
       "subagents_required": [
         "framework-analyst"
       ],
-      "subagents_invoked": []
+      "subagents_invoked": [
+        "framework-analyst"
+      ],
+      "started_at": "2026-01-29T12:40:00Z",
+      "completed_at": "2026-01-29T12:41:00Z",
+      "checkpoint_passed": true
     },
     "10": {
-      "status": "pending",
+      "status": "completed",
       "subagents_required": [
         "dev-result-interpreter"
       ],
-      "subagents_invoked": []
+      "subagents_invoked": [
+        "dev-result-interpreter"
+      ],
+      "started_at": "2026-01-29T12:45:00Z",
+      "completed_at": "2026-01-29T12:46:00Z",
+      "checkpoint_passed": true
     }
   },
   "validation_errors": [],
