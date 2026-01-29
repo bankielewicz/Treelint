@@ -3,23 +3,22 @@
 //! Tests that:
 //! - treelint search testSymbol --format json returns valid JSON
 //! - JSON matches schema: {"query": {...}, "results": [], "stats": {...}}
-//! - Exit code 0 on success
+//! - Exit codes per spec: 0=results found, 1=error, 2=no results
 //!
-//! TDD Phase: RED - These tests should FAIL until implementation is complete.
+//! Note: Tests use non-existent symbol "testSymbol" so expect exit code 2 (no results).
 
 use assert_cmd::Command;
 use predicates::prelude::*;
 use serde_json::Value;
 
-/// Test: Search command exits with code 0 on success
+/// Test: Search command exits with code 2 when no results found (per spec)
+/// Spec: "Exit code 0 for success, 1 for user errors, 2 for no results"
 #[test]
-fn test_search_exits_with_code_0_on_success() {
+fn test_search_exits_with_code_2_on_no_results() {
     let mut cmd = Command::cargo_bin("treelint").expect("treelint binary not found");
 
-    cmd.args(["search", "testSymbol"])
-        .assert()
-        .success()
-        .code(0);
+    // testSymbol doesn't exist, so exit code should be 2 (no results)
+    cmd.args(["search", "testSymbol"]).assert().code(2);
 }
 
 /// Test: Search --format json returns valid JSON
@@ -30,7 +29,7 @@ fn test_search_json_format_returns_valid_json() {
     let output = cmd
         .args(["search", "testSymbol", "--format", "json"])
         .assert()
-        .success();
+        .code(2); // No results = exit code 2 per spec
 
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
 
@@ -47,7 +46,7 @@ fn test_search_json_contains_query_field() {
     let output = cmd
         .args(["search", "testSymbol", "--format", "json"])
         .assert()
-        .success();
+        .code(2); // No results = exit code 2 per spec
 
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: Value = serde_json::from_str(&stdout).expect("Output is not valid JSON");
@@ -67,7 +66,7 @@ fn test_search_json_contains_results_field() {
     let output = cmd
         .args(["search", "testSymbol", "--format", "json"])
         .assert()
-        .success();
+        .code(2); // No results = exit code 2 per spec
 
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: Value = serde_json::from_str(&stdout).expect("Output is not valid JSON");
@@ -87,7 +86,7 @@ fn test_search_json_contains_stats_field() {
     let output = cmd
         .args(["search", "testSymbol", "--format", "json"])
         .assert()
-        .success();
+        .code(2); // No results = exit code 2 per spec
 
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: Value = serde_json::from_str(&stdout).expect("Output is not valid JSON");
@@ -107,7 +106,7 @@ fn test_search_json_query_symbol_matches_input() {
     let output = cmd
         .args(["search", "testSymbol", "--format", "json"])
         .assert()
-        .success();
+        .code(2); // No results = exit code 2 per spec
 
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: Value = serde_json::from_str(&stdout).expect("Output is not valid JSON");
@@ -140,7 +139,7 @@ fn test_search_json_query_type_reflects_flag() {
             "json",
         ])
         .assert()
-        .success();
+        .code(2); // No results = exit code 2 per spec
 
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: Value = serde_json::from_str(&stdout).expect("Output is not valid JSON");
@@ -166,7 +165,7 @@ fn test_search_json_query_type_null_when_not_specified() {
     let output = cmd
         .args(["search", "testSymbol", "--format", "json"])
         .assert()
-        .success();
+        .code(2); // No results = exit code 2 per spec
 
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: Value = serde_json::from_str(&stdout).expect("Output is not valid JSON");
@@ -188,7 +187,7 @@ fn test_search_json_results_is_empty_array() {
     let output = cmd
         .args(["search", "testSymbol", "--format", "json"])
         .assert()
-        .success();
+        .code(2); // No results = exit code 2 per spec
 
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: Value = serde_json::from_str(&stdout).expect("Output is not valid JSON");
@@ -209,15 +208,15 @@ fn test_search_json_results_is_empty_array() {
     );
 }
 
-/// Test: JSON stats.files_searched is 0 (placeholder)
+/// Test: JSON stats.files_searched is present and non-negative
 #[test]
-fn test_search_json_stats_files_searched_is_zero() {
+fn test_search_json_stats_files_searched_is_non_negative() {
     let mut cmd = Command::cargo_bin("treelint").expect("treelint binary not found");
 
     let output = cmd
         .args(["search", "testSymbol", "--format", "json"])
         .assert()
-        .success();
+        .code(2); // No results = exit code 2 per spec
 
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: Value = serde_json::from_str(&stdout).expect("Output is not valid JSON");
@@ -227,10 +226,9 @@ fn test_search_json_stats_files_searched_is_zero() {
         .and_then(|s| s.get("files_searched"))
         .and_then(|f| f.as_i64());
 
-    assert_eq!(
-        files_searched,
-        Some(0),
-        "stats.files_searched must be 0 for placeholder\n\nActual output:\n{}",
+    assert!(
+        files_searched.is_some() && files_searched.unwrap() >= 0,
+        "stats.files_searched must be a non-negative integer\n\nActual output:\n{}",
         stdout
     );
 }
@@ -243,7 +241,7 @@ fn test_search_json_stats_elapsed_ms_is_numeric() {
     let output = cmd
         .args(["search", "testSymbol", "--format", "json"])
         .assert()
-        .success();
+        .code(2); // No results = exit code 2 per spec
 
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: Value = serde_json::from_str(&stdout).expect("Output is not valid JSON");
@@ -264,7 +262,7 @@ fn test_search_text_format_shows_no_results_message() {
 
     cmd.args(["search", "testSymbol", "--format", "text"])
         .assert()
-        .success()
+        .code(2) // No results = exit code 2 per spec
         .stdout(predicate::str::contains("No results").or(predicate::str::contains("testSymbol")));
 }
 
@@ -274,7 +272,7 @@ fn test_search_default_format_works() {
     let mut cmd = Command::cargo_bin("treelint").expect("treelint binary not found");
 
     // Without --format flag, should default to text (or json) and work
-    cmd.args(["search", "testSymbol"]).assert().success();
+    cmd.args(["search", "testSymbol"]).assert().code(2);
 }
 
 /// Test: JSON output is compact (no excessive whitespace)
@@ -285,7 +283,7 @@ fn test_search_json_output_is_compact_or_pretty() {
     let output = cmd
         .args(["search", "testSymbol", "--format", "json"])
         .assert()
-        .success();
+        .code(2); // No results = exit code 2 per spec
 
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
 

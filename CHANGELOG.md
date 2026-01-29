@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-01-29
+
+### Added
+
+- Background daemon with IPC communication ([STORY-007])
+  - Unix domain socket (`.treelint/daemon.sock`) on Unix/macOS
+  - Named pipe (`\\.\pipe\treelint-daemon`) on Windows
+  - NDJSON protocol for request/response communication
+  - `search` method handler (same JSON format as CLI)
+  - `status` method handler (7 fields: status, indexed_files, indexed_symbols, last_index_time, uptime_seconds, pid, socket_path)
+  - Graceful shutdown with 5-second timeout for active connections
+  - Error codes: E001 (index not ready), E002 (invalid method), E003 (invalid params)
+
+### Technical
+
+- 79 new tests for daemon module (393 + 79 = 472 total)
+- DaemonServer with start/stop/status lifecycle
+- ProtocolHandler trait for NDJSON parsing
+- Cross-platform IPC via `interprocess` crate
+- Socket permissions: 0600 (user-only) on Unix
+- Binary size: 7.9 MB
+
 ## [0.6.0] - 2026-01-29
 
 ### Added
@@ -100,8 +122,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Release build with LTO optimization (740KB binary)
 - 81 integration tests covering all acceptance criteria
 
-[unreleased]: https://github.com/treelint/treelint/compare/v0.6.0...HEAD
+[unreleased]: https://github.com/treelint/treelint/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/treelint/treelint/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/treelint/treelint/compare/v0.5.0...v0.6.0
+[STORY-007]: devforgeai/specs/Stories/archive/STORY-007-daemon-core-ipc.story.md
 [0.5.0]: https://github.com/treelint/treelint/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/treelint/treelint/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/treelint/treelint/compare/v0.1.0...v0.3.0

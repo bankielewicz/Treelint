@@ -16,7 +16,7 @@ Text-based search tools (grep, ripgrep) return false positives from comments, st
 
 ## Current Status
 
-**v0.6.0** - Context Modes (Released 2026-01-29)
+**v0.7.0** - Background Daemon (Released 2026-01-29)
 
 | Feature | Status |
 |---------|--------|
@@ -34,13 +34,17 @@ Text-based search tools (grep, ripgrep) return false positives from comments, st
 | **--context N (lines)** | ✅ Complete |
 | **--context full (semantic)** | ✅ Complete |
 | **--signatures (minimal)** | ✅ Complete |
-| Background indexing daemon | Coming soon |
+| **Background daemon** | ✅ Complete |
+| **Unix socket IPC** | ✅ Complete |
+| **Windows named pipe IPC** | ✅ Complete |
+| **NDJSON protocol** | ✅ Complete |
+| File watcher integration | Coming soon |
 | Repository mapping | Coming soon |
 
 **Build Stats:**
-- Tests: 393 passing (76 for context modes, 55 for output, 50 for search)
-- Binary size: 7.6 MB
-- Query latency: <50ms (p95)
+- Tests: 472 passing (79 for daemon, 76 for context modes, 55 for output)
+- Binary size: 7.9 MB
+- Query latency: <5ms via daemon (p95)
 
 ## Features
 
@@ -112,9 +116,51 @@ The index module provides persistent symbol storage using SQLite with WAL mode:
 - Bulk insert: <500ms for 1000 symbols
 - Database location: `.treelint/index.db`
 
+### Background Daemon (STORY-007)
+
+The daemon maintains an always-fresh symbol index for instant queries:
+
+**Features:**
+- **Unix socket** (`.treelint/daemon.sock`) on Unix/macOS
+- **Named pipe** (`\\.\pipe\treelint-daemon`) on Windows
+- **NDJSON protocol** for simple request/response
+- **Sub-5ms latency** for search queries
+- **Graceful shutdown** with connection draining
+
+**Daemon Methods:**
+
+| Method | Description | Response |
+|--------|-------------|----------|
+| `search` | Search symbols by name/type | Same format as CLI |
+| `status` | Get daemon status | 7 fields (see below) |
+| `index` | Trigger re-indexing | Indexing result |
+
+**Status Response Fields:**
+- `status`: "starting" | "ready" | "indexing" | "stopping"
+- `indexed_files`: Count of indexed files
+- `indexed_symbols`: Count of indexed symbols
+- `last_index_time`: ISO 8601 timestamp
+- `uptime_seconds`: Daemon uptime
+- `pid`: Process ID
+- `socket_path`: IPC path
+
+**Error Codes:**
+| Code | Meaning |
+|------|---------|
+| E001 | Index not ready |
+| E002 | Invalid method |
+| E003 | Invalid parameters |
+
+**Example Usage (via socket client):**
+
+```bash
+# Connect and send search request
+echo '{"id":"1","method":"search","params":{"symbol":"main","type":"function"}}' | nc -U .treelint/daemon.sock
+```
+
 ### Coming Soon
 
-- **Background indexing daemon** - Auto-index on file changes
+- **File watcher integration** - Auto-index on file changes
 - **Repository map** - Generate symbol summaries (Aider-style)
 - **Dependency graph** - Track function call relationships
 
@@ -363,7 +409,8 @@ Returns N lines before and after the symbol, clamped to file boundaries:
 - **SQLite (rusqlite)** - Bundled database with WAL mode for concurrent access
 - **Parser Module** - Language detection, symbol extraction, error handling
 - **Index Module** - Symbol storage, queries, incremental re-indexing
-- **Cross-platform** - Windows, macOS, Linux
+- **Daemon Module** - Background process with IPC for instant queries
+- **Cross-platform** - Windows, macOS, Linux (Unix sockets + Named pipes)
 
 ## Development
 
@@ -390,6 +437,7 @@ This project is informed by research into AI coding assistant token efficiency:
 
 - [Getting Started Guide](docs/guides/getting-started.md)
 - [CLI Reference](docs/api/cli-reference.md)
+- [Daemon API Reference](docs/api/daemon-api.md)
 - [Library API Reference](docs/api/library-reference.md)
 - [Contributing Guidelines](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
