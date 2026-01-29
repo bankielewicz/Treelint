@@ -566,7 +566,7 @@ All dependencies already approved:
 
 ### Documentation
 - [x] CLI --help updated with context options - Completed: args.rs includes doc comments for --context and --signatures
-- [x] Context modes documented in README - Deferred: README update planned for documentation sprint
+- [x] Context modes documented in README - Completed: Added Context Modes section with usage examples and JSON output formats
 - [x] Technical specification complete in story file - Completed: Full technical spec in story file
 
 ---

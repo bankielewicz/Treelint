@@ -121,7 +121,7 @@ The index module provides persistent symbol storage using SQLite with WAL mode:
 cargo install treelint
 
 # From source
-git clone https://github.com/yourusername/treelint
+git clone https://github.com/bankielewicz/treelint
 cd treelint
 cargo build --release
 ```
@@ -145,12 +145,32 @@ treelint search 'validate.*' -r
 
 # Combined filters (AND logic)
 treelint search 'validate.*' -r -i --type function
+```
 
-# JSON output (default)
+### Output Formats (STORY-005)
+
+Treelint auto-detects the best output format based on context:
+
+| Context | Auto-Selected Format | Reason |
+|---------|---------------------|--------|
+| Terminal (TTY) | Text | Human-readable with colors |
+| Piped/Redirected | JSON | Machine-parseable for AI tools |
+
+```bash
+# Auto-detect format (recommended)
+treelint search validateUser          # Text in terminal, JSON when piped
+
+# Explicit JSON output
 treelint search validateUser --format json
 
-# Text output
+# Explicit text output
 treelint search validateUser --format text
+
+# Signatures only (60-80% smaller output)
+treelint search validateUser --signatures
+
+# Pipe to AI tools (auto-selects JSON)
+treelint search validateUser | claude-code-context
 ```
 
 ### Auto-Indexing
@@ -184,7 +204,9 @@ treelint --class AuthService
 treelint map --output repo-map.json
 ```
 
-## Output Format
+## Output Formats
+
+### JSON Format (Default for Piped Output)
 
 ```json
 {
@@ -192,7 +214,8 @@ treelint map --output repo-map.json
     "symbol": "validateUser",
     "type": "function",
     "case_insensitive": true,
-    "regex": false
+    "regex": false,
+    "context_mode": "full"
   },
   "results": [
     {
@@ -201,14 +224,101 @@ treelint map --output repo-map.json
       "file": "src/auth/validator.py",
       "lines": [10, 45],
       "signature": "def validateUser(email: str, password: str) -> bool",
-      "body": "...",
+      "body": "def validateUser(email: str, password: str) -> bool:\n    ...",
       "language": "python"
     }
   ],
   "stats": {
     "files_searched": 150,
+    "files_skipped": 0,
+    "skipped_by_type": {},
+    "languages_searched": ["python"],
     "elapsed_ms": 36
   }
+}
+```
+
+### Text Format (Default for Terminal)
+
+```
+function validateUser (src/auth/validator.py:10-45)
+  def validateUser(email: str, password: str) -> bool
+    # body indented 4 spaces
+    ...
+
+Found 1 result in 36ms (150 files searched)
+```
+
+### Context Modes (STORY-006)
+
+Control how much context is returned with each symbol match:
+
+| Mode | Flag | Output | Use Case |
+|------|------|--------|----------|
+| Full (default) | `--context full` | Complete semantic unit | Deep analysis |
+| Lines | `--context N` | N lines before/after | Focused context |
+| Signatures | `--signatures` | Signature only, no body | Quick lookups |
+
+```bash
+# Default: Complete semantic unit (functions, classes with full body)
+treelint search validateUser
+
+# Explicit full context (same as default)
+treelint search validateUser --context full
+
+# Line-based context: 5 lines before and after the symbol
+treelint search validateUser --context 5
+
+# Signatures only: Function/method signatures without body (60-80% smaller)
+treelint search validateUser --signatures
+```
+
+**Note:** `--context` and `--signatures` are mutually exclusive. Use one or the other.
+
+**JSON Output with Context Mode:**
+
+The `query.context_mode` field reflects the mode used:
+- `"full"` - Complete semantic unit
+- `"lines:N"` - N lines of context
+- `"signatures"` - Signature only
+
+### Signatures Mode (`--signatures`)
+
+Omits body content for 60-80% smaller output:
+
+```json
+{
+  "query": { "symbol": "validateUser", "context_mode": "signatures" },
+  "results": [
+    {
+      "type": "function",
+      "name": "validateUser",
+      "file": "src/auth/validator.py",
+      "lines": [10, 45],
+      "signature": "def validateUser(email: str, password: str) -> bool",
+      "body": null
+    }
+  ]
+}
+```
+
+### Line-Based Context Mode (`--context N`)
+
+Returns N lines before and after the symbol, clamped to file boundaries:
+
+```json
+{
+  "query": { "symbol": "validateUser", "context_mode": "lines:5" },
+  "results": [
+    {
+      "type": "function",
+      "name": "validateUser",
+      "file": "src/auth/validator.py",
+      "lines": [10, 45],
+      "signature": "def validateUser(email: str, password: str) -> bool",
+      "body": "# 5 lines before...\ndef validateUser(...):\n    ...\n# 5 lines after..."
+    }
+  ]
 }
 ```
 
