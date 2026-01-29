@@ -4,7 +4,7 @@ title: Context Modes for Symbol Search Output Control
 type: feature
 epic: EPIC-001
 sprint: SPRINT-001
-status: Dev Complete
+status: Released
 points: 5
 depends_on: ["STORY-002", "STORY-005"]
 priority: High
@@ -655,13 +655,15 @@ All dependencies already approved:
 
 ## Change Log
 
-**Current Status:** Dev Complete
+**Current Status:** Released
 
 | Date | Author | Phase/Action | Change | Files Affected |
 |------|--------|--------------|--------|----------------|
 | 2026-01-27 12:00 | claude/story-creation | Created | Story created from EPIC-001 F3: Context Modes | STORY-006-context-modes.story.md |
 | 2026-01-27 | claude/sprint-planner | Sprint Planning | Status: Backlog → Ready for Dev, Added to SPRINT-001 | STORY-006-context-modes.story.md |
 | 2026-01-29 | claude/opus | DoD Update (Phase 07) | Development complete, all DoD items marked complete | STORY-006-context-modes.story.md |
+| 2026-01-29 | claude/qa-result-interpreter | QA Deep | PASSED: 76/76 tests, 0 CRITICAL, 1 HIGH (PRE_EXISTING), Status: Dev Complete → QA Approved | devforgeai/qa/reports/STORY-006-qa-report.md |
+| 2026-01-29 | claude/deployment-engineer | Released | Released to test environment, binary: 7.6MB, smoke tests passed | target/release/treelint, CHANGELOG.md |
 
 ## Notes
 

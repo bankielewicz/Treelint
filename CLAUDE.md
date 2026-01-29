@@ -1,180 +1,121 @@
 # CLAUDE.md
 
-## What You're Building
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Treelint** is a Rust-based code search CLI that uses tree-sitter AST parsing to reduce AI coding assistant token consumption by 40-80%. It returns semantic code units (functions, classes) instead of raw text matches.
+Present multiple interpretations — Don't pick silently when ambiguity exists.  Use AskUserQuestion tool to ask me questions.
 
----
-
-## Project Context
-
-| Attribute | Value |
-|-----------|-------|
-| **Language** | Rust |
-| **Parser** | tree-sitter (embedded grammars) |
-| **Output** | JSON structured format |
-| **Platforms** | Windows, macOS, Linux |
-| **Timeline** | MVP in < 2 weeks |
-
-### Supported Languages (v1)
-
-- Python
-- TypeScript
-- Rust
-- Markdown
-
----
-
-## Key Files
-
-| File | Purpose |
-|------|---------|
-| `src/main.rs` | CLI entry point |
-| `src/parser/` | tree-sitter parsing logic |
-| `src/index/` | Background indexing service |
-| `src/output/` | JSON output formatting |
-| `Cargo.toml` | Rust dependencies |
-| `devforgeai/specs/brainstorms/BRAINSTORM-001-treelint-ast-code-search.brainstorm.md` | Requirements brainstorm |
-| `devforgeai/specs/research/RESEARCH-001-claude-code-search-token-efficiency.research.md` | Market research |
-
----
-
-## CLI Interface
+## Build & Development Commands
 
 ```bash
-# Symbol-based search (works with or without daemon)
-treelint search validateUser --type function
-treelint --function validateUser
-treelint --class AuthService
+# Build
+cargo build                    # Debug build
+cargo build --release          # Release build (LTO enabled)
 
-# With context lines
-treelint --function validateUser --context 10
+# Test
+cargo test                     # Run all tests
+cargo test --test story_001    # Run tests for a specific story
+cargo test test_search_exact   # Run tests matching name pattern
+cargo test -- --nocapture      # Show println! output
+cargo test -- --test-threads=1 # Single-threaded (for debugging)
 
-# Repository map
-treelint map --output repo-map.json
+# Lint & Format
+cargo clippy -- -D warnings    # Lint (fail on warnings)
+cargo fmt --check              # Check formatting
+cargo fmt                      # Apply formatting
 
-# Index management (hybrid: daemon or on-demand)
-treelint index --force          # Manual re-index
-treelint daemon start           # Start background daemon
-treelint daemon stop            # Stop daemon
-treelint daemon status          # Check daemon status
+# Pre-commit check (run all quality gates)
+cargo test && cargo clippy -- -D warnings && cargo fmt --check
 ```
 
-### Indexing Architecture (Hybrid)
+## Architecture
+
+Treelint is an AST-aware code search CLI that uses tree-sitter to return semantic code units (functions, classes) instead of raw text matches. It reduces AI coding assistant token consumption by 40-80%.
+
+### Module Structure
 
 ```
-CLI auto-detects daemon availability:
-  ├─ Daemon running → Query live index (instant)
-  └─ No daemon → Build index on-demand (still fast)
-
-Environment recommendations:
-  • Dev machine: Use daemon (always-fresh index)
-  • CI/CD: Manual index (treelint index --force)
-  • Containers: Manual (short-lived, no daemon overhead)
+src/
+├── main.rs          # Entry point, delegates to cli module
+├── lib.rs           # Public API exports
+├── error.rs         # TreelintError enum (thiserror)
+├── cli/
+│   ├── args.rs      # Clap argument definitions (SearchArgs, SymbolType, OutputFormat)
+│   └── commands/
+│       └── search.rs # Search command implementation
+├── parser/
+│   ├── languages.rs # Language enum, file extension detection
+│   ├── symbols.rs   # Symbol struct, SymbolExtractor trait
+│   └── queries/     # Tree-sitter query definitions per language
+├── index/
+│   ├── schema.rs    # SQLite schema version management
+│   ├── storage.rs   # IndexStorage CRUD operations
+│   └── search.rs    # Query filters and execution
+└── output/
+    └── json.rs      # JSON serialization
 ```
 
----
+### Data Flow
 
-## Output Format
+1. CLI parses args → `SearchArgs`
+2. Check/build index → `IndexStorage` (SQLite in `.treelint/index.db`)
+3. Parse source files → `SymbolExtractor` extracts `Symbol` structs
+4. Query index → Filter by name/type/regex
+5. Format output → JSON or text to stdout
 
-```json
-{
-  "query": { "symbol": "validateUser", "type": "function" },
-  "results": [{
-    "type": "function",
-    "name": "validateUser",
-    "file": "src/auth/validator.py",
-    "lines": [10, 45],
-    "signature": "def validateUser(email: str, password: str) -> bool",
-    "body": "..."
-  }],
-  "stats": { "files_searched": 150, "elapsed_ms": 47 }
-}
+### Key Types
+
+- `Symbol` - Extracted code unit (name, type, file, lines, signature, body)
+- `SymbolType` - Function, Class, Method, Variable, Constant, Import, Export
+- `Language` - Python, TypeScript, Rust, Markdown
+- `IndexStorage` - SQLite wrapper for symbol persistence
+- `TreelintError` - Error enum covering parse, storage, and CLI errors
+
+## Test Organization
+
+Tests are organized by story and acceptance criteria:
+
+```
+tests/
+├── story_001.rs              # Entry point for STORY-001 tests
+├── STORY-001/
+│   ├── test_ac1_cargo_build.rs
+│   ├── test_ac2_argument_parsing.rs
+│   └── ...
+├── story_002_tests/          # Alternative organization
+│   └── test_ac1_grammar_loading.rs
+└── fixtures/                 # Test data files
+    ├── rust/
+    ├── python/
+    └── typescript/
 ```
 
----
-
-## Development Rules
-
-### Always
-
-- Use `cargo test` before committing
-- Run `cargo clippy` for linting
-- Keep binary size < 50MB
-- Embed grammars (no external files)
-
-### Never
-
-- Add runtime dependencies
-- Require external grammar files
-- Break cross-platform compatibility
-
----
+Test patterns use `assert_cmd` for CLI testing and `tempfile` for isolated test directories.
 
 ## DevForgeAI Framework
 
-This project uses DevForgeAI for spec-driven development.
+This project uses DevForgeAI for spec-driven development with TDD.
 
-### Workflow
+**Workflow:** `/brainstorm` → `/ideate` → `/create-context` → `/create-epic` → `/dev` → `/qa` → `/release`
 
-```
-/brainstorm → /ideate → /create-context → /create-epic → /dev → /qa → /release
-```
+**Key Commands:**
+- `/dev STORY-XXX` - TDD implementation (Red → Green → Refactor)
+- `/qa STORY-XXX` - Quality validation
+- `/create-story` - Create user stories with acceptance criteria
 
-### Key Commands
-
-| Command | Purpose |
-|---------|---------|
-| `/ideate` | Transform brainstorm into requirements |
-| `/create-context` | Generate tech-stack.md, source-tree.md |
-| `/create-story` | Create user stories with AC |
-| `/dev` | TDD implementation workflow |
-| `/qa` | Quality validation |
-
-### Context Files
+**Context Files (immutable constraints):**
 
 | File | Purpose |
 |------|---------|
 | `devforgeai/specs/context/tech-stack.md` | Allowed technologies |
 | `devforgeai/specs/context/source-tree.md` | File/folder structure |
 | `devforgeai/specs/context/dependencies.md` | Cargo dependencies |
+| `devforgeai/specs/context/architecture-constraints.md` | Layer boundaries |
+| `devforgeai/specs/context/anti-patterns.md` | Forbidden patterns |
+| `devforgeai/specs/context/coding-standards.md` | Code style |
 
----
-
-## Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Treelint CLI                         │
-├─────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐ │
-│  │   Parser    │  │   Index     │  │     Output      │ │
-│  │ (tree-sitter)│  │  (daemon)   │  │   (JSON/Text)   │ │
-│  └──────┬──────┘  └──────┬──────┘  └────────┬────────┘ │
-│         │                │                   │          │
-│  ┌──────▼──────────────────────────────────▼────────┐  │
-│  │                  Symbol Store                     │  │
-│  │  (functions, classes, methods, variables)         │  │
-│  └───────────────────────────────────────────────────┘  │
-├─────────────────────────────────────────────────────────┤
-│  Embedded Grammars: Python, TypeScript, Rust, Markdown  │
-└─────────────────────────────────────────────────────────┘
-```
-
----
-
-## Research Foundation
-
-See `devforgeai/specs/research/RESEARCH-001-claude-code-search-token-efficiency.research.md`:
-
-- Claude Code uses ripgrep (text-based, 20-30% context utilization)
-- Aider uses tree-sitter (4.3% context utilization)
-- Potential 40-83% token reduction with AST-aware search
-
----
-
-## When in Doubt
-
-1. Check brainstorm: `BRAINSTORM-001-treelint-ast-code-search.brainstorm.md`
-2. Check research: `RESEARCH-001-claude-code-search-token-efficiency.research.md`
-3. Ask the user with `AskUserQuestion`
+**Rules:**
+- Check context files before making changes
+- No `.unwrap()` or `.expect()` in production code
+- Tests before implementation (TDD)
+- Binary size must stay < 50MB
+- Grammars must be embedded (no external files)

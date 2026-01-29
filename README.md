@@ -16,7 +16,7 @@ Text-based search tools (grep, ripgrep) return false positives from comments, st
 
 ## Current Status
 
-**v0.4.0** - Search Command (Released 2026-01-27)
+**v0.6.0** - Context Modes (Released 2026-01-29)
 
 | Feature | Status |
 |---------|--------|
@@ -26,16 +26,20 @@ Text-based search tools (grep, ripgrep) return false positives from comments, st
 | AST parsing | ✅ Complete |
 | SQLite index storage | ✅ Complete |
 | Incremental re-indexing | ✅ Complete |
-| **Search command** | ✅ Complete |
-| **Auto-indexing** | ✅ Complete |
-| **Regex search** | ✅ Complete |
-| **Case-insensitive search** | ✅ Complete |
+| Search command | ✅ Complete |
+| Auto-indexing | ✅ Complete |
+| Regex search | ✅ Complete |
+| Case-insensitive search | ✅ Complete |
+| **Context modes** | ✅ Complete |
+| **--context N (lines)** | ✅ Complete |
+| **--context full (semantic)** | ✅ Complete |
+| **--signatures (minimal)** | ✅ Complete |
 | Background indexing daemon | Coming soon |
 | Repository mapping | Coming soon |
 
 **Build Stats:**
-- Tests: 262 passing (50 for search module)
-- Binary size: 7.5 MB
+- Tests: 393 passing (76 for context modes, 55 for output, 50 for search)
+- Binary size: 7.6 MB
 - Query latency: <50ms (p95)
 
 ## Features

@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-01-29
+
+### Added
+
+- Context modes for symbol search output control ([STORY-006])
+  - `--context N` for N lines before/after symbols (e.g., `--context 5`)
+  - `--context full` for complete semantic unit (default behavior)
+  - `--signatures` for minimal output (signature only, no body)
+  - Mutual exclusivity: cannot use --context and --signatures together
+  - `context_mode` field in JSON: "lines:N", "full", or "signatures"
+  - Edge case handling for file boundaries
+
+### Technical
+
+- 76 new tests for context modes (393 total)
+- ContextMode enum: Lines(usize), Full, Signatures
+- extract_lines_context() with boundary clamping
+- Binary size: 7.6 MB
+
+## [0.5.0] - 2026-01-29
+
+### Added
+
+- JSON/Text output with TTY auto-detection ([STORY-005])
+  - Auto-selects JSON when piped, text when in terminal
+  - `--format json|text` flag to override auto-detection
+  - `--signatures` mode omits body for 60-80% smaller output
+  - `context_mode` field in JSON schema ("full" or "signatures")
+  - Colored text output (cyan names, green paths, yellow line numbers)
+
+### Technical
+
+- 55 new tests for output module (317 total)
+- Uses `atty` crate for TTY detection
+- Uses `colored` crate for terminal colors
+
 ## [0.4.0] - 2026-01-27
 
 ### Added
@@ -64,7 +100,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Release build with LTO optimization (740KB binary)
 - 81 integration tests covering all acceptance criteria
 
-[unreleased]: https://github.com/treelint/treelint/compare/v0.4.0...HEAD
+[unreleased]: https://github.com/treelint/treelint/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/treelint/treelint/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/treelint/treelint/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/treelint/treelint/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/treelint/treelint/compare/v0.1.0...v0.3.0
 [0.1.0]: https://github.com/treelint/treelint/releases/tag/v0.1.0
@@ -72,3 +110,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [STORY-002]: devforgeai/specs/Stories/archive/STORY-002-treesitter-parser-integration.story.md
 [STORY-003]: devforgeai/specs/Stories/archive/STORY-003-sqlite-index-storage.story.md
 [STORY-004]: devforgeai/specs/Stories/archive/STORY-004-search-command-logic.story.md
+[STORY-005]: devforgeai/specs/Stories/archive/STORY-005-json-text-output.story.md
+[STORY-006]: devforgeai/specs/Stories/archive/STORY-006-context-modes.story.md

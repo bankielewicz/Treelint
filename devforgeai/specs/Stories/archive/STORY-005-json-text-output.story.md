@@ -4,7 +4,7 @@ title: JSON/Text Output
 type: feature
 epic: EPIC-001
 sprint: SPRINT-001
-status: Dev Complete
+status: Released
 points: 5
 depends_on: ["STORY-004"]
 priority: High
@@ -489,13 +489,23 @@ All approved in dependencies.md.
 
 ## Change Log
 
-**Current Status:** Dev Complete
+**Current Status:** Released
 
 | Date | Author | Phase/Action | Change | Files Affected |
 |------|--------|--------------|--------|----------------|
 | 2026-01-27 16:30 | claude/story-requirements-analyst | Created | Story created from EPIC-001 F2 | STORY-005-json-text-output.story.md |
 | 2026-01-27 | claude/sprint-planner | Sprint Planning | Status: Backlog → Ready for Dev, Added to SPRINT-001 | STORY-005-json-text-output.story.md |
 | 2026-01-28 | claude/devforgeai-development | Development Complete | TDD implementation complete: 55 tests, all ACs pass | src/output/*, tests/STORY-005/* |
+| 2026-01-29 | claude/qa-result-interpreter | QA Deep | PASSED: Coverage comprehensive, 0 violations, 3/3 validators | devforgeai/qa/reports/STORY-005-qa-report.md |
+| 2026-01-29 | claude/deployment-engineer | Released | Released v0.1.0 to test environment - all smoke tests passed | target/release/treelint |
+| 2026-01-29 | claude/documentation-writer | Documentation | Updated README.md with STORY-005 output format documentation | README.md, docs/api/cli-reference.md |
+
+## Generated Documentation
+
+- **README.md**: Updated with output format section, TTY auto-detection table, signatures mode examples
+- **docs/api/cli-reference.md**: Complete CLI reference with JSON schema, text format examples
+- **Last Generated**: 2026-01-29
+- **Coverage**: 100% (all STORY-005 features documented)
 
 ## Notes
 
