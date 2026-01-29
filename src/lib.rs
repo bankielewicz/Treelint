@@ -5,6 +5,7 @@
 //! (functions, classes) instead of raw text matches.
 
 pub mod cli;
+pub mod daemon;
 pub mod error;
 pub mod index;
 pub mod output;

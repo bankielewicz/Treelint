@@ -22,4 +22,16 @@ pub enum TreelintError {
     /// CLI error for argument validation or command execution failures.
     #[error("CLI error: {0}")]
     Cli(String),
+
+    /// I/O error (string variant for daemon module).
+    #[error("I/O error: {0}")]
+    IoError(String),
+
+    /// Parse error (string variant for daemon module).
+    #[error("Parse error: {0}")]
+    ParseError(String),
+
+    /// Daemon error for IPC and daemon-related failures.
+    #[error("Daemon error: {0}")]
+    DaemonError(String),
 }

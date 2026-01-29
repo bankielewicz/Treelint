@@ -45,6 +45,13 @@ colored = "2.1"
 # TTY Detection (per dependencies.md)
 atty = "0.2"
 
+# Logging (per dependencies.md)
+log = "0.4"
+env_logger = "0.11"
+
+# IPC / Daemon (per dependencies.md)
+interprocess = "2.0"
+
 [dev-dependencies]
 # Testing (per dependencies.md)
 pretty_assertions = "1.4"
@@ -67,6 +74,10 @@ path = "tests/story_004.rs"
 [[test]]
 name = "story_005"
 path = "tests/story_005.rs"
+
+[[test]]
+name = "story_007"
+path = "tests/story_007.rs"
 
 [profile.release]
 lto = true
