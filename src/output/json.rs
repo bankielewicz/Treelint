@@ -1,6 +1,9 @@
 //! JSON output formatting for search results
 //!
-//! This module defines the JSON schema for search command output.
+//! This module defines the JSON schema for search command output,
+//! including query metadata, results array, and search statistics.
+
+use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
@@ -9,8 +12,8 @@ use serde::{Deserialize, Serialize};
 /// Schema:
 /// ```json
 /// {
-///   "query": { "symbol": "...", "type": "..." },
-///   "results": [...],
+///   "query": { "symbol": "...", "type": "...", "context_mode": "full" },
+///   "results": [{ "type": "...", "name": "...", "body": "..." }],
 ///   "stats": { "files_searched": 0, "elapsed_ms": 0 }
 /// }
 /// ```
@@ -39,6 +42,8 @@ pub struct SearchQuery {
     /// Whether regex search was used
     #[serde(skip_serializing_if = "Option::is_none")]
     pub regex: Option<bool>,
+    /// The context mode: "full" (default) or "signatures"
+    pub context_mode: String,
 }
 
 /// A single search result
@@ -55,8 +60,8 @@ pub struct SearchResult {
     pub lines: (usize, usize),
     /// The function/method signature
     pub signature: String,
-    /// The full body of the symbol
-    pub body: String,
+    /// The full body of the symbol (null in signatures mode)
+    pub body: Option<String>,
     /// The programming language
     #[serde(skip_serializing_if = "Option::is_none")]
     pub language: Option<String>,
@@ -69,6 +74,12 @@ pub struct SearchStats {
     pub files_searched: u64,
     /// Time elapsed in milliseconds
     pub elapsed_ms: u64,
+    /// Number of files skipped during search
+    pub files_skipped: u64,
+    /// Count of files skipped by type (e.g., binary, unsupported)
+    pub skipped_by_type: HashMap<String, u64>,
+    /// Languages that were searched
+    pub languages_searched: Vec<String>,
 }
 
 impl SearchOutput {
@@ -89,37 +100,31 @@ impl SearchOutput {
                 symbol_type: symbol_type.map(|s| s.to_string()),
                 case_insensitive: None,
                 regex: None,
+                context_mode: "full".to_string(),
             },
             results: Vec::new(),
             stats: SearchStats {
                 files_searched: 0,
                 elapsed_ms: 0,
+                files_skipped: 0,
+                skipped_by_type: HashMap::new(),
+                languages_searched: Vec::new(),
             },
         }
     }
 
-    /// Create a new search output with the given query parameters and results.
-    pub fn new(
-        symbol: &str,
-        symbol_type: Option<&str>,
-        case_insensitive: bool,
-        regex: bool,
-        results: Vec<SearchResult>,
-        files_searched: u64,
-        elapsed_ms: u64,
-    ) -> Self {
+    /// Create a new search output from pre-built components.
+    ///
+    /// # Arguments
+    ///
+    /// * `query` - The search query metadata
+    /// * `results` - The search results
+    /// * `stats` - The search statistics
+    pub fn new(query: SearchQuery, results: Vec<SearchResult>, stats: SearchStats) -> Self {
         SearchOutput {
-            query: SearchQuery {
-                symbol: symbol.to_string(),
-                symbol_type: symbol_type.map(|s| s.to_string()),
-                case_insensitive: if case_insensitive { Some(true) } else { None },
-                regex: if regex { Some(true) } else { None },
-            },
+            query,
             results,
-            stats: SearchStats {
-                files_searched,
-                elapsed_ms,
-            },
+            stats,
         }
     }
 }

@@ -43,9 +43,9 @@ pub struct SearchArgs {
     #[arg(short = 'r', long = "regex")]
     pub regex: bool,
 
-    /// Output format
-    #[arg(long = "format", value_enum, default_value = "text")]
-    pub format: OutputFormat,
+    /// Output format (auto-detected if not specified: TTY=text, pipe=json)
+    #[arg(long = "format", value_enum)]
+    pub format: Option<OutputFormat>,
 
     /// Number of context lines to include
     #[arg(long = "context", default_value = "0")]
@@ -98,7 +98,7 @@ impl SymbolType {
 }
 
 /// Output format options
-#[derive(ValueEnum, Clone, Debug, Default, PartialEq)]
+#[derive(ValueEnum, Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum OutputFormat {
     /// JSON output format
     #[value(name = "json")]

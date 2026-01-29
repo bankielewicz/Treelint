@@ -40,6 +40,10 @@ walkdir = "2.5"
 
 # Terminal UI (per dependencies.md)
 indicatif = "0.17"
+colored = "2.1"
+
+# TTY Detection (per dependencies.md)
+atty = "0.2"
 
 [dev-dependencies]
 # Testing (per dependencies.md)
@@ -55,6 +59,10 @@ path = "tests/story_002_tests/mod.rs"
 [[test]]
 name = "story_004"
 path = "tests/story_004.rs"
+
+[[test]]
+name = "story_005"
+path = "tests/story_005.rs"
 
 [profile.release]
 lto = true

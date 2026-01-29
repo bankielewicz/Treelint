@@ -269,7 +269,24 @@ impl SymbolExtractor {
         let content = std::fs::read_to_string(path)?;
         let file_path = path.to_string_lossy().to_string();
 
-        self.extract_with_path(&content, language, &file_path)
+        let mut symbols = self.extract_with_path(&content, language, &file_path)?;
+
+        // Populate body from source content using line ranges
+        let lines: Vec<&str> = content.lines().collect();
+        for symbol in &mut symbols {
+            if symbol.body.is_none() && symbol.line_start > 0 && symbol.line_end > 0 {
+                let start = symbol.line_start.saturating_sub(1); // Convert to 0-based
+                let end = symbol.line_end.min(lines.len()); // Clamp to file length
+                if start < end {
+                    let body_text: String = lines[start..end].join("\n");
+                    if !body_text.is_empty() {
+                        symbol.body = Some(body_text);
+                    }
+                }
+            }
+        }
+
+        Ok(symbols)
     }
 
     /// Extract symbols from source code content.
@@ -472,33 +489,25 @@ impl SymbolExtractor {
             for child in node.children(&mut cursor) {
                 if child.kind() == "dotted_name" {
                     if let Some(name) = self.node_text(child, source) {
-                        symbols.push(Symbol {
+                        symbols.push(self.make_bare_symbol(
                             name,
-                            symbol_type: SymbolType::Import,
-                            visibility: None,
-                            file_path: file_path.to_string(),
-                            line_start: node.start_position().row + 1,
-                            line_end: node.end_position().row + 1,
-                            signature: None,
-                            body: None,
-                            language: Language::Python,
-                        });
+                            SymbolType::Import,
+                            file_path,
+                            node,
+                            Language::Python,
+                        ));
                     }
                 } else if child.kind() == "aliased_import" {
                     // import os as operating_system
                     if let Some(alias) = child.child_by_field_name("alias") {
                         if let Some(name) = self.node_text(alias, source) {
-                            symbols.push(Symbol {
+                            symbols.push(self.make_bare_symbol(
                                 name,
-                                symbol_type: SymbolType::Import,
-                                visibility: None,
-                                file_path: file_path.to_string(),
-                                line_start: node.start_position().row + 1,
-                                line_end: node.end_position().row + 1,
-                                signature: None,
-                                body: None,
-                                language: Language::Python,
-                            });
+                                SymbolType::Import,
+                                file_path,
+                                node,
+                                Language::Python,
+                            ));
                         }
                     }
                 }
@@ -524,48 +533,36 @@ impl SymbolExtractor {
                         };
 
                         if !is_module_name {
-                            symbols.push(Symbol {
+                            symbols.push(self.make_bare_symbol(
                                 name,
-                                symbol_type: SymbolType::Import,
-                                visibility: None,
-                                file_path: file_path.to_string(),
-                                line_start: node.start_position().row + 1,
-                                line_end: node.end_position().row + 1,
-                                signature: None,
-                                body: None,
-                                language: Language::Python,
-                            });
+                                SymbolType::Import,
+                                file_path,
+                                node,
+                                Language::Python,
+                            ));
                         }
                     }
                 } else if child.kind() == "aliased_import" {
                     // from collections import defaultdict as dd
                     if let Some(alias) = child.child_by_field_name("alias") {
                         if let Some(name) = self.node_text(alias, source) {
-                            symbols.push(Symbol {
+                            symbols.push(self.make_bare_symbol(
                                 name,
-                                symbol_type: SymbolType::Import,
-                                visibility: None,
-                                file_path: file_path.to_string(),
-                                line_start: node.start_position().row + 1,
-                                line_end: node.end_position().row + 1,
-                                signature: None,
-                                body: None,
-                                language: Language::Python,
-                            });
+                                SymbolType::Import,
+                                file_path,
+                                node,
+                                Language::Python,
+                            ));
                         }
                     } else if let Some(name_node) = child.child_by_field_name("name") {
                         if let Some(name) = self.node_text(name_node, source) {
-                            symbols.push(Symbol {
+                            symbols.push(self.make_bare_symbol(
                                 name,
-                                symbol_type: SymbolType::Import,
-                                visibility: None,
-                                file_path: file_path.to_string(),
-                                line_start: node.start_position().row + 1,
-                                line_end: node.end_position().row + 1,
-                                signature: None,
-                                body: None,
-                                language: Language::Python,
-                            });
+                                SymbolType::Import,
+                                file_path,
+                                node,
+                                Language::Python,
+                            ));
                         }
                     }
                 }
@@ -886,17 +883,13 @@ impl SymbolExtractor {
                 "identifier" => {
                     // Default import
                     if let Some(name) = self.node_text(child, source) {
-                        symbols.push(Symbol {
+                        symbols.push(self.make_bare_symbol(
                             name,
-                            symbol_type: SymbolType::Import,
-                            visibility: None,
-                            file_path: file_path.to_string(),
-                            line_start: parent.start_position().row + 1,
-                            line_end: parent.end_position().row + 1,
-                            signature: None,
-                            body: None,
-                            language: Language::TypeScript,
-                        });
+                            SymbolType::Import,
+                            file_path,
+                            parent,
+                            Language::TypeScript,
+                        ));
                     }
                 }
                 "named_imports" => {
@@ -907,17 +900,13 @@ impl SymbolExtractor {
                 "namespace_import" => {
                     if let Some(name_node) = child.child(1) {
                         if let Some(name) = self.node_text(name_node, source) {
-                            symbols.push(Symbol {
+                            symbols.push(self.make_bare_symbol(
                                 name,
-                                symbol_type: SymbolType::Import,
-                                visibility: None,
-                                file_path: file_path.to_string(),
-                                line_start: parent.start_position().row + 1,
-                                line_end: parent.end_position().row + 1,
-                                signature: None,
-                                body: None,
-                                language: Language::TypeScript,
-                            });
+                                SymbolType::Import,
+                                file_path,
+                                parent,
+                                Language::TypeScript,
+                            ));
                         }
                     }
                 }
@@ -941,31 +930,23 @@ impl SymbolExtractor {
                 // Check for alias
                 if let Some(alias) = child.child_by_field_name("alias") {
                     if let Some(name) = self.node_text(alias, source) {
-                        symbols.push(Symbol {
+                        symbols.push(self.make_bare_symbol(
                             name,
-                            symbol_type: SymbolType::Import,
-                            visibility: None,
-                            file_path: file_path.to_string(),
-                            line_start: parent.start_position().row + 1,
-                            line_end: parent.end_position().row + 1,
-                            signature: None,
-                            body: None,
-                            language: Language::TypeScript,
-                        });
+                            SymbolType::Import,
+                            file_path,
+                            parent,
+                            Language::TypeScript,
+                        ));
                     }
                 } else if let Some(name_node) = child.child_by_field_name("name") {
                     if let Some(name) = self.node_text(name_node, source) {
-                        symbols.push(Symbol {
+                        symbols.push(self.make_bare_symbol(
                             name,
-                            symbol_type: SymbolType::Import,
-                            visibility: None,
-                            file_path: file_path.to_string(),
-                            line_start: parent.start_position().row + 1,
-                            line_end: parent.end_position().row + 1,
-                            signature: None,
-                            body: None,
-                            language: Language::TypeScript,
-                        });
+                            SymbolType::Import,
+                            file_path,
+                            parent,
+                            Language::TypeScript,
+                        ));
                     }
                 }
             }
@@ -1052,19 +1033,14 @@ impl SymbolExtractor {
                     if let Some(name) = self.node_text(name_node, source) {
                         // Exported items are marked as Export
                         // (we're already in an export statement context)
-                        let symbol_type = SymbolType::Export;
-
-                        symbols.push(Symbol {
+                        symbols.push(self.make_bare_symbol_with_visibility(
                             name,
-                            symbol_type,
-                            visibility: Some(Visibility::Public),
-                            file_path: file_path.to_string(),
-                            line_start: node.start_position().row + 1,
-                            line_end: node.end_position().row + 1,
-                            signature: None,
-                            body: None,
-                            language: Language::TypeScript,
-                        });
+                            SymbolType::Export,
+                            Some(Visibility::Public),
+                            file_path,
+                            node,
+                            Language::TypeScript,
+                        ));
                     }
                 }
             }
@@ -1103,17 +1079,14 @@ impl SymbolExtractor {
                             SymbolType::Variable
                         };
 
-                        symbols.push(Symbol {
+                        symbols.push(self.make_bare_symbol_with_visibility(
                             name,
                             symbol_type,
-                            visibility: Some(Visibility::Private),
-                            file_path: file_path.to_string(),
-                            line_start: node.start_position().row + 1,
-                            line_end: node.end_position().row + 1,
-                            signature: None,
-                            body: None,
-                            language: Language::TypeScript,
-                        });
+                            Some(Visibility::Private),
+                            file_path,
+                            node,
+                            Language::TypeScript,
+                        ));
                     }
                 }
             }
@@ -1133,17 +1106,14 @@ impl SymbolExtractor {
             if child.kind() == "variable_declarator" {
                 if let Some(name_node) = child.child_by_field_name("name") {
                     if let Some(name) = self.node_text(name_node, source) {
-                        symbols.push(Symbol {
+                        symbols.push(self.make_bare_symbol_with_visibility(
                             name,
-                            symbol_type: SymbolType::Variable,
-                            visibility: Some(Visibility::Private),
-                            file_path: file_path.to_string(),
-                            line_start: node.start_position().row + 1,
-                            line_end: node.end_position().row + 1,
-                            signature: None,
-                            body: None,
-                            language: Language::TypeScript,
-                        });
+                            SymbolType::Variable,
+                            Some(Visibility::Private),
+                            file_path,
+                            node,
+                            Language::TypeScript,
+                        ));
                     }
                 }
             }
@@ -1165,31 +1135,25 @@ impl SymbolExtractor {
                 // Check for alias
                 if let Some(alias) = child.child_by_field_name("alias") {
                     if let Some(name) = self.node_text(alias, source) {
-                        symbols.push(Symbol {
+                        symbols.push(self.make_bare_symbol_with_visibility(
                             name,
-                            symbol_type: SymbolType::Export,
-                            visibility: Some(Visibility::Public),
-                            file_path: file_path.to_string(),
-                            line_start: parent.start_position().row + 1,
-                            line_end: parent.end_position().row + 1,
-                            signature: None,
-                            body: None,
-                            language: Language::TypeScript,
-                        });
+                            SymbolType::Export,
+                            Some(Visibility::Public),
+                            file_path,
+                            parent,
+                            Language::TypeScript,
+                        ));
                     }
                 } else if let Some(name_node) = child.child_by_field_name("name") {
                     if let Some(name) = self.node_text(name_node, source) {
-                        symbols.push(Symbol {
+                        symbols.push(self.make_bare_symbol_with_visibility(
                             name,
-                            symbol_type: SymbolType::Export,
-                            visibility: Some(Visibility::Public),
-                            file_path: file_path.to_string(),
-                            line_start: parent.start_position().row + 1,
-                            line_end: parent.end_position().row + 1,
-                            signature: None,
-                            body: None,
-                            language: Language::TypeScript,
-                        });
+                            SymbolType::Export,
+                            Some(Visibility::Public),
+                            file_path,
+                            parent,
+                            Language::TypeScript,
+                        ));
                     }
                 }
             }
@@ -1674,6 +1638,57 @@ impl SymbolExtractor {
         }
 
         None
+    }
+
+    /// Create a bare symbol for import/export extraction.
+    ///
+    /// This helper eliminates duplication in import/export extraction methods.
+    /// The resulting symbol has no visibility, signature, or body.
+    fn make_bare_symbol(
+        &self,
+        name: String,
+        symbol_type: SymbolType,
+        file_path: &str,
+        node: Node,
+        language: Language,
+    ) -> Symbol {
+        Symbol {
+            name,
+            symbol_type,
+            visibility: None,
+            file_path: file_path.to_string(),
+            line_start: node.start_position().row + 1,
+            line_end: node.end_position().row + 1,
+            signature: None,
+            body: None,
+            language,
+        }
+    }
+
+    /// Create a bare symbol with explicit visibility.
+    ///
+    /// Similar to [`make_bare_symbol`] but allows setting visibility,
+    /// used for exported symbols that need `Some(Visibility::Public)`.
+    fn make_bare_symbol_with_visibility(
+        &self,
+        name: String,
+        symbol_type: SymbolType,
+        visibility: Option<Visibility>,
+        file_path: &str,
+        node: Node,
+        language: Language,
+    ) -> Symbol {
+        Symbol {
+            name,
+            symbol_type,
+            visibility,
+            file_path: file_path.to_string(),
+            line_start: node.start_position().row + 1,
+            line_end: node.end_position().row + 1,
+            signature: None,
+            body: None,
+            language,
+        }
     }
 
     /// Get text content of a node.

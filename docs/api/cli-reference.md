@@ -37,9 +37,17 @@ treelint search <SYMBOL> [OPTIONS]
 | `--type <TYPE>` | - | Any | Filter by symbol type |
 | `--ignore-case` | `-i` | false | Case-insensitive search |
 | `--regex` | `-r` | false | Interpret symbol as a regex pattern |
-| `--format <FORMAT>` | - | `text` | Output format (`json` or `text`) |
+| `--format <FORMAT>` | - | auto | Output format (`json` or `text`). Auto-detects: TTY=text, pipe=json |
 | `--context <N>` | - | `0` | Number of context lines to include |
-| `--signatures` | - | false | Only return function/method signatures |
+| `--signatures` | - | false | Only return function/method signatures (omits body) |
+
+**Format Auto-Detection (STORY-005):**
+
+When `--format` is not specified, the output format is auto-detected:
+- **Terminal (TTY):** Text format with human-readable tree-style output
+- **Piped (non-TTY):** JSON format for programmatic consumption
+
+Use `--format json` or `--format text` to override auto-detection.
 
 **Symbol Types:**
 
@@ -78,6 +86,9 @@ treelint search validateUser --format json
 
 # Text output (human-readable)
 treelint search validateUser --format text
+
+# Auto-detect (JSON when piped, text when terminal)
+treelint search validateUser | jq '.results'
 ```
 
 ### Context Lines
@@ -110,7 +121,10 @@ treelint search "^handle" -r --type function
 {
   "query": {
     "symbol": "validateUser",
-    "type": "function"
+    "type": "function",
+    "case_insensitive": true,
+    "regex": true,
+    "context_mode": "full"
   },
   "results": [
     {
@@ -119,15 +133,51 @@ treelint search "^handle" -r --type function
       "file": "src/auth/validator.py",
       "lines": [10, 45],
       "signature": "def validateUser(email: str, password: str) -> bool",
-      "body": "..."
+      "body": "def validateUser(email: str, password: str) -> bool:\n    ...",
+      "language": "python"
     }
   ],
   "stats": {
     "files_searched": 150,
-    "elapsed_ms": 47
+    "elapsed_ms": 47,
+    "files_skipped": 0,
+    "skipped_by_type": {},
+    "languages_searched": ["python", "rust", "typescript"]
   }
 }
 ```
+
+**Query Fields:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `symbol` | string | Yes | The search term |
+| `type` | string | No | Symbol type filter (omitted if not specified) |
+| `case_insensitive` | boolean | No | Present and `true` when `-i` flag used |
+| `regex` | boolean | No | Present and `true` when `-r` flag used |
+| `context_mode` | string | Yes | `"full"` (default) or `"signatures"` (with `--signatures`) |
+
+**Result Fields:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | string | Yes | Symbol type (function, class, method, etc.) |
+| `name` | string | Yes | Symbol name |
+| `file` | string | Yes | File path containing the symbol |
+| `lines` | [int, int] | Yes | Line range [start, end] |
+| `signature` | string | Yes | Function/method signature |
+| `body` | string\|null | Yes | Full symbol body (null in signatures mode) |
+| `language` | string | No | Programming language |
+
+**Stats Fields:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `files_searched` | int | Yes | Number of files searched |
+| `elapsed_ms` | int | Yes | Search duration in milliseconds |
+| `files_skipped` | int | Yes | Number of files skipped |
+| `skipped_by_type` | object | Yes | Files skipped by reason |
+| `languages_searched` | [string] | Yes | Languages that were searched |
 
 ### Text Format
 
@@ -137,10 +187,20 @@ No results found for: validateUser
 
 Or when results exist:
 ```
-validateUser (function)
-  File: src/auth/validator.py
-  Lines: 10-45
-  Signature: def validateUser(email: str, password: str) -> bool
+function validateUser (src/auth/validator.py:10-45)
+  def validateUser(email: str, password: str) -> bool
+    # function body indented 4 spaces
+    ...
+
+Found 1 result in 47ms (150 files searched)
+```
+
+With `--signatures` flag (body omitted):
+```
+function validateUser (src/auth/validator.py:10-45)
+  def validateUser(email: str, password: str) -> bool
+
+Found 1 result in 47ms (150 files searched)
 ```
 
 ---
@@ -165,8 +225,8 @@ Treelint uses tree-sitter with embedded grammars to parse the following language
 
 | Code | Meaning |
 |------|---------|
-| `0` | Success |
-| `1` | User error (invalid arguments) |
+| `0` | Success (results found) |
+| `1` | User error (invalid arguments, invalid regex) |
 | `2` | No results found |
 
 ---
@@ -180,5 +240,5 @@ Treelint uses tree-sitter with embedded grammars to parse the following language
 ---
 
 **Version:** 0.2.0
-**Generated:** 2026-01-27
-**Source:** STORY-001, STORY-002
+**Updated:** 2026-01-28
+**Source:** STORY-001, STORY-002, STORY-005

@@ -1,8 +1,9 @@
 //! Search command implementation
 //!
 //! This module implements the `treelint search` command which searches
-//! for symbols in the codebase.
+//! for symbols in the codebase and outputs results in JSON or text format.
 
+use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -14,7 +15,9 @@ use walkdir::WalkDir;
 
 use crate::cli::args::{OutputFormat, SearchArgs, SymbolType};
 use crate::index::storage::IndexStorage;
-use crate::output::json::{SearchOutput, SearchResult};
+use crate::output::json::{SearchOutput, SearchQuery, SearchResult, SearchStats};
+use crate::output::text::TextFormatter;
+use crate::output::OutputRouter;
 use crate::parser::{Language, Symbol, SymbolExtractor};
 
 /// The index directory name
@@ -131,60 +134,124 @@ fn filter_symbols(
 }
 
 /// Convert symbols to search results for output.
-fn symbols_to_search_results(symbols: &[Symbol]) -> Vec<SearchResult> {
+///
+/// # Arguments
+///
+/// * `symbols` - The symbols to convert
+/// * `signatures_only` - If true, set body to None
+fn symbols_to_search_results(symbols: &[Symbol], signatures_only: bool) -> Vec<SearchResult> {
     symbols
         .iter()
-        .map(|s| SearchResult {
-            symbol_type: symbol_type_to_string(&s.symbol_type),
-            name: s.name.clone(),
-            file: s.file_path.clone(),
-            lines: (s.line_start, s.line_end),
-            signature: s.signature.clone().unwrap_or_default(),
-            body: s.body.clone().unwrap_or_default(),
-            language: Some(language_to_string(&s.language)),
+        .map(|s| {
+            let body = if signatures_only {
+                None
+            } else {
+                Some(s.body.clone().unwrap_or_default())
+            };
+
+            SearchResult {
+                symbol_type: symbol_type_to_string(&s.symbol_type),
+                name: s.name.clone(),
+                file: s.file_path.clone(),
+                lines: (s.line_start, s.line_end),
+                signature: s.signature.clone().unwrap_or_default(),
+                body,
+                language: Some(language_to_string(&s.language)),
+            }
         })
         .collect()
 }
 
-/// Output search results in JSON format.
-fn output_json(
-    symbol: &str,
-    symbol_type: Option<&SymbolType>,
-    ignore_case: bool,
-    regex: bool,
+/// Collect unique languages from symbols for statistics.
+///
+/// # Arguments
+///
+/// * `symbols` - The symbols to extract languages from
+///
+/// # Returns
+///
+/// A sorted, deduplicated vector of language name strings.
+fn collect_languages(symbols: &[Symbol]) -> Vec<String> {
+    let mut languages: Vec<String> = symbols
+        .iter()
+        .map(|s| language_to_string(&s.language))
+        .collect();
+    languages.sort();
+    languages.dedup();
+    languages
+}
+
+/// Build a SearchOutput from the search arguments and results.
+///
+/// # Arguments
+///
+/// * `args` - The search arguments
+/// * `results` - The search results
+/// * `files_searched` - Number of files searched
+/// * `elapsed_ms` - Search duration in milliseconds
+/// * `languages` - Languages that were searched
+fn build_search_output(
+    args: &SearchArgs,
     results: Vec<SearchResult>,
     files_searched: u64,
-    elapsed: u64,
-) -> anyhow::Result<()> {
-    let output = SearchOutput::new(
-        symbol,
-        symbol_type.map(|t| t.as_str()),
-        ignore_case,
-        regex,
-        results,
+    elapsed_ms: u64,
+    languages: Vec<String>,
+) -> SearchOutput {
+    let query = SearchQuery {
+        symbol: args.symbol.clone(),
+        symbol_type: args.symbol_type.as_ref().map(|t| t.as_str().to_string()),
+        case_insensitive: if args.ignore_case { Some(true) } else { None },
+        regex: if args.regex { Some(true) } else { None },
+        context_mode: if args.signatures {
+            "signatures".to_string()
+        } else {
+            "full".to_string()
+        },
+    };
+
+    let stats = SearchStats {
         files_searched,
-        elapsed,
-    );
-    let json = serde_json::to_string_pretty(&output)?;
+        elapsed_ms,
+        files_skipped: 0,
+        skipped_by_type: HashMap::new(),
+        languages_searched: languages,
+    };
+
+    SearchOutput::new(query, results, stats)
+}
+
+/// Output search results in JSON format.
+///
+/// # Arguments
+///
+/// * `output` - The search output to serialize
+fn output_json(output: &SearchOutput) -> anyhow::Result<()> {
+    let json = serde_json::to_string_pretty(output)?;
     println!("{}", json);
     Ok(())
 }
 
-/// Output search results in text format.
-fn output_text(symbol: &str, results: &[SearchResult]) {
-    if results.is_empty() {
-        println!("No results found for: {}", symbol);
-    } else {
-        for result in results {
-            println!(
-                "{} {} ({}:{}-{})",
-                result.symbol_type, result.name, result.file, result.lines.0, result.lines.1
-            );
-            if !result.signature.is_empty() {
-                println!("  {}", result.signature);
-            }
-        }
-    }
+/// Output search results in text format using TextFormatter.
+///
+/// # Arguments
+///
+/// * `symbol` - The search term
+/// * `results` - The search results
+/// * `signatures_only` - Whether to omit body content
+/// * `elapsed_ms` - Search duration in milliseconds
+/// * `files_searched` - Number of files searched
+/// * `is_tty` - Whether stdout is a TTY (enables colors)
+fn output_text(
+    symbol: &str,
+    results: &[SearchResult],
+    signatures_only: bool,
+    elapsed_ms: u64,
+    files_searched: u64,
+    is_tty: bool,
+) {
+    let formatter = TextFormatter::new(signatures_only, is_tty);
+    let output = formatter.format(symbol, results, elapsed_ms, files_searched);
+    print!("{}", output);
 }
 
 /// Execute the search command with the given arguments.
@@ -200,8 +267,12 @@ fn output_text(symbol: &str, results: &[SearchResult]) {
 pub fn execute(args: SearchArgs) -> anyhow::Result<()> {
     let start = Instant::now();
 
+    // Resolve output format via OutputRouter (TTY auto-detection)
+    let router = OutputRouter::new();
+    let resolved_format = router.resolve_format(args.format);
+
     // Validate regex pattern first if regex mode is enabled
-    let regex_pattern = validate_regex_pattern(&args.symbol, args.regex, &args.format);
+    let regex_pattern = validate_regex_pattern(&args.symbol, args.regex, &resolved_format);
 
     // Determine project root (current directory)
     let project_root = std::env::current_dir()?;
@@ -219,6 +290,10 @@ pub fn execute(args: SearchArgs) -> anyhow::Result<()> {
 
     // Get all symbols from index and filter based on search criteria
     let all_symbols = storage.get_all_symbols()?;
+
+    // Collect languages before filtering
+    let languages = collect_languages(&all_symbols);
+
     let results = filter_symbols(
         all_symbols,
         &args.symbol,
@@ -231,24 +306,25 @@ pub fn execute(args: SearchArgs) -> anyhow::Result<()> {
     let files_searched = storage.get_file_count()? as u64;
 
     // Convert to search results and output
-    let search_results = symbols_to_search_results(&results);
+    let search_results = symbols_to_search_results(&results, args.signatures);
     let has_results = !search_results.is_empty();
     let total_files = files_searched.max(files_indexed as u64);
 
-    match args.format {
+    match resolved_format {
         OutputFormat::Json => {
-            output_json(
-                &args.symbol,
-                args.symbol_type.as_ref(),
-                args.ignore_case,
-                args.regex,
-                search_results,
-                total_files,
-                elapsed,
-            )?;
+            let search_output =
+                build_search_output(&args, search_results, total_files, elapsed, languages);
+            output_json(&search_output)?;
         }
         OutputFormat::Text => {
-            output_text(&args.symbol, &search_results);
+            output_text(
+                &args.symbol,
+                &search_results,
+                args.signatures,
+                elapsed,
+                total_files,
+                router.is_tty(),
+            );
         }
     }
 
@@ -278,7 +354,7 @@ fn is_binary_file(path: &Path) -> bool {
             let mut buffer = [0u8; BINARY_CHECK_BYTES];
             let mut reader = std::io::BufReader::new(file);
             match reader.read(&mut buffer) {
-                Ok(n) => buffer[..n].iter().any(|&b| b == 0),
+                Ok(n) => buffer[..n].contains(&0),
                 Err(_) => true, // Treat unreadable files as binary
             }
         }
@@ -330,12 +406,11 @@ fn build_index(project_root: &Path, index_path: &Path) -> anyhow::Result<usize> 
 
     // Progress bar
     let progress = ProgressBar::new(total_files as u64);
-    progress.set_style(
-        ProgressStyle::default_bar()
-            .template(PROGRESS_BAR_TEMPLATE)
-            .unwrap()
-            .progress_chars("#>-"),
-    );
+    let style = ProgressStyle::default_bar()
+        .template(PROGRESS_BAR_TEMPLATE)
+        .map_err(|e| anyhow::anyhow!("Failed to set progress bar template: {}", e))?
+        .progress_chars("#>-");
+    progress.set_style(style);
 
     // Create index storage
     let storage = IndexStorage::create(index_path)?;
