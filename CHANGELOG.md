@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-01-30
+
+### Added
+
+- File watcher with incremental index updates ([STORY-008])
+  - Cross-platform file watching via `notify` crate (inotify/FSEvents/ReadDirectoryChangesW)
+  - Automatic re-indexing when source files change
+  - 100ms debounce window to prevent redundant re-indexing during rapid saves
+  - SHA-256 hash-based change detection (skips unchanged files like `touch` command)
+  - `.gitignore` pattern support (respects project ignore rules)
+  - Extension filtering: `.py`, `.ts`, `.tsx`, `.rs`, `.md` only
+  - Incremental single-file re-parsing (not entire codebase)
+  - Graceful error recovery (watcher continues after transient errors)
+  - Error count tracking in daemon status
+
+### Changed
+
+- Daemon status response now includes watcher fields when file watching is active
+- Updated documentation for v0.8.0
+
+### Technical
+
+- 48 new tests for file watcher module (520 total)
+- `sha2` crate added for cryptographic hashing ([ADR-002])
+- FileWatcher, IncrementalIndexer, HashCache, WatcherStatus types
+- Binary size: 7.6 MB
+- File change → index update latency: < 1 second
+
+### Documentation
+
+- Architecture documentation (docs/architecture/ARCHITECTURE.md)
+- Architecture diagrams (docs/architecture/diagrams.md)
+- Updated Daemon API Reference with watcher status fields
+- Updated Library Reference with daemon module API
+
 ## [0.7.0] - 2026-01-29
 
 ### Added
@@ -122,10 +157,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Release build with LTO optimization (740KB binary)
 - 81 integration tests covering all acceptance criteria
 
-[unreleased]: https://github.com/treelint/treelint/compare/v0.7.0...HEAD
+[unreleased]: https://github.com/treelint/treelint/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/treelint/treelint/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/treelint/treelint/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/treelint/treelint/compare/v0.5.0...v0.6.0
+[STORY-008]: devforgeai/specs/Stories/archive/STORY-008-file-watcher-incremental-index.story.md
 [STORY-007]: devforgeai/specs/Stories/archive/STORY-007-daemon-core-ipc.story.md
+[ADR-002]: devforgeai/specs/adrs/ADR-002-sha2-crate-for-file-hashing.md
 [0.5.0]: https://github.com/treelint/treelint/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/treelint/treelint/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/treelint/treelint/compare/v0.1.0...v0.3.0

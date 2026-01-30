@@ -472,6 +472,206 @@ match extractor.extract_from_file(Path::new("nonexistent.py")) {
 
 ---
 
-**Version:** 0.2.0
-**Generated:** 2026-01-27
-**Source:** STORY-002
+---
+
+## Daemon Module
+
+### `treelint::daemon`
+
+Background daemon functionality including file watching and incremental indexing.
+
+**Re-exports:**
+- `DaemonServer` - Main daemon server
+- `FileWatcher` - File change monitoring
+- `IncrementalIndexer` - Single-file re-indexing
+- `WatcherStatus` - Watcher state information
+- `WatcherEvent` - File change event
+- `WatcherEventKind` - Event type enum
+
+### `FileWatcher`
+
+Cross-platform file watcher that monitors source files for changes.
+
+```rust
+pub struct FileWatcher {
+    // ... internal state
+}
+```
+
+**Constructor:**
+
+#### `new(project_root: &Path) -> Result<Self, TreelintError>`
+
+Create a new file watcher for the given project directory.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `project_root` | `&Path` | Root directory to monitor |
+
+**Returns:** `Result<FileWatcher, TreelintError>`
+
+**Example:**
+
+```rust
+use std::path::Path;
+use treelint::daemon::FileWatcher;
+
+let watcher = FileWatcher::new(Path::new("/path/to/project"))?;
+```
+
+**Methods:**
+
+#### `poll_events(&self, timeout: Duration) -> Vec<WatcherEvent>`
+
+Poll for pending file change events.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `timeout` | `Duration` | Maximum time to wait for events |
+
+**Returns:** Vector of `WatcherEvent` representing file changes.
+
+#### `status(&self) -> WatcherStatus`
+
+Get current watcher status including event counts and error information.
+
+**Returns:** `WatcherStatus` struct.
+
+#### `state(&self) -> DaemonState`
+
+Get current daemon state (starting, ready, indexing, stopping).
+
+**Returns:** `DaemonState` enum.
+
+---
+
+### `IncrementalIndexer`
+
+Service for re-indexing individual files efficiently.
+
+```rust
+pub struct IncrementalIndexer {
+    // ... internal state
+}
+```
+
+**Constructor:**
+
+#### `new(project_root: &Path) -> Result<Self, TreelintError>`
+
+Create a new incremental indexer.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `project_root` | `&Path` | Root directory of the project |
+
+**Methods:**
+
+#### `reindex_file(&self, path: &Path) -> Result<IndexStats, TreelintError>`
+
+Re-index a single file, replacing its symbols in the index.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | `&Path` | Path to the file to re-index |
+
+**Returns:** `Result<IndexStats, TreelintError>` with statistics about the operation.
+
+**Example:**
+
+```rust
+use std::path::Path;
+use treelint::daemon::IncrementalIndexer;
+
+let indexer = IncrementalIndexer::new(Path::new("/path/to/project"))?;
+let stats = indexer.reindex_file(Path::new("src/main.py"))?;
+
+println!("Added {} symbols, removed {}", stats.symbols_added, stats.symbols_removed);
+```
+
+---
+
+### `WatcherEventKind`
+
+Type of file system event detected.
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WatcherEventKind {
+    Create,  // New file created
+    Modify,  // File content changed
+    Delete,  // File deleted
+    Rename,  // File renamed
+}
+```
+
+---
+
+### `WatcherStatus`
+
+Current state of the file watcher.
+
+```rust
+pub struct WatcherStatus {
+    pub enabled: bool,          // Whether watching is active
+    pub watching_paths: usize,  // Number of monitored paths
+    pub events_processed: u64,  // Total events handled
+    pub errors_count: u32,      // Number of errors encountered
+    pub last_event: Option<String>, // ISO timestamp of last event
+}
+```
+
+---
+
+### `IndexStats`
+
+Statistics from an indexing operation.
+
+```rust
+pub struct IndexStats {
+    pub symbols_added: usize,   // New symbols added
+    pub symbols_removed: usize, // Old symbols removed
+    pub parse_time_ms: u64,     // Time spent parsing
+}
+```
+
+---
+
+### `HashCache`
+
+Thread-safe cache for file content hashes (SHA-256).
+
+```rust
+pub struct HashCache {
+    // ... internal state
+}
+```
+
+**Methods:**
+
+#### `compute_hash(&self, path: &Path) -> Result<String, TreelintError>`
+
+Compute SHA-256 hash of a file's contents.
+
+#### `sha256_hash(data: &[u8]) -> String`
+
+Compute SHA-256 hash of raw bytes (static method).
+
+**Example:**
+
+```rust
+use treelint::daemon::HashCache;
+
+let cache = HashCache::new();
+let hash = cache.compute_hash(Path::new("src/main.py"))?;
+println!("File hash: {}", hash);
+
+// Static usage
+let hash = HashCache::sha256_hash(b"Hello, world!");
+```
+
+---
+
+**Version:** 0.8.0
+**Generated:** 2026-01-30
+**Source:** STORY-002, STORY-008

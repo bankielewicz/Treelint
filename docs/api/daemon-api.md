@@ -154,6 +154,43 @@ Get current daemon status and statistics.
 | `indexing` | Daemon is currently indexing files |
 | `stopping` | Daemon is shutting down |
 
+### Extended Status (with File Watcher)
+
+When the file watcher is active, the status response includes additional fields:
+
+```json
+{
+  "id": "req-002",
+  "result": {
+    "status": "ready",
+    "indexed_files": 150,
+    "indexed_symbols": 2500,
+    "last_index_time": "2026-01-29T12:30:45Z",
+    "uptime_seconds": 3600,
+    "pid": 12345,
+    "socket_path": "/project/.treelint/daemon.sock",
+    "watcher": {
+      "enabled": true,
+      "watching_paths": 150,
+      "events_processed": 1234,
+      "errors_count": 0,
+      "last_event": "2026-01-30T10:15:30Z"
+    }
+  },
+  "error": null
+}
+```
+
+**Watcher Status Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `enabled` | boolean | Whether file watching is active |
+| `watching_paths` | number | Number of files/directories being monitored |
+| `events_processed` | number | Total file change events processed |
+| `errors_count` | number | Number of watcher errors encountered |
+| `last_event` | string | ISO 8601 timestamp of last processed event |
+
 ### `index` - Trigger Re-indexing
 
 Trigger a full or incremental re-index operation.
@@ -312,21 +349,103 @@ echo '{"id":"2","method":"status","params":{}}' | nc -U .treelint/daemon.sock
 - **No network exposure**: IPC only, localhost communication
 - **Input validation**: All JSON fields validated before processing
 
+## File Watcher (STORY-008)
+
+The daemon includes a file watcher that automatically updates the index when source files change.
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| **Cross-platform** | Uses notify crate (inotify on Linux, FSEvents on macOS, ReadDirectoryChangesW on Windows) |
+| **Debouncing** | 100ms window prevents redundant re-indexing during rapid saves (IDE auto-save) |
+| **Hash-based detection** | SHA-256 comparison skips unchanged files (e.g., `touch` command) |
+| **Gitignore support** | Respects project `.gitignore` patterns |
+| **Extension filtering** | Only monitors supported file types (`.py`, `.ts`, `.tsx`, `.rs`, `.md`) |
+| **Incremental updates** | Only re-indexes changed files, not entire codebase |
+
+### Event Types
+
+| Event | Description | Index Action |
+|-------|-------------|--------------|
+| `Create` | New file created | Parse and add symbols |
+| `Modify` | File content changed | Remove old symbols, add new |
+| `Delete` | File deleted | Remove symbols for file |
+| `Rename` | File renamed | Treat as delete + create |
+
+### Performance
+
+| Metric | Target | Typical |
+|--------|--------|---------|
+| Event detection latency | <500ms | ~100ms |
+| File change → index update | <1s | ~200ms |
+| Debounce window | 100ms | 100ms (fixed) |
+| Idle CPU usage (watching) | <1% | ~0.1% |
+
+### Error Recovery
+
+The watcher handles errors gracefully without crashing:
+
+| Error Type | Behavior |
+|------------|----------|
+| Permission denied | Logged, continue watching other files |
+| Too many watches (inotify) | Logged warning, suggest increasing limit |
+| Transient I/O error | Logged, retry on next event |
+
+### Watcher API Types
+
+**`WatcherEventKind`**
+
+```rust
+pub enum WatcherEventKind {
+    Create,  // New file created
+    Modify,  // File content changed
+    Delete,  // File deleted
+    Rename,  // File renamed (detected as delete + create)
+}
+```
+
+**`WatcherStatus`**
+
+```rust
+pub struct WatcherStatus {
+    pub enabled: bool,
+    pub watching_paths: usize,
+    pub events_processed: u64,
+    pub errors_count: u32,
+    pub last_event: Option<String>,
+}
+```
+
+**`IndexStats`**
+
+```rust
+pub struct IndexStats {
+    pub symbols_added: usize,
+    pub symbols_removed: usize,
+    pub parse_time_ms: u64,
+}
+```
+
 ## Module Structure
 
 ```
 src/daemon/
 ├── mod.rs           # Module exports
 ├── server.rs        # DaemonServer implementation (1204 lines)
-└── protocol.rs      # NDJSON protocol types (117 lines)
+├── protocol.rs      # NDJSON protocol types (117 lines)
+└── watcher.rs       # File watcher implementation (1098 lines) [STORY-008]
 ```
 
 ## Related Documentation
 
-- [STORY-007](devforgeai/specs/Stories/archive/STORY-007-daemon-core-ipc.story.md) - Original story specification
-- [QA Report](devforgeai/qa/reports/STORY-007-qa-report.md) - Quality validation results
+- [STORY-007](devforgeai/specs/Stories/archive/STORY-007-daemon-core-ipc.story.md) - Daemon Core Architecture
+- [STORY-008](devforgeai/specs/Stories/archive/STORY-008-file-watcher-incremental-index.story.md) - File Watcher & Incremental Indexing
+- [QA Report STORY-007](devforgeai/qa/reports/STORY-007-qa-report.md) - Daemon quality validation
+- [QA Report STORY-008](devforgeai/qa/reports/STORY-008-qa-report.md) - File watcher quality validation
 - [CLI Reference](docs/api/cli-reference.md) - Command-line interface
+- [Library Reference](docs/api/library-reference.md) - Rust library API
 
 ---
 
-*Generated for Treelint v0.7.0 - STORY-007 Daemon Core Architecture*
+*Generated for Treelint v0.8.0 - STORY-007 Daemon Core Architecture, STORY-008 File Watcher*

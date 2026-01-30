@@ -44,7 +44,7 @@ Copy-Item target\release\treelint.exe $env:USERPROFILE\.local\bin\
 
 ```bash
 treelint --version
-# Output: treelint 0.1.0
+# Output: treelint 0.8.0
 
 treelint --help
 # Shows available commands and options
@@ -79,7 +79,7 @@ No results found for: main
 }
 ```
 
-> **Note:** v0.1.0 is the CLI skeleton. Actual AST parsing comes in future versions.
+> **Note:** v0.8.0 includes full AST parsing, background daemon, and file watching.
 
 ---
 
@@ -115,15 +115,17 @@ treelint search validateuser -i
 
 ---
 
-## Current Limitations (v0.1.0)
+## Feature Status (v0.8.0)
 
-This is the initial CLI skeleton release:
-
-- ✅ CLI argument parsing works
-- ✅ JSON/text output formats work
-- ⏳ Actual AST parsing (coming in STORY-002+)
-- ⏳ Background indexing (coming soon)
-- ⏳ Repository mapping (coming soon)
+| Feature | Status |
+|---------|--------|
+| CLI argument parsing | ✅ Complete |
+| JSON/text output formats | ✅ Complete |
+| AST parsing (tree-sitter) | ✅ Complete |
+| SQLite index storage | ✅ Complete |
+| Background daemon | ✅ Complete |
+| File watcher | ✅ Complete |
+| Repository mapping | Coming soon |
 
 ---
 
@@ -154,6 +156,6 @@ rustc --version
 
 ---
 
-**Version:** 0.1.0
-**Generated:** 2026-01-27
-**Source:** STORY-001
+**Version:** 0.8.0
+**Generated:** 2026-01-30
+**Source:** STORY-001 through STORY-008

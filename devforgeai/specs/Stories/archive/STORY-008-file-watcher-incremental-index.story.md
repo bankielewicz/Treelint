@@ -4,7 +4,7 @@ title: File Watcher and Incremental Index Updates
 type: feature
 epic: EPIC-002
 sprint: Backlog
-status: Backlog
+status: Released
 points: 5
 depends_on: ["STORY-007", "STORY-002", "STORY-003"]
 priority: High
@@ -600,13 +600,15 @@ All dependencies already approved in dependencies.md:
 
 ## Change Log
 
-**Current Status:** Dev Complete
+**Current Status:** Released
 
 | Date | Author | Phase/Action | Change | Files Affected |
 |------|--------|--------------|--------|----------------|
 | 2026-01-27 13:15 | claude/story-creation | Created | Story created from EPIC-002 F4 (split 2/3) | STORY-008-file-watcher-incremental-index.story.md |
 | 2026-01-30 | claude/sonnet | TDD Development | Implemented FileWatcher with 48 passing tests | src/daemon/watcher.rs, tests/STORY-008/*.rs |
 | 2026-01-30 | claude/sonnet | DoD Update (Phase 07) | All DoD items completed, development complete | STORY-008-file-watcher-incremental-index.story.md |
+| 2026-01-30 | claude/qa-result-interpreter | QA Deep | PASS WITH WARNINGS: 92% coverage, 1 HIGH violation (God Module) | devforgeai/qa/reports/STORY-008-qa-report.md |
+| 2026-01-30 | claude/deployment-engineer | Released | Released v0.1.0 to test environment, all smoke tests passed | target/release/treelint |
 
 ## Notes
 

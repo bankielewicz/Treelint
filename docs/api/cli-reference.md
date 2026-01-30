@@ -1,6 +1,6 @@
 # Treelint CLI Reference
 
-Complete command-line interface documentation for Treelint v0.2.0.
+Complete command-line interface documentation for Treelint v0.8.0.
 
 ---
 
@@ -239,6 +239,23 @@ Treelint uses tree-sitter with embedded grammars to parse the following language
 
 ---
 
-**Version:** 0.2.0
-**Updated:** 2026-01-28
-**Source:** STORY-001, STORY-002, STORY-005
+---
+
+## Background Features
+
+### File Watcher (via Daemon)
+
+When using the daemon for instant queries, the file watcher automatically keeps the index fresh:
+
+- **Automatic updates** - Index updates within 1 second of file changes
+- **No manual re-indexing** - Changes to `.py`, `.ts`, `.tsx`, `.rs`, `.md` files are detected automatically
+- **Hash-based detection** - Avoids redundant re-indexing when content unchanged (e.g., `touch` command)
+- **Gitignore support** - Respects project ignore patterns
+
+See [Daemon API Reference](daemon-api.md) for daemon protocol details.
+
+---
+
+**Version:** 0.8.0
+**Updated:** 2026-01-30
+**Source:** STORY-001, STORY-002, STORY-005, STORY-008

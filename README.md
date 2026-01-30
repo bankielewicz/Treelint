@@ -16,7 +16,7 @@ Text-based search tools (grep, ripgrep) return false positives from comments, st
 
 ## Current Status
 
-**v0.7.0** - Background Daemon (Released 2026-01-29)
+**v0.8.0** - File Watcher & Incremental Indexing (Released 2026-01-30)
 
 | Feature | Status |
 |---------|--------|
@@ -38,13 +38,17 @@ Text-based search tools (grep, ripgrep) return false positives from comments, st
 | **Unix socket IPC** | ✅ Complete |
 | **Windows named pipe IPC** | ✅ Complete |
 | **NDJSON protocol** | ✅ Complete |
-| File watcher integration | Coming soon |
+| **File watcher integration** | ✅ Complete |
+| **Incremental re-indexing** | ✅ Complete |
+| **Hash-based change detection** | ✅ Complete |
+| **Gitignore support** | ✅ Complete |
 | Repository mapping | Coming soon |
 
 **Build Stats:**
-- Tests: 472 passing (79 for daemon, 76 for context modes, 55 for output)
-- Binary size: 7.9 MB
+- Tests: 520 passing (79 for daemon, 48 for file watcher, 76 for context modes, 55 for output)
+- Binary size: 7.6 MB
 - Query latency: <5ms via daemon (p95)
+- File change → index update: <1 second
 
 ## Features
 
@@ -158,9 +162,26 @@ The daemon maintains an always-fresh symbol index for instant queries:
 echo '{"id":"1","method":"search","params":{"symbol":"main","type":"function"}}' | nc -U .treelint/daemon.sock
 ```
 
+### File Watcher (STORY-008)
+
+The file watcher automatically updates the index when source files change:
+
+**Features:**
+- **Cross-platform** - Uses notify crate (inotify/FSEvents/ReadDirectoryChangesW)
+- **Debounced events** - 100ms window prevents redundant re-indexing during rapid saves
+- **Hash-based detection** - SHA-256 comparison skips unchanged files (e.g., `touch` command)
+- **.gitignore support** - Respects project ignore patterns
+- **Extension filtering** - Only watches supported file types (.py, .ts, .tsx, .rs, .md)
+- **Incremental updates** - Only re-indexes changed files, not entire codebase
+- **Sub-1-second latency** - File changes reflected in index within 1 second
+
+**Error Recovery:**
+- Graceful handling of permission errors
+- Watcher continues after transient failures
+- Error counts tracked in daemon status
+
 ### Coming Soon
 
-- **File watcher integration** - Auto-index on file changes
 - **Repository map** - Generate symbol summaries (Aider-style)
 - **Dependency graph** - Track function call relationships
 
@@ -436,6 +457,8 @@ This project is informed by research into AI coding assistant token efficiency:
 ## Documentation
 
 - [Getting Started Guide](docs/guides/getting-started.md)
+- [Architecture Overview](docs/architecture/ARCHITECTURE.md)
+- [Architecture Diagrams](docs/architecture/diagrams.md)
 - [CLI Reference](docs/api/cli-reference.md)
 - [Daemon API Reference](docs/api/daemon-api.md)
 - [Library API Reference](docs/api/library-reference.md)
