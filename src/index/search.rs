@@ -26,6 +26,8 @@ pub struct QueryFilters {
     pub(crate) name: Option<String>,
     /// Name match (case-insensitive).
     pub(crate) name_case_insensitive: Option<String>,
+    /// Name pattern match using SQL LIKE (contains pattern).
+    pub(crate) name_pattern: Option<String>,
     /// Symbol type filter.
     pub(crate) symbol_type: Option<SymbolType>,
     /// File path filter.
@@ -97,6 +99,33 @@ impl QueryFilters {
     /// ```
     pub fn with_name_case_insensitive(mut self, name: &str) -> Self {
         self.name_case_insensitive = Some(name.to_string());
+        self
+    }
+
+    /// Filter by symbol name pattern (contains match).
+    ///
+    /// Uses SQL LIKE with wildcards for partial matching.
+    /// The pattern is wrapped with '%' on both sides automatically.
+    ///
+    /// # Arguments
+    ///
+    /// * `pattern` - The pattern to search for within symbol names
+    ///
+    /// # Returns
+    ///
+    /// Self with the name pattern filter applied.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use treelint::index::QueryFilters;
+    ///
+    /// // Matches "foo_function", "bar_foo", "foobar", etc.
+    /// let filters = QueryFilters::new()
+    ///     .with_name_pattern("foo");
+    /// ```
+    pub fn with_name_pattern(mut self, pattern: &str) -> Self {
+        self.name_pattern = Some(pattern.to_string());
         self
     }
 
@@ -203,6 +232,7 @@ impl QueryFilters {
     pub fn has_filters(&self) -> bool {
         self.name.is_some()
             || self.name_case_insensitive.is_some()
+            || self.name_pattern.is_some()
             || self.symbol_type.is_some()
             || self.file_path.is_some()
             || self.visibility.is_some()

@@ -146,6 +146,7 @@ struct DaemonContext {
     indexed_symbols: Arc<AtomicU32>,
     last_index_time: Arc<RwLock<Option<String>>>,
     socket_path: String,
+    project_root: PathBuf,
     pid: u32,
     start_time: Instant,
     storage: Arc<Mutex<Option<IndexStorage>>>,
@@ -163,8 +164,7 @@ impl DaemonContext {
 
 /// Daemon server that handles IPC requests
 pub struct DaemonServer {
-    /// Project root directory (stored for future use)
-    #[allow(dead_code)]
+    /// Project root directory
     project_root: PathBuf,
     /// Path to IPC socket/pipe
     socket_path: String,
@@ -422,6 +422,7 @@ impl DaemonServer {
                 indexed_symbols: Arc::clone(&self.indexed_symbols),
                 last_index_time: Arc::clone(&self.last_index_time),
                 socket_path: self.socket_path.clone(),
+                project_root: self.project_root.clone(),
                 pid: self.pid,
                 start_time: self.start_time,
                 storage: Arc::clone(&self.storage),
@@ -452,6 +453,7 @@ impl DaemonServer {
                 indexed_symbols: Arc::clone(&self.indexed_symbols),
                 last_index_time: Arc::clone(&self.last_index_time),
                 socket_path: self.socket_path.clone(),
+                project_root: self.project_root.clone(),
                 pid: self.pid,
                 start_time: self.start_time,
                 storage: Arc::clone(&self.storage),
@@ -684,14 +686,13 @@ impl DaemonServer {
                 // Build query filters
                 let mut filters = QueryFilters::new();
 
-                // Add name filter (case-sensitive or case-insensitive)
+                // Add name filter - use pattern matching for flexible search
+                // The daemon search is expected to return symbols "containing" the search term
                 if let Some(name) = symbol_name {
                     if !use_regex {
-                        if case_insensitive {
-                            filters = filters.with_name_case_insensitive(name);
-                        } else {
-                            filters = filters.with_name(name);
-                        }
+                        // Use pattern matching (LIKE '%name%') for daemon searches
+                        // This matches the AC requirement: "Search for 'foo' returns symbols containing 'foo'"
+                        filters = filters.with_name_pattern(name);
                     }
                     // For regex, we'll filter in memory after query
                 }
@@ -743,13 +744,135 @@ impl DaemonServer {
                 DaemonResponse::success(request.id, json!(result_array))
             }
             "index" => {
-                // TODO: Implement actual indexing
+                // Parse force parameter
+                let force = request
+                    .params
+                    .get("force")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+
+                // Set state to indexing
+                if let Ok(mut state) = ctx.state.write() {
+                    *state = DaemonState::Indexing;
+                }
+
+                // Get storage reference
+                let storage_guard = match ctx.storage.lock() {
+                    Ok(guard) => guard,
+                    Err(_) => {
+                        if let Ok(mut state) = ctx.state.write() {
+                            *state = DaemonState::Ready;
+                        }
+                        return DaemonResponse::error(
+                            request.id,
+                            "E001",
+                            "Failed to acquire storage lock",
+                        );
+                    }
+                };
+
+                let storage = match storage_guard.as_ref() {
+                    Some(s) => s,
+                    None => {
+                        drop(storage_guard);
+                        if let Ok(mut state) = ctx.state.write() {
+                            *state = DaemonState::Ready;
+                        }
+                        return DaemonResponse::error(request.id, "E001", "Index storage not initialized");
+                    }
+                };
+
+                // Clear index if force=true
+                if force {
+                    if let Err(e) = storage.clear_all() {
+                        log::warn!("Failed to clear index: {}", e);
+                    }
+                    // Reset counters
+                    ctx.indexed_files.store(0, Ordering::SeqCst);
+                    ctx.indexed_symbols.store(0, Ordering::SeqCst);
+                }
+
+                // Use project root from context
+                let project_root = &ctx.project_root;
+
+                let mut files_indexed: u32 = 0;
+                let mut symbols_found: u32 = 0;
+                let extractor = SymbolExtractor::new();
+
+                // Walk directory and process files
+                for entry in walkdir::WalkDir::new(project_root)
+                    .follow_links(false)
+                    .into_iter()
+                    .filter_map(|e| e.ok())
+                {
+                    let path = entry.path();
+
+                    // Skip non-files
+                    if !path.is_file() {
+                        continue;
+                    }
+
+                    // Skip hidden files/directories RELATIVE to project root
+                    // Don't check components outside the project root (e.g., /tmp/.tmpXYZ/)
+                    if let Ok(relative_path) = path.strip_prefix(project_root) {
+                        if relative_path
+                            .components()
+                            .any(|c| c.as_os_str().to_string_lossy().starts_with('.'))
+                        {
+                            continue;
+                        }
+                    }
+
+                    // Skip unsupported file types
+                    if crate::parser::Language::from_path(path).is_none() {
+                        continue;
+                    }
+
+                    // Extract symbols from file
+                    match extractor.extract_from_file(path) {
+                        Ok(symbols) => {
+                            // Store symbols
+                            for symbol in &symbols {
+                                if let Err(e) = storage.insert_symbol(symbol) {
+                                    log::warn!("Failed to insert symbol {}: {}", symbol.name, e);
+                                }
+                            }
+
+                            files_indexed += 1;
+                            symbols_found += symbols.len() as u32;
+                        }
+                        Err(e) => {
+                            log::debug!("Failed to extract symbols from {}: {}", path.display(), e);
+                            // Continue with other files
+                        }
+                    }
+                }
+
+                // Drop storage lock before updating state
+                drop(storage_guard);
+
+                // Update counters
+                ctx.indexed_files.store(files_indexed, Ordering::SeqCst);
+                ctx.indexed_symbols.store(symbols_found, Ordering::SeqCst);
+
+                // Update last index time
+                if let Ok(mut time) = ctx.last_index_time.write() {
+                    *time = Some(chrono_lite_now());
+                }
+
+                // Return to ready state
+                if let Ok(mut state) = ctx.state.write() {
+                    *state = DaemonState::Ready;
+                }
+
+                // Include project_root in response for debugging
                 DaemonResponse::success(
                     request.id,
                     json!({
                         "status": "completed",
-                        "files_indexed": 0,
-                        "symbols_found": 0
+                        "files_indexed": files_indexed,
+                        "symbols_found": symbols_found,
+                        "project_root": project_root.to_string_lossy().to_string()
                     }),
                 )
             }

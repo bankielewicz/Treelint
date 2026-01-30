@@ -702,6 +702,36 @@ impl IndexStorage {
         Ok(())
     }
 
+    /// Clear all symbols and file tracking information.
+    ///
+    /// This method is used for force re-indexing, clearing the entire index
+    /// before rebuilding from scratch.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` if successful, `Err(StorageError)` otherwise.
+    pub fn clear_all(&self) -> Result<(), StorageError> {
+        let conn = self.conn()?;
+        conn.execute("DELETE FROM symbols", [])
+            .map_err(StorageError::from)?;
+        conn.execute("DELETE FROM files", [])
+            .map_err(StorageError::from)?;
+        Ok(())
+    }
+
+    /// Get the count of indexed symbols.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(usize)` with the number of symbols in the index.
+    pub fn get_symbol_count(&self) -> Result<usize, StorageError> {
+        let conn = self.conn()?;
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM symbols", [], |row| row.get(0))
+            .map_err(StorageError::from)?;
+        Ok(count as usize)
+    }
+
     // ========================================================================
     // Query Operations
     // ========================================================================
@@ -895,6 +925,11 @@ impl IndexStorage {
         if let Some(ref name) = filters.name_case_insensitive {
             conditions.push(format!("LOWER(name) = LOWER(?{})", param_values.len() + 1));
             param_values.push(Box::new(name.clone()));
+        }
+
+        if let Some(ref pattern) = filters.name_pattern {
+            conditions.push(format!("name LIKE ?{}", param_values.len() + 1));
+            param_values.push(Box::new(format!("%{}%", pattern)));
         }
 
         if let Some(symbol_type) = filters.symbol_type {

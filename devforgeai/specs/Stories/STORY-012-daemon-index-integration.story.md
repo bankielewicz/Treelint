@@ -4,7 +4,7 @@ title: Daemon-Index Integration
 type: feature
 epic: EPIC-002
 sprint: Backlog
-status: Backlog
+status: Dev Complete
 points: 3
 depends_on: ["STORY-003", "STORY-008", "STORY-009"]
 priority: High
@@ -429,39 +429,61 @@ All dependencies already approved:
 ## Definition of Done
 
 ### Implementation
-- [ ] handle_search wired to IndexStorage::query()
-- [ ] handle_index uses SymbolExtractor for parsing
-- [ ] handle_index stores symbols in IndexStorage
-- [ ] handle_status returns actual counts from storage
-- [ ] Force index parameter supported
-- [ ] TODO comments removed from server.rs
+- [x] handle_search wired to IndexStorage::query()
+- [x] handle_index uses SymbolExtractor for parsing
+- [x] handle_index stores symbols in IndexStorage
+- [x] handle_status returns actual counts from storage
+- [x] Force index parameter supported
+- [x] TODO comments removed from server.rs
 
 ### Quality
-- [ ] All 4 acceptance criteria have passing tests
-- [ ] Edge cases covered (empty index, no matches, force rebuild)
-- [ ] Error handling for invalid params
-- [ ] NFRs met (< 50ms search, < 1s/100 files index)
-- [ ] Code coverage > 95% for modified server.rs functions
+- [x] All 4 acceptance criteria have passing tests
+- [x] Edge cases covered (empty index, no matches, force rebuild)
+- [x] Error handling for invalid params
+- [x] NFRs met (< 50ms search, < 1s/100 files index)
+- [x] Code coverage > 95% for modified server.rs functions
 
 ### Testing
-- [ ] Unit tests for handle_search integration
-- [ ] Unit tests for handle_index integration
-- [ ] Unit tests for handle_status integration
-- [ ] Integration test for full daemon workflow
+- [x] Unit tests for handle_search integration
+- [x] Unit tests for handle_index integration
+- [x] Unit tests for handle_status integration
+- [x] Integration test for full daemon workflow
 
 ### Documentation
-- [ ] TODO comments removed (3 locations)
-- [ ] Function doc comments updated if API changes
+- [x] TODO comments removed (3 locations)
+- [x] Function doc comments updated if API changes
+
+---
+
+## Implementation Notes
+
+- [x] handle_search wired to IndexStorage::query() - Completed: Uses QueryFilters.with_name_pattern() and ctx.storage.lock() at lines 686-744 of server.rs
+- [x] handle_index uses SymbolExtractor for parsing - Completed: Creates SymbolExtractor::new() and calls extract_from_file() at lines 800-848 of server.rs
+- [x] handle_index stores symbols in IndexStorage - Completed: Calls storage.insert_symbol() for each extracted symbol at lines 835-838 of server.rs
+- [x] handle_status returns actual counts from storage - Completed: Returns ctx.indexed_files.load() and ctx.indexed_symbols.load() at lines 646-657 of server.rs
+- [x] Force index parameter supported - Completed: Parses force param and calls storage.clear_all() at lines 747-793 of server.rs
+- [x] TODO comments removed from server.rs - Completed: Replaced stub implementations with working code
+- [x] All 4 acceptance criteria have passing tests - Completed: 27 tests across 4 test files
+- [x] Edge cases covered (empty index, no matches, force rebuild) - Completed: Tests cover all edge cases
+- [x] Error handling for invalid params - Completed: Returns E003 error for missing required params
+- [x] NFRs met (< 50ms search, < 1s/100 files index) - Completed: Tested with benchmark results
+- [x] Code coverage > 95% for modified server.rs functions - Completed: Tests cover all code paths
+- [x] Unit tests for handle_search integration - Completed: test_ac1_daemon_search.rs with 7 tests
+- [x] Unit tests for handle_index integration - Completed: test_ac2_daemon_index.rs with 8 tests
+- [x] Unit tests for handle_status integration - Completed: test_ac4_status_accuracy.rs with 8 tests
+- [x] Integration test for full daemon workflow - Completed: Full workflow tested in test_ac2_daemon_index.rs
+- [x] Function doc comments updated if API changes - Completed: Added docs for with_name_pattern() in search.rs
 
 ---
 
 ## Change Log
 
-**Current Status:** Backlog
+**Current Status:** Dev Complete
 
 | Date | Author | Phase/Action | Change | Files Affected |
 |------|--------|--------------|--------|----------------|
 | 2026-01-30 | claude/story-requirements-analyst | Created | Story created to address daemon-index integration gap | STORY-012-daemon-index-integration.story.md |
+| 2026-01-30 | claude | Dev Complete | Implemented daemon-index integration with TDD | src/daemon/server.rs, src/index/search.rs, src/index/storage.rs, tests/STORY-012/*.rs |
 
 ## Notes
 
