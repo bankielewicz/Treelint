@@ -1,0 +1,94 @@
+{
+  "story_id": "STORY-011",
+  "current_phase": "01",
+  "workflow_started": "2026-01-30T17:49:49Z",
+  "blocking_status": false,
+  "phases": {
+    "01": {
+      "status": "pending",
+      "subagents_required": [
+        "git-validator",
+        "tech-stack-detector"
+      ],
+      "subagents_invoked": []
+    },
+    "02": {
+      "status": "pending",
+      "subagents_required": [
+        "test-automator"
+      ],
+      "subagents_invoked": []
+    },
+    "03": {
+      "status": "pending",
+      "subagents_required": [
+        [
+          "backend-architect",
+          "frontend-developer"
+        ],
+        "context-validator"
+      ],
+      "subagents_invoked": []
+    },
+    "04": {
+      "status": "pending",
+      "subagents_required": [
+        "refactoring-specialist",
+        "code-reviewer"
+      ],
+      "subagents_invoked": []
+    },
+    "4.5": {
+      "status": "pending",
+      "subagents_required": [
+        "ac-compliance-verifier"
+      ],
+      "subagents_invoked": []
+    },
+    "05": {
+      "status": "pending",
+      "subagents_required": [
+        "integration-tester"
+      ],
+      "subagents_invoked": []
+    },
+    "5.5": {
+      "status": "pending",
+      "subagents_required": [
+        "ac-compliance-verifier"
+      ],
+      "subagents_invoked": []
+    },
+    "06": {
+      "status": "pending",
+      "subagents_required": [],
+      "subagents_invoked": []
+    },
+    "07": {
+      "status": "pending",
+      "subagents_required": [],
+      "subagents_invoked": []
+    },
+    "08": {
+      "status": "pending",
+      "subagents_required": [],
+      "subagents_invoked": []
+    },
+    "09": {
+      "status": "pending",
+      "subagents_required": [
+        "framework-analyst"
+      ],
+      "subagents_invoked": []
+    },
+    "10": {
+      "status": "pending",
+      "subagents_required": [
+        "dev-result-interpreter"
+      ],
+      "subagents_invoked": []
+    }
+  },
+  "validation_errors": [],
+  "observations": []
+}

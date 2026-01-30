@@ -359,6 +359,7 @@ Where:
 | [STORY-009](../Stories/STORY-009-daemon-cli-commands.story.md) | Daemon CLI Commands and Auto-Detection | 3 | Backlog | F4.3 |
 | [STORY-010](../Stories/STORY-010-repository-map.story.md) | Repository Map with Symbol Hierarchy and Relevance Scoring | 8 | Backlog | F5 |
 | [STORY-011](../Stories/STORY-011-dependency-graph.story.md) | Dependency Graph with Call and Import Extraction | 8 | Backlog | F6 |
+| [STORY-012](../Stories/STORY-012-daemon-index-integration.story.md) | Daemon-Index Integration | 3 | Backlog | F4.4 |
 
 ### Planned Stories (Not Yet Created)
 

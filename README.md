@@ -16,7 +16,7 @@ Text-based search tools (grep, ripgrep) return false positives from comments, st
 
 ## Current Status
 
-**v0.8.0** - File Watcher & Incremental Indexing (Released 2026-01-30)
+**v0.10.0** - Repository Map with Relevance Scoring (Released 2026-01-30)
 
 | Feature | Status |
 |---------|--------|
@@ -42,12 +42,15 @@ Text-based search tools (grep, ripgrep) return false positives from comments, st
 | **Incremental re-indexing** | ✅ Complete |
 | **Hash-based change detection** | ✅ Complete |
 | **Gitignore support** | ✅ Complete |
-| Repository mapping | Coming soon |
+| **Repository mapping** | ✅ Complete |
+| **Relevance scoring** | ✅ Complete |
+| **Symbol type filtering** | ✅ Complete |
 
 **Build Stats:**
-- Tests: 520 passing (79 for daemon, 48 for file watcher, 76 for context modes, 55 for output)
-- Binary size: 7.6 MB
+- Tests: 584 passing (64 for map, 79 for daemon, 48 for file watcher, 76 for context modes, 55 for output)
+- Binary size: 8.2 MB
 - Query latency: <5ms via daemon (p95)
+- Map generation: <10 seconds for 100K files
 - File change → index update: <1 second
 
 ## Features
@@ -180,9 +183,92 @@ The file watcher automatically updates the index when source files change:
 - Watcher continues after transient failures
 - Error counts tracked in daemon status
 
+### Repository Map (STORY-010)
+
+Generate a comprehensive symbol map of your entire repository with relevance scoring:
+
+**Features:**
+- **Full symbol listing** - All functions, classes, methods, variables across the codebase
+- **Relevance scoring** - PageRank-style scoring based on reference counts
+- **JSON and text output** - Machine-readable or human-friendly formats
+- **Symbol type filtering** - Filter to specific symbol types
+- **Directory hierarchy** - Tree structure organization in text mode
+
+**Commands:**
+
+```bash
+# Generate repository map (JSON in pipe, text in terminal)
+treelint map
+
+# Explicit JSON format
+treelint map --format json
+
+# Human-readable text format with directory tree
+treelint map --format text
+
+# Include relevance scores (sorted by importance)
+treelint map --ranked
+
+# Filter by symbol type
+treelint map --type function
+treelint map --type class
+
+# Combined: ranked functions in JSON
+treelint map --type function --ranked --format json
+```
+
+**Relevance Scoring Algorithm:**
+
+Symbols are scored based on how often they're referenced:
+- `relevance = (incoming_references + 1) / total_symbols`
+- Scores normalized to 0.0 - 1.0 range
+- Higher scores = more important symbols (referenced frequently)
+- Reference detection for function calls and imports
+- Supports Python, TypeScript, and Rust
+
+**JSON Output Schema:**
+
+```json
+{
+  "total_symbols": 150,
+  "total_files": 25,
+  "by_file": {
+    "src/auth/validator.py": {
+      "language": "Python",
+      "symbols": [
+        {
+          "name": "validateUser",
+          "type": "function",
+          "lines": [10, 45],
+          "relevance": 0.85
+        }
+      ]
+    }
+  },
+  "by_type": {
+    "function": 80,
+    "class": 20,
+    "method": 50
+  }
+}
+```
+
+**Text Output (with --ranked):**
+
+```
+Repository Map: 150 symbols in 25 files
+
+src/
+├── auth/
+│   └── validator.py [Python]
+│       function validateUser [L10:45] ★ 0.85
+│       function hashPassword [L50:60] ★ 0.42
+│   └── session.py [Python]
+│       class SessionManager [L1:100] ★ 0.78
+```
+
 ### Coming Soon
 
-- **Repository map** - Generate symbol summaries (Aider-style)
 - **Dependency graph** - Track function call relationships
 
 ## Installation
@@ -315,15 +401,30 @@ treelint index --force
 | 1 | Error (invalid regex, I/O error) |
 | 2 | Success but no matching results |
 
-### Legacy Syntax (Coming Soon)
+### Map Command (STORY-010)
+
+Generate a repository-wide symbol map with relevance scoring:
 
 ```bash
-# Alternative search syntax
-treelint --function validateUser
-treelint --class AuthService
+# Generate map (auto-detects format)
+treelint map
 
-# Generate repository map
-treelint map --output repo-map.json
+# JSON output
+treelint map --format json
+
+# Text output with tree structure
+treelint map --format text
+
+# Include relevance scores (sorted by importance)
+treelint map --ranked
+
+# Filter by symbol type
+treelint map --type function
+treelint map --type class
+treelint map --type method
+
+# Combined: ranked functions
+treelint map --type function --ranked
 ```
 
 ## Output Formats
@@ -481,6 +582,7 @@ Returns N lines before and after the symbol, clamped to file boundaries:
 - **SQLite (rusqlite)** - Bundled database with WAL mode for concurrent access
 - **Parser Module** - Language detection, symbol extraction, error handling
 - **Index Module** - Symbol storage, queries, incremental re-indexing
+- **Relevance Module** - Reference extraction and PageRank-style scoring
 - **Daemon Module** - Background process with IPC for instant queries
 - **Cross-platform** - Windows, macOS, Linux (Unix sockets + Named pipes)
 

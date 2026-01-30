@@ -4,7 +4,7 @@ title: Repository Map with Symbol Hierarchy and Relevance Scoring
 type: feature
 epic: EPIC-002
 sprint: Backlog
-status: Dev Complete
+status: Released
 points: 8
 depends_on: ["STORY-003", "STORY-002"]
 priority: High
@@ -657,12 +657,14 @@ All dependencies already approved in dependencies.md:
 
 ## Change Log
 
-**Current Status:** Dev Complete
+**Current Status:** Released
 
 | Date | Author | Phase/Action | Change | Files Affected |
 |------|--------|--------------|--------|----------------|
 | 2026-01-27 14:00 | claude/story-creation | Created | Story created from EPIC-002 F5 | STORY-010-repository-map.story.md |
 | 2026-01-30 | claude/dev | DoD Update (Phase 07) | Development complete, all 8 ACs verified, 64 tests passing | src/cli/commands/map.rs, src/index/relevance.rs, tests/STORY-010/*.rs |
+| 2026-01-30 | claude/qa-result-interpreter | QA Deep | PASS WITH WARNINGS: 147 tests passed, 0 CRITICAL, 1 HIGH (borderline module size), 3/3 validators | - |
+| 2026-01-30 | claude/deployment-engineer | Released | Deployed v0.1.0 to test environment - all smoke tests passed | target/release/treelint |
 
 ## Notes
 

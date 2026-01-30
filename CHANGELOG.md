@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-01-30
+
+### Added
+
+- Repository map command with relevance scoring ([STORY-010])
+  - `treelint map` - Generate comprehensive symbol listing for entire repository
+  - `treelint map --format json` - Machine-readable JSON output with schema
+  - `treelint map --format text` - Human-readable tree structure output
+  - `treelint map --type function` - Filter by symbol type (function/class/method/variable/constant/import/export)
+  - `treelint map --ranked` - Include relevance scores sorted by importance
+
+- Relevance scoring algorithm ([STORY-010])
+  - PageRank-style scoring: `(incoming_references + 1) / total_symbols`
+  - Reference detection for function calls and imports
+  - Support for Python, TypeScript, and Rust reference patterns
+  - Scores normalized to 0.0-1.0 range
+
+### Technical
+
+- 64 new tests for STORY-010 (map command, JSON/text output, type filtering, relevance scoring, reference extraction, performance)
+- Binary size: 8.2 MB (optimized release build)
+- Performance: Map generation < 10 seconds for 100K files
+
 ## [0.9.0] - 2026-01-30
 
 ### Added
