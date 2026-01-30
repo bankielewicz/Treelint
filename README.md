@@ -16,7 +16,7 @@ Text-based search tools (grep, ripgrep) return false positives from comments, st
 
 ## Current Status
 
-**v0.10.0** - Repository Map with Relevance Scoring (Released 2026-01-30)
+**v0.12.0** - Daemon-Index Integration (Released 2026-01-30)
 
 | Feature | Status |
 |---------|--------|
@@ -45,10 +45,18 @@ Text-based search tools (grep, ripgrep) return false positives from comments, st
 | **Repository mapping** | ✅ Complete |
 | **Relevance scoring** | ✅ Complete |
 | **Symbol type filtering** | ✅ Complete |
+| **Dependency graph** | ✅ Complete |
+| **Call graph extraction** | ✅ Complete |
+| **Import graph extraction** | ✅ Complete |
+| **Mermaid diagram output** | ✅ Complete |
+| **Daemon-index integration** | ✅ Complete |
+| **Daemon search queries actual index** | ✅ Complete |
+| **Daemon index triggers real parsing** | ✅ Complete |
+| **Force index rebuilds entire index** | ✅ Complete |
 
 **Build Stats:**
-- Tests: 584 passing (64 for map, 79 for daemon, 48 for file watcher, 76 for context modes, 55 for output)
-- Binary size: 8.2 MB
+- Tests: 683 passing (72 for deps, 64 for map, 79 for daemon, 48 for file watcher, 76 for context modes, 55 for output, 27 for daemon-index)
+- Binary size: 7.7 MB
 - Query latency: <5ms via daemon (p95)
 - Map generation: <10 seconds for 100K files
 - File change → index update: <1 second
@@ -123,7 +131,7 @@ The index module provides persistent symbol storage using SQLite with WAL mode:
 - Bulk insert: <500ms for 1000 symbols
 - Database location: `.treelint/index.db`
 
-### Background Daemon (STORY-007)
+### Background Daemon (STORY-007, STORY-012)
 
 The daemon maintains an always-fresh symbol index for instant queries:
 
@@ -133,20 +141,45 @@ The daemon maintains an always-fresh symbol index for instant queries:
 - **NDJSON protocol** for simple request/response
 - **Sub-5ms latency** for search queries
 - **Graceful shutdown** with connection draining
+- **Real index integration** - Daemon queries actual IndexStorage (STORY-012)
+- **Real parsing** - Index method triggers SymbolExtractor (STORY-012)
+- **Force rebuild** - Force flag clears and rebuilds entire index (STORY-012)
 
 **Daemon Methods:**
 
 | Method | Description | Response |
 |--------|-------------|----------|
-| `search` | Search symbols by name/type | Same format as CLI |
-| `status` | Get daemon status | 7 fields (see below) |
-| `index` | Trigger re-indexing | Indexing result |
+| `search` | Search symbols by name/type | Actual symbols from index |
+| `status` | Get daemon status | Accurate file/symbol counts |
+| `index` | Trigger re-indexing | Real indexing result |
+
+**Search Method (STORY-012):**
+The daemon search now queries the actual IndexStorage using QueryFilters:
+- Returns real matching symbols from `.treelint/index.db`
+- Each result includes name, type, file, lines, signature, body
+- Empty array only returned if no matches found
+
+**Index Method (STORY-012):**
+The daemon index triggers real parsing using SymbolExtractor:
+- Discovers source files in project directory
+- Parses files with tree-sitter via SymbolExtractor
+- Stores extracted symbols in IndexStorage
+- Returns actual `files_indexed` and `symbols_found` counts
+
+**Force Index Option (STORY-012):**
+```json
+{"id":"1","method":"index","params":{"force":true}}
+```
+When `force: true`:
+- Clears all existing index entries
+- Re-parses all source files (ignores file hashes)
+- Returns full count of re-indexed files
 
 **Status Response Fields:**
 - `status`: "starting" | "ready" | "indexing" | "stopping"
-- `indexed_files`: Count of indexed files
-- `indexed_symbols`: Count of indexed symbols
-- `last_index_time`: ISO 8601 timestamp
+- `indexed_files`: **Actual count from IndexStorage** (STORY-012)
+- `indexed_symbols`: **Actual symbol count** (STORY-012)
+- `last_index_time`: **Timestamp of last completed index** (STORY-012)
 - `uptime_seconds`: Daemon uptime
 - `pid`: Process ID
 - `socket_path`: IPC path
@@ -154,16 +187,30 @@ The daemon maintains an always-fresh symbol index for instant queries:
 **Error Codes:**
 | Code | Meaning |
 |------|---------|
-| E001 | Index not ready |
+| E001 | Index not ready (storage not initialized) |
 | E002 | Invalid method |
 | E003 | Invalid parameters |
 
 **Example Usage (via socket client):**
 
 ```bash
-# Connect and send search request
+# Search for symbols (returns actual matches)
 echo '{"id":"1","method":"search","params":{"symbol":"main","type":"function"}}' | nc -U .treelint/daemon.sock
+
+# Trigger indexing
+echo '{"id":"2","method":"index","params":{}}' | nc -U .treelint/daemon.sock
+
+# Force full re-index
+echo '{"id":"3","method":"index","params":{"force":true}}' | nc -U .treelint/daemon.sock
+
+# Check status (accurate counts)
+echo '{"id":"4","method":"status","params":{}}' | nc -U .treelint/daemon.sock
 ```
+
+**Performance (STORY-012):**
+- Search via daemon: < 50ms (p95) for queries returning < 100 results
+- Status request: < 10ms (p95)
+- Index operation: < 1 second per 100 files
 
 ### File Watcher (STORY-008)
 
@@ -267,9 +314,95 @@ src/
 │       class SessionManager [L1:100] ★ 0.78
 ```
 
+### Dependency Graph (STORY-011)
+
+Visualize function call relationships and import dependencies as graphs:
+
+**Features:**
+- **Call graph** (`--calls`) - Function/method call relationships with call counts
+- **Import graph** (`--imports`) - Module import/export relationships
+- **JSON output** - Machine-readable graph with nodes and edges
+- **Mermaid output** - Visual diagrams for GitHub/markdown rendering
+- **Symbol filtering** - Focus on specific function's callers and callees
+- **Multi-language** - Python, TypeScript, Rust support
+- **SQLite caching** - Incremental updates for changed files only
+
+**Commands:**
+
+```bash
+# Show call graph (JSON by default)
+treelint deps --calls
+
+# Show import graph as Mermaid diagram
+treelint deps --imports --format mermaid
+
+# Focus on specific function
+treelint deps --calls --symbol validateUser
+
+# Show both call and import relationships
+treelint deps --calls --imports
+
+# Force full rebuild of graph data
+treelint deps --calls --force
+```
+
+**JSON Output Schema:**
+
+```json
+{
+  "graph_type": "calls",
+  "nodes": [
+    {
+      "id": "src/auth/validator.py:validateUser",
+      "name": "validateUser",
+      "file": "src/auth/validator.py",
+      "type": "function"
+    }
+  ],
+  "edges": [
+    {
+      "from": "src/auth/validator.py:validateUser",
+      "to": "src/auth/crypto.py:hashPassword",
+      "count": 3
+    }
+  ]
+}
+```
+
+**Mermaid Output (for visualization):**
+
+```mermaid
+graph TD
+    n1["validateUser (validator.py)"]
+    n2["hashPassword (crypto.py)"]
+    n1 -->|3| n2
+```
+
+**Call Detection by Language:**
+
+| Language | Call Types Detected |
+|----------|---------------------|
+| Python | Function calls, method calls |
+| TypeScript | Function calls, method calls |
+| Rust | Function calls, method calls |
+
+**Import Detection by Language:**
+
+| Language | Import Types Detected |
+|----------|----------------------|
+| Python | `import x`, `from x import y` |
+| TypeScript | `import`, `export` |
+| Rust | `use`, `mod` |
+
+**Technical Details:**
+- External library calls excluded (unresolvable)
+- Circular imports handled gracefully
+- Graph data stored in SQLite (call_edges, import_edges tables)
+- Incremental updates: only re-analyzes changed files
+
 ### Coming Soon
 
-- **Dependency graph** - Track function call relationships
+- **Advanced filtering** - Multi-level depth for symbol graphs
 
 ## Installation
 
@@ -400,6 +533,34 @@ treelint index --force
 | 0 | Success with results |
 | 1 | Error (invalid regex, I/O error) |
 | 2 | Success but no matching results |
+
+### Deps Command (STORY-011)
+
+Analyze dependency graphs (call and import relationships):
+
+```bash
+# Show function call relationships
+treelint deps --calls
+
+# Show import relationships
+treelint deps --imports
+
+# Output as Mermaid diagram (for visualization)
+treelint deps --calls --format mermaid
+
+# Focus on specific function (shows callers and callees)
+treelint deps --calls --symbol validateUser
+
+# Force full rebuild (ignores cache)
+treelint deps --calls --force
+
+# Show both call and import graphs
+treelint deps --calls --imports
+```
+
+**Output Formats:**
+- `json` (default) - Machine-readable with nodes and edges arrays
+- `mermaid` - Visual diagram format (renders in GitHub, VS Code, etc.)
 
 ### Map Command (STORY-010)
 
@@ -583,6 +744,7 @@ Returns N lines before and after the symbol, clamped to file boundaries:
 - **Parser Module** - Language detection, symbol extraction, error handling
 - **Index Module** - Symbol storage, queries, incremental re-indexing
 - **Relevance Module** - Reference extraction and PageRank-style scoring
+- **Graph Module** - Call and import relationship extraction, Mermaid formatting
 - **Daemon Module** - Background process with IPC for instant queries
 - **Cross-platform** - Windows, macOS, Linux (Unix sockets + Named pipes)
 

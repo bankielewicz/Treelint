@@ -63,9 +63,9 @@ The daemon uses **NDJSON** (Newline-Delimited JSON) protocol:
 
 ## Methods
 
-### `search` - Symbol Search
+### `search` - Symbol Search (STORY-012)
 
-Search for symbols in the indexed codebase.
+Search for symbols in the indexed codebase. The daemon now queries the **actual IndexStorage** using QueryFilters, returning real symbol matches from the database.
 
 **Request:**
 
@@ -86,7 +86,7 @@ Search for symbols in the indexed codebase.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `symbol` | string | Yes* | Symbol name to search for |
+| `symbol` | string | Yes* | Symbol name to search for (uses pattern matching) |
 | `type` | string | Yes* | Filter by type: `function`, `class`, `method`, `variable`, `constant`, `import`, `export` |
 | `case_insensitive` | boolean | No | Case-insensitive search (default: false) |
 | `regex` | boolean | No | Treat symbol as regex pattern (default: false) |
@@ -98,20 +98,36 @@ Search for symbols in the indexed codebase.
 ```json
 {
   "id": "req-001",
-  "result": [
-    {
-      "name": "validateUser",
-      "type": "function",
-      "file": "/path/to/auth/validator.py",
-      "line_start": 10,
-      "line_end": 45,
-      "signature": "def validateUser(email: str, password: str) -> bool",
-      "body": "def validateUser(email: str, password: str) -> bool:\n    ..."
-    }
-  ],
+  "result": {
+    "symbols": [
+      {
+        "name": "validateUser",
+        "type": "function",
+        "file": "/path/to/auth/validator.py",
+        "line_start": 10,
+        "line_end": 45,
+        "signature": "def validateUser(email: str, password: str) -> bool",
+        "body": "def validateUser(email: str, password: str) -> bool:\n    ..."
+      }
+    ],
+    "total": 1
+  },
   "error": null
 }
 ```
+
+**Search Behavior (STORY-012):**
+
+- Queries **actual IndexStorage** using `QueryFilters.with_name_pattern()`
+- Returns real matching symbols from `.treelint/index.db`
+- Each symbol includes: name, type, file, lines, signature, body
+- Empty `symbols` array only returned if no matches found
+- `total` reflects actual match count
+
+**Performance (STORY-012):**
+
+- Search latency: < 50ms (p95) for queries returning < 100 results
+- Same output format as CLI search command
 
 ### `status` - Daemon Status
 
@@ -191,11 +207,11 @@ When the file watcher is active, the status response includes additional fields:
 | `errors_count` | number | Number of watcher errors encountered |
 | `last_event` | string | ISO 8601 timestamp of last processed event |
 
-### `index` - Trigger Re-indexing
+### `index` - Trigger Re-indexing (STORY-012)
 
-Trigger a full or incremental re-index operation.
+Trigger a full or incremental re-index operation. The daemon now performs **actual indexing** using SymbolExtractor to parse source files and store symbols in IndexStorage.
 
-**Request:**
+**Request (Incremental):**
 
 ```json
 {
@@ -205,6 +221,24 @@ Trigger a full or incremental re-index operation.
 }
 ```
 
+**Request (Force Full Rebuild):**
+
+```json
+{
+  "id": "req-003",
+  "method": "index",
+  "params": {
+    "force": true
+  }
+}
+```
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `force` | boolean | No | If `true`, clears existing index and re-parses all files (default: false) |
+
 **Response:**
 
 ```json
@@ -213,11 +247,31 @@ Trigger a full or incremental re-index operation.
   "result": {
     "status": "completed",
     "files_indexed": 150,
-    "symbols_found": 2500
+    "symbols_found": 2500,
+    "project_root": "/path/to/project"
   },
   "error": null
 }
 ```
+
+**Index Behavior (STORY-012):**
+
+| Mode | Behavior |
+|------|----------|
+| Incremental (default) | Uses hash-based change detection, only re-parses modified files |
+| Force (`force: true`) | Clears all index entries, re-parses all source files |
+
+**What Happens:**
+
+1. Daemon discovers source files in project directory
+2. SymbolExtractor parses each file using tree-sitter
+3. Extracted symbols stored in IndexStorage (`.treelint/index.db`)
+4. Response includes **actual** `files_indexed` and `symbols_found` counts
+
+**Performance (STORY-012):**
+
+- < 1 second per 100 files for incremental index
+- Full re-index scales linearly with codebase size
 
 ## Error Codes
 
@@ -437,15 +491,45 @@ src/daemon/
 └── watcher.rs       # File watcher implementation (1098 lines) [STORY-008]
 ```
 
+## Daemon-Index Integration (STORY-012)
+
+STORY-012 completed the daemon by wiring it to the actual IndexStorage and SymbolExtractor components:
+
+### What Changed
+
+| Before STORY-012 | After STORY-012 |
+|------------------|-----------------|
+| Search returned stub/empty results | Search queries actual IndexStorage |
+| Index returned hardcoded counts | Index triggers real SymbolExtractor parsing |
+| Status returned stub values | Status returns accurate file/symbol counts |
+| No force rebuild option | Force flag clears and rebuilds entire index |
+
+### Key Implementation Details
+
+- **Search Handler**: Uses `QueryFilters.with_name_pattern()` and `ctx.storage.lock()` to query IndexStorage
+- **Index Handler**: Creates `SymbolExtractor::new()` and calls `extract_from_file()` for each source file
+- **Status Handler**: Returns `ctx.indexed_files.load()` and `ctx.indexed_symbols.load()` from atomic counters
+- **Force Index**: Parses `force` param and calls `storage.clear_all()` before re-indexing
+
+### Error Codes (Updated)
+
+| Code | Meaning | When Returned |
+|------|---------|---------------|
+| E001 | Index Not Ready | Storage not initialized at daemon start |
+| E002 | Invalid Method | Unknown method name |
+| E003 | Invalid Params | Missing required `symbol` or `type` parameter |
+
 ## Related Documentation
 
 - [STORY-007](devforgeai/specs/Stories/archive/STORY-007-daemon-core-ipc.story.md) - Daemon Core Architecture
 - [STORY-008](devforgeai/specs/Stories/archive/STORY-008-file-watcher-incremental-index.story.md) - File Watcher & Incremental Indexing
+- [STORY-012](devforgeai/specs/Stories/archive/STORY-012-daemon-index-integration.story.md) - Daemon-Index Integration
 - [QA Report STORY-007](devforgeai/qa/reports/STORY-007-qa-report.md) - Daemon quality validation
 - [QA Report STORY-008](devforgeai/qa/reports/STORY-008-qa-report.md) - File watcher quality validation
+- [QA Report STORY-012](devforgeai/qa/reports/STORY-012-qa-report.md) - Daemon-index integration quality validation
 - [CLI Reference](docs/api/cli-reference.md) - Command-line interface
 - [Library Reference](docs/api/library-reference.md) - Rust library API
 
 ---
 
-*Generated for Treelint v0.8.0 - STORY-007 Daemon Core Architecture, STORY-008 File Watcher*
+*Generated for Treelint v0.12.0 - STORY-007 Daemon Core, STORY-008 File Watcher, STORY-012 Daemon-Index Integration*

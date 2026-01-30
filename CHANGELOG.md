@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-01-30
+
+### Added
+
+- Daemon-Index Integration ([STORY-012])
+  - Daemon search now queries actual IndexStorage with real symbol matches
+  - Daemon index triggers SymbolExtractor parsing and stores symbols
+  - Force index option (`{"method": "index", "params": {"force": true}}`) rebuilds entire index
+  - Status endpoint returns accurate indexed_files, indexed_symbols, last_index_time
+
+### Fixed
+
+- Removed dead code from daemon server (stub methods, unused ProtocolHandler trait)
+
+### Technical
+
+- 27 new tests for STORY-012 (daemon search, daemon index, force index, status accuracy)
+- Binary size: 7.7 MB (optimized release build)
+
 ## [0.11.0] - 2026-01-30
 
 ### Added

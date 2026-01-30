@@ -1,0 +1,74 @@
+{
+  "story_id": "STORY-012",
+  "qa_result": "FAILED",
+  "generated_at": "2026-01-30T12:00:00Z",
+  "qa_report_file": "devforgeai/qa/reports/STORY-012-qa-report.md",
+
+  "coverage_data_path": "tests/coverage/STORY-012/",
+  "test_results_path": "tests/results/STORY-012/",
+  "test_logs_path": "tests/logs/STORY-012/",
+
+  "coverage_gaps": [],
+
+  "anti_pattern_violations": [
+    {
+      "file": "src/daemon/server.rs",
+      "line": 1097,
+      "type": "TODO_STUB",
+      "severity": "HIGH",
+      "message": "TODO stub returns empty results instead of querying IndexStorage. The DaemonServer impl has stub code while DaemonServerContext has the working implementation.",
+      "remediation": "Either delegate DaemonServer::handle_search to DaemonServerContext::handle_search, or remove the stub method if DaemonServer is not used in production code paths."
+    },
+    {
+      "file": "src/daemon/server.rs",
+      "line": 1110,
+      "type": "TODO_STUB",
+      "severity": "HIGH",
+      "message": "TODO stub returns hardcoded zeros instead of triggering actual indexing. The DaemonServer impl has stub code while DaemonServerContext has the working implementation.",
+      "remediation": "Either delegate DaemonServer::handle_index to DaemonServerContext implementation, or remove the stub method if DaemonServer is not used in production code paths."
+    }
+  ],
+
+  "deferral_issues": [],
+
+  "dod_violations": [
+    {
+      "item": "TODO comments removed from server.rs",
+      "violation_type": "INCOMPLETE_IMPLEMENTATION",
+      "severity": "HIGH",
+      "current_state": "DoD item marked complete but 2 TODOs remain",
+      "issue": "Story claims all TODOs were removed but grep finds 2 remaining at lines 1097 and 1110",
+      "remediation": "Remove or implement the TODO stubs in DaemonServer impl (lines 1097, 1110)"
+    }
+  ],
+
+  "remediation_guidance": {
+    "investigation_steps": [
+      "1. Determine if DaemonServer impl (lines 1080-1119) is actually used in production",
+      "2. Check if DaemonServerContext impl (lines 680-878) is the primary execution path",
+      "3. Run tests to verify which implementation is exercised"
+    ],
+    "resolution_options": [
+      {
+        "option": "A - Delegate",
+        "description": "Make DaemonServer methods delegate to DaemonServerContext implementation",
+        "effort": "Low",
+        "risk": "Low"
+      },
+      {
+        "option": "B - Remove Dead Code",
+        "description": "If DaemonServer stub methods are never called, remove them entirely",
+        "effort": "Low",
+        "risk": "Medium - need to verify no callers"
+      },
+      {
+        "option": "C - Full Implementation",
+        "description": "Copy the working logic from DaemonServerContext into DaemonServer",
+        "effort": "Medium",
+        "risk": "High - code duplication"
+      }
+    ],
+    "recommended_option": "A - Delegate (or B if methods are dead code)",
+    "verification_command": "grep -n 'TODO' src/daemon/server.rs"
+  }
+}

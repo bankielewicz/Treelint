@@ -1,6 +1,6 @@
 [package]
 name = "treelint"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.70.0"
 description = "AST-aware code search CLI for AI coding assistants"
