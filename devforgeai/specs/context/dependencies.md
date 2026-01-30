@@ -61,6 +61,9 @@ atty = "0.2"
 
 # IPC (Daemon)
 interprocess = "2.0"
+
+# Cryptographic Hashing (ADR-002)
+sha2 = "0.10"
 ```
 
 ### Development Dependencies
@@ -202,6 +205,17 @@ rusqlite = { version = "0.31", features = ["bundled", "backup", "blob"] }  # Unn
 - ❌ glob (walkdir is more efficient)
 - ❌ hotwatch (wrapper around notify)
 
+### Category: Cryptography
+
+| Crate | Version | Purpose | Status |
+|-------|---------|---------|--------|
+| sha2 | 0.10 | SHA-256 hashing (file change detection) | ✅ Approved |
+
+**Prohibited Alternatives:**
+- ❌ ring (heavier than needed)
+- ❌ md5 (deprecated for security)
+- ❌ openssl (external C dependency)
+
 ### Category: Terminal UI
 
 | Crate | Version | Purpose | Status |
@@ -303,3 +317,4 @@ cargo audit
 | Date | Change | Approver | Reason | ADR |
 |------|--------|----------|--------|-----|
 | 2026-01-27 | Initial version | Bryan | Project setup | ADR-001 |
+| 2026-01-30 | Added sha2 0.10 | Claude | SHA-256 for file change detection | ADR-002 |

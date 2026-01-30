@@ -30,6 +30,11 @@
 
 pub mod protocol;
 pub mod server;
+pub mod watcher;
 
 pub use protocol::{DaemonRequest, DaemonResponse, ErrorInfo, ProtocolHandler};
 pub use server::{DaemonClient, DaemonError, DaemonServer, DaemonState};
+pub use watcher::{
+    FileWatcher, HashCache, IncrementalIndexer, IndexStats, WatcherConfig, WatcherError,
+    WatcherEvent, WatcherEventKind, WatcherStatus,
+};

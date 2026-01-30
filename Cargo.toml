@@ -37,6 +37,7 @@ regex = "1.10"
 
 # File System (per dependencies.md)
 walkdir = "2.5"
+notify = "6.1"
 
 # Terminal UI (per dependencies.md)
 indicatif = "0.17"
@@ -51,6 +52,9 @@ env_logger = "0.11"
 
 # IPC / Daemon (per dependencies.md)
 interprocess = "2.0"
+
+# Cryptographic Hashing (for file change detection - STORY-008)
+sha2 = "0.10"
 
 [dev-dependencies]
 # Testing (per dependencies.md)
@@ -78,6 +82,10 @@ path = "tests/story_005.rs"
 [[test]]
 name = "story_007"
 path = "tests/story_007.rs"
+
+[[test]]
+name = "story_008"
+path = "tests/story_008.rs"
 
 [profile.release]
 lto = true
