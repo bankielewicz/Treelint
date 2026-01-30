@@ -1,0 +1,496 @@
+---
+description: Create sprint plan with story selection
+argument-hint: [sprint-name]
+model: opus
+allowed-tools: Read, Write, Edit, Glob, AskUserQuestion
+---
+
+# Create Sprint Command
+
+Creates a new sprint with story selection, capacity planning, and automatic story status updates.
+
+## Arguments
+
+- `sprint-name` (optional): Name/theme of the sprint (e.g., "User Authentication", "MVP Release")
+
+## Workflow
+
+### Phase 1: Sprint Discovery
+
+**Check for existing sprints:**
+
+```bash
+Glob(pattern="devforgeai/specs/Sprints/*.md")
+```
+
+**Determine next sprint number:**
+- Parse existing sprint files (Sprint-1.md, Sprint-2.md, etc.)
+- Calculate next sequential number
+- If no sprints exist, start with Sprint-1
+
+**Load epic context:**
+
+```bash
+Glob(pattern="devforgeai/specs/Epics/*.md")
+```
+
+**If no epics found:**
+- Use `AskUserQuestion`:
+  ```
+  Question: "No epics found. Sprints should be linked to epics. What would you like to do?"
+  Options:
+    - Create an epic first (recommended)
+    - Create sprint without epic (standalone)
+    - Exit and run /create-epic
+  ```
+
+### Phase 2: Story Discovery & Selection
+
+**Find available stories:**
+
+```bash
+# Find all stories in Backlog status
+Glob(pattern="devforgeai/specs/Stories/*.story.md")
+```
+
+**Read each story for metadata:**
+- Parse YAML frontmatter (status, points, priority, epic)
+- Filter stories with status = "Backlog"
+- Group by epic and priority
+
+**Present stories to user:**
+
+```
+AskUserQuestion:
+  Question: "Found [N] stories in Backlog. Select stories for Sprint-[N]:"
+
+  Stories Available:
+    Epic: [Epic Name]
+      🔴 HIGH   - STORY-001: [Title] (5 points)
+      🔴 HIGH   - STORY-002: [Title] (8 points)
+      🟡 MEDIUM - STORY-003: [Title] (3 points)
+
+    Epic: [Another Epic]
+      🟡 MEDIUM - STORY-004: [Title] (5 points)
+      🟢 LOW    - STORY-005: [Title] (2 points)
+
+  Options:
+    - Select specific stories (provide IDs: STORY-001, STORY-003, ...)
+    - Select by priority (all HIGH, all HIGH+MEDIUM)
+    - Select by epic ([Epic Name])
+    - Custom selection (I'll guide you)
+```
+
+**Calculate capacity:**
+- Sum story points for selected stories
+- Standard sprint capacity: 20-40 points (2 weeks)
+- Warn if over capacity (> 40 points)
+- Suggest if under capacity (< 20 points)
+
+**Validate selection:**
+
+```
+If total points > 40:
+  AskUserQuestion:
+    Question: "Selected stories total [N] points, exceeding recommended 40-point capacity. Proceed?"
+    Options:
+      - Proceed anyway (team has high velocity)
+      - Remove lowest priority stories
+      - Let me adjust selection
+
+If total points < 20:
+  AskUserQuestion:
+    Question: "Selected stories total [N] points, below typical 20-point minimum. Add more stories?"
+    Options:
+      - Proceed anyway (partial sprint, holidays, etc.)
+      - Add more stories
+      - Let me adjust selection
+```
+
+### Phase 3: Sprint Metadata Collection
+
+**Gather sprint details:**
+
+```
+AskUserQuestion (if sprint-name not provided):
+  Question: "Sprint theme/name?"
+  Default: "Sprint [N]"
+  Examples: "User Authentication", "MVP Release", "Payment Integration"
+
+AskUserQuestion:
+  Question: "Sprint start date?"
+  Default: [Today's date]
+  Format: YYYY-MM-DD
+
+AskUserQuestion:
+  Question: "Sprint duration?"
+  Options:
+    - 2 weeks (standard)
+    - 1 week (short sprint)
+    - 3 weeks (extended)
+    - Custom (specify days)
+```
+
+**Calculate end date:**
+- Start date + duration = end date
+- Account for weekends (sprint days only)
+- Display calculated end date for confirmation
+
+**Link to epic:**
+
+```
+AskUserQuestion:
+  Question: "Link sprint to epic?"
+  Options:
+    - [List of existing epics from Phase 1]
+    - Multiple epics (cross-epic sprint)
+    - No epic (standalone sprint)
+```
+
+### Phase 4: Sprint File Creation
+
+**Generate sprint document:**
+
+```bash
+Write(
+  file_path="devforgeai/specs/Sprints/Sprint-[N].md",
+  content="[Sprint frontmatter + planning details]"
+)
+```
+
+**Sprint file structure:**
+
+```yaml
+---
+id: SPRINT-[N]
+name: [Sprint Name]
+epic: [EPIC-ID or "Multiple" or "Standalone"]
+start_date: YYYY-MM-DD
+end_date: YYYY-MM-DD
+duration_days: 14
+status: Active
+total_points: [Sum of story points]
+completed_points: 0
+stories:
+  - STORY-001
+  - STORY-002
+  - STORY-003
+created: YYYY-MM-DD HH:MM:SS
+---
+
+# Sprint [N]: [Sprint Name]
+
+## Overview
+
+**Duration:** [start_date] to [end_date] ([duration_days] days)
+**Capacity:** [total_points] story points
+**Epic:** [Epic name and link]
+
+## Sprint Goals
+
+[Generated from story themes - high-level objectives]
+
+## Stories
+
+### In Progress (0 points)
+[Empty initially]
+
+### Ready for Dev ([total_points] points)
+
+#### STORY-001: [Story Title]
+- **Points:** 5
+- **Priority:** HIGH
+- **Epic:** [Epic Name]
+- **Acceptance Criteria:** [Count] criteria
+- **Status:** Ready for Dev
+
+[Repeat for each story]
+
+### Completed (0 points)
+[Empty initially]
+
+## Sprint Metrics
+
+- **Planned Velocity:** [total_points] points
+- **Current Velocity:** 0 points (0%)
+- **Stories Planned:** [count]
+- **Stories Completed:** 0
+- **Days Remaining:** [duration_days]
+
+## Daily Progress
+
+[Will be updated during sprint]
+
+## Retrospective Notes
+
+[To be filled at sprint end]
+
+## Next Steps
+
+1. Review and prioritize stories in sprint backlog
+2. Begin implementation: `/implement STORY-[ID]`
+3. Track progress daily
+4. Update story statuses as work progresses
+```
+
+**Verify file written:**
+
+```bash
+Read(file_path="devforgeai/specs/Sprints/Sprint-[N].md")
+```
+
+### Phase 5: Update Story Status
+
+**For each selected story:**
+
+```bash
+# Read story file
+Read(file_path="devforgeai/specs/Stories/STORY-[ID].story.md")
+
+# Update frontmatter and workflow history
+Edit(
+  file_path="devforgeai/specs/Stories/STORY-[ID].story.md",
+  old_string="status: Backlog",
+  new_string="status: Ready for Dev"
+)
+
+Edit(
+  file_path="devforgeai/specs/Stories/STORY-[ID].story.md",
+  old_string="sprint: null",
+  new_string="sprint: SPRINT-[N]"
+)
+
+# Add workflow history entry
+Edit(
+  file_path="devforgeai/specs/Stories/STORY-[ID].story.md",
+  old_string="## Workflow History\n\n",
+  new_string="## Workflow History\n\n### YYYY-MM-DD HH:MM:SS - Status: Ready for Dev\n- Added to Sprint-[N]\n- Transitioned from Backlog to Ready for Dev\n- Sprint capacity: [total_points] points\n\n"
+)
+```
+
+**Verify story updates:**
+- Read each updated story
+- Confirm status = "Ready for Dev"
+- Confirm sprint field populated
+
+### Phase 6: Success Report
+
+**Display sprint summary:**
+
+```
+✅ Sprint Created Successfully
+
+Sprint Details:
+  📋 Sprint-[N]: [Sprint Name]
+  📅 Duration: [start_date] to [end_date] ([duration_days] days)
+  🎯 Epic: [Epic Name]
+  📊 Capacity: [total_points] story points
+  📝 Stories: [count] stories selected
+
+Stories Added to Sprint:
+  ✓ STORY-001: [Title] (5 points) - HIGH
+  ✓ STORY-002: [Title] (8 points) - HIGH
+  ✓ STORY-003: [Title] (3 points) - MEDIUM
+  [...]
+
+Story Status Updates:
+  ✓ [count] stories moved to "Ready for Dev"
+  ✓ Sprint references added to all stories
+
+Sprint File Created:
+  📁 devforgeai/specs/Sprints/Sprint-[N].md
+
+Next Steps:
+  1. Review sprint goals and story priorities
+  2. Start first story: /implement STORY-[ID]
+  3. Track progress with: /sprint-status
+  4. Complete sprint with: /close-sprint
+```
+
+## Error Handling
+
+### Error: No Stories in Backlog
+
+**Condition:** No stories found with status = "Backlog"
+
+**Action:**
+1. Check for stories in other statuses
+2. Report findings to user
+
+**Report format:**
+```
+⚠️ No Stories Available for Sprint
+
+Story Status Breakdown:
+  - In Development: [count]
+  - Ready for Dev: [count]
+  - Backlog: 0
+  - QA In Progress: [count]
+
+Recommendations:
+  1. Create new stories: /create-story
+  2. Move stories back to Backlog (if appropriate)
+  3. Plan next epic: /create-epic
+
+Cannot proceed with sprint creation without backlog stories.
+```
+
+### Error: Invalid Story Selection
+
+**Condition:** User provides story IDs that don't exist or aren't in Backlog
+
+**Action:**
+1. Parse provided story IDs
+2. Validate each ID exists
+3. Validate each story status = "Backlog"
+4. Report invalid IDs
+
+**Recovery:**
+```
+❌ Invalid Story Selection
+
+Issues Found:
+  - STORY-099: Does not exist
+  - STORY-005: Status is "In Development" (not Backlog)
+  - STORY-012: Status is "QA Approved" (not Backlog)
+
+Valid Stories Available:
+  - STORY-001, STORY-002, STORY-003, STORY-004
+
+Please select from valid stories in Backlog status.
+```
+
+### Error: Sprint File Creation Failed
+
+**Condition:** Cannot write to `devforgeai/specs/Sprints/` directory
+
+**Action:**
+1. Check if directory exists
+2. Check write permissions
+3. Attempt to create directory if missing
+
+**Recovery steps:**
+```
+❌ Sprint File Creation Failed
+
+Cause: Directory devforgeai/specs/Sprints/ does not exist
+
+Recovery:
+  Creating directory...
+  ✓ Directory created
+  ✓ Retrying sprint file creation...
+  ✓ Sprint-[N].md created successfully
+```
+
+### Error: Story Update Failed
+
+**Condition:** Cannot update story file status/sprint field
+
+**Action:**
+1. Identify which story update failed
+2. Check file permissions
+3. Verify file format (YAML frontmatter valid)
+4. Rollback sprint creation if critical
+
+**Report format:**
+```
+⚠️ Partial Success - Story Updates Failed
+
+Sprint Created: ✅
+  - devforgeai/specs/Sprints/Sprint-[N].md
+
+Story Updates:
+  ✓ STORY-001: Updated successfully
+  ✓ STORY-002: Updated successfully
+  ❌ STORY-003: Update failed (file locked or invalid YAML)
+
+Action Required:
+  Manually update STORY-003:
+    1. Open devforgeai/specs/Stories/STORY-003.story.md
+    2. Change status: Backlog → Ready for Dev
+    3. Add sprint: SPRINT-[N]
+
+Sprint is valid but some stories need manual updates.
+```
+
+## Success Criteria
+
+- [x] Sprint file created in `devforgeai/specs/Sprints/`
+- [x] YAML frontmatter valid and complete
+- [x] Stories selected and linked to sprint
+- [x] Story statuses updated to "Ready for Dev"
+- [x] Sprint field populated in story files
+- [x] Workflow history entries added to stories
+- [x] Capacity calculated and validated
+- [x] Epic linkage established
+- [x] Token usage < 30K
+
+## Token Efficiency
+
+**Target:** < 30K tokens total
+
+**Optimization strategies:**
+1. Use `Glob` for file discovery (not Bash `find`)
+2. Read story files in parallel when possible
+3. Cache epic data after first read
+4. Batch story updates (read once, edit multiple fields)
+5. Avoid redundant file reads
+6. Use targeted `Edit` instead of full rewrites
+
+**Estimated token breakdown:**
+- Phase 1 (Discovery): ~2K tokens
+- Phase 2 (Story selection): ~5K tokens
+- Phase 3 (Metadata): ~3K tokens
+- Phase 4 (File creation): ~4K tokens
+- Phase 5 (Story updates): ~12K tokens (largest phase)
+- Phase 6 (Report): ~2K tokens
+- **Total: ~28K tokens** (within 30K budget)
+
+## Integration Points
+
+**Prerequisites:**
+- Stories exist in `devforgeai/specs/Stories/`
+- At least one story with status = "Backlog"
+- (Optional) Epic exists in `devforgeai/specs/Epics/`
+
+**Invokes:**
+- None (terminal command)
+
+**Enables:**
+- `/implement` command (stories are Ready for Dev)
+- `/sprint-status` command (tracks sprint progress)
+- `/close-sprint` command (completes sprint)
+
+**Related Commands:**
+- `/create-epic` - Create epic before sprint (recommended)
+- `/create-story` - Add stories to backlog
+- `/implement` - Start story development
+- `/sprint-status` - View sprint progress
+- `/close-sprint` - Complete sprint and run retrospective
+
+## Notes
+
+**Framework philosophy:**
+- Sprints are 2-week iterations (configurable)
+- Stories must be in Backlog before sprint planning
+- Capacity planning prevents over-commitment
+- Sprint linkage enables progress tracking
+- Story status automation reduces manual work
+
+**When to use:**
+- Starting new sprint (every 2 weeks)
+- Planning feature batch for coordinated release
+- Grouping related stories for focused work
+- Setting team velocity and capacity goals
+
+**When NOT to use:**
+- For single-story work (use `/implement` directly)
+- Mid-sprint (wait for current sprint to complete)
+- Without backlog stories (create stories first)
+
+**Best practices:**
+- Link sprints to epics for traceability
+- Balance story points across sprint (20-40 points ideal)
+- Prioritize HIGH stories first
+- Review sprint goals with team before starting
+- Update sprint daily with `/sprint-status`

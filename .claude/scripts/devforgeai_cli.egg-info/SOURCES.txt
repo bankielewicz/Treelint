@@ -16,6 +16,7 @@ devforgeai_cli/commands/__init__.py
 devforgeai_cli/commands/check_hooks.py
 devforgeai_cli/commands/invoke_hooks.py
 devforgeai_cli/commands/phase_commands.py
+devforgeai_cli/commands/validate_installation.py
 devforgeai_cli/feedback/__init__.py
 devforgeai_cli/feedback/adaptive_questioning_engine.py
 devforgeai_cli/feedback/aggregation.py
@@ -43,7 +44,10 @@ devforgeai_cli/metrics/__init__.py
 devforgeai_cli/metrics/command_metrics.py
 devforgeai_cli/metrics/failure_modes.py
 devforgeai_cli/metrics/story_segmentation.py
+devforgeai_cli/session/__init__.py
+devforgeai_cli/session/checkpoint.py
 devforgeai_cli/tests/__init__.py
+devforgeai_cli/tests/conftest.py
 devforgeai_cli/tests/test_check_hooks.py
 devforgeai_cli/tests/test_depends_on_normalizer.py
 devforgeai_cli/tests/test_dod_validator.py
@@ -54,6 +58,8 @@ devforgeai_cli/tests/test_phase_commands_import.py
 devforgeai_cli/tests/test_phase_state.py
 devforgeai_cli/tests/test_skip_tracking.py
 devforgeai_cli/tests/test_skip_tracking_coverage_gap.py
+devforgeai_cli/tests/test_subagent_enforcement.py
+devforgeai_cli/tests/test_validate_installation.py
 devforgeai_cli/tests/feedback/__init__.py
 devforgeai_cli/tests/feedback/test_adaptive_questioning_engine.py
 devforgeai_cli/tests/feedback/test_aggregation.py
@@ -74,6 +80,8 @@ devforgeai_cli/tests/feedback/test_skip_tracking.py
 devforgeai_cli/tests/feedback/test_skip_tracking_integration.py
 devforgeai_cli/tests/feedback/test_template_engine.py
 devforgeai_cli/tests/feedback/test_validation_comprehensive.py
+devforgeai_cli/tests/session/__init__.py
+devforgeai_cli/tests/session/test_checkpoint.py
 devforgeai_cli/utils/__init__.py
 devforgeai_cli/utils/depends_on_normalizer.py
 devforgeai_cli/utils/markdown_parser.py

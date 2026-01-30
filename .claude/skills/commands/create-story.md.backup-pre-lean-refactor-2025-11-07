@@ -1,0 +1,857 @@
+---
+description: Create user story with acceptance criteria and technical specification
+argument-hint: [feature-description]
+model: opus
+allowed-tools: Read, Write, Edit, Glob, Grep, Task, AskUserQuestion
+---
+
+# Create Story Command
+
+Generate a complete user story with acceptance criteria, technical specifications, and UI specifications (if applicable).
+
+## Purpose
+
+Transform feature descriptions into structured user stories following DevForgeAI standards:
+- User story format (As a/I want/So that)
+- Acceptance criteria (Given/When/Then)
+- Technical specifications (API contracts, data models)
+- UI specifications (components, layouts, interactions)
+- Non-functional requirements
+
+## Usage
+
+```bash
+/create-story [feature-description]
+```
+
+**Examples:**
+```bash
+/create-story Add user registration with email verification
+/create-story Shopping cart checkout with payment processing
+/create-story Dashboard analytics with real-time metrics
+```
+
+## Workflow
+
+### Phase 1: Story Discovery
+
+**Objective:** Determine next story ID and collect metadata
+
+**Steps:**
+
+1. **Find existing stories**
+   - Use Glob to search `devforgeai/specs/Stories/*.story.md`
+   - Parse story IDs from filenames
+   - Determine next sequential ID (e.g., STORY-001, STORY-002)
+
+2. **Read epic and sprint context**
+   - Use Glob to find `devforgeai/specs/Epics/*.md`
+   - Use Glob to find `devforgeai/specs/Sprints/*.md`
+   - Present available options to user
+
+3. **Collect metadata via AskUserQuestion**
+   - Epic association (dropdown of available epics or "None")
+   - Sprint association (dropdown of available sprints or "Backlog")
+   - Priority (Critical, High, Medium, Low)
+   - Story points estimate (1, 2, 3, 5, 8, 13, 21)
+
+**Output:**
+- Next story ID
+- Epic reference (or null)
+- Sprint reference (or "Backlog")
+- Priority and points
+
+---
+
+### Phase 2: Requirements Analysis
+
+**Objective:** Transform feature description into structured requirements
+
+**Steps:**
+
+1. **Invoke requirements analyst subagent**
+   ```
+   Task(
+     subagent_type="requirements-analyst",
+     prompt="Transform feature description into structured user story:
+
+     Feature: {user-provided-description}
+
+     Generate:
+     1. User story (As a [role], I want [feature], so that [benefit])
+     2. Acceptance criteria (Given/When/Then format, minimum 3)
+     3. Edge cases and error conditions
+     4. Data validation rules
+     5. Non-functional requirements (performance, security, usability)
+
+     Context: DevForgeAI framework, spec-driven development"
+   )
+   ```
+
+2. **Validate subagent output**
+   - Ensure user story follows format
+   - Verify acceptance criteria are testable
+   - Check for missing edge cases
+   - Validate NFRs are measurable
+
+3. **Refine if needed**
+   - If output incomplete, use AskUserQuestion for clarification
+   - If ambiguous, request specific details
+
+**Output:**
+- User story statement
+- Acceptance criteria (Given/When/Then)
+- Edge cases list
+- Non-functional requirements
+
+---
+
+### Phase 3: Technical Specification
+
+**Objective:** Define technical implementation details
+
+**Steps:**
+
+1. **Detect API requirements**
+   - Check if feature involves HTTP endpoints
+   - Keywords: "API", "endpoint", "REST", "GraphQL", "request", "response"
+
+2. **If API detected, invoke API designer**
+   ```
+   Task(
+     subagent_type="api-designer",
+     prompt="Design API contracts for feature:
+
+     Feature: {user-story}
+     Acceptance Criteria: {ac-list}
+
+     Generate:
+     1. HTTP method and endpoint path
+     2. Request schema (headers, query params, body)
+     3. Response schema (success and error cases)
+     4. Status codes
+     5. Authentication requirements
+     6. Validation rules
+
+     Format: OpenAPI 3.0 style"
+   )
+   ```
+
+3. **Identify data models**
+   - Extract entities from user story
+   - Define properties, types, constraints
+   - Document relationships
+
+4. **Define business rules**
+   - Extract logic from acceptance criteria
+   - Document validation rules
+   - Specify calculation formulas (if applicable)
+
+5. **Identify dependencies**
+   - External services
+   - Third-party APIs
+   - Database requirements
+   - Infrastructure needs
+
+**Output:**
+- API contract (if applicable)
+- Data models with properties
+- Business rules
+- Dependencies list
+
+---
+
+### Phase 4: UI Specification
+
+**Objective:** Document user interface requirements (if applicable)
+
+**Steps:**
+
+1. **Detect UI requirements**
+   - Keywords: "screen", "page", "form", "button", "display", "show", "view"
+   - Check acceptance criteria for user interactions
+
+2. **Ask user confirmation**
+   ```
+   AskUserQuestion(
+     question="Does this story require UI components or screens?",
+     options=["Yes", "No"],
+     context="Detected potential UI elements in story. UI spec includes component descriptions, layouts, and interactions."
+   )
+   ```
+
+3. **If UI required, document specification**
+
+   **Component Descriptions:**
+   - List UI components (forms, tables, modals, cards)
+   - Describe purpose and behavior
+   - Specify data bindings
+
+   **ASCII Layout Mockup:**
+   ```
+   +------------------------------------------+
+   |  [Header: Page Title]                   |
+   +------------------------------------------+
+   |  [ Input Field: Label       ]           |
+   |  [ Dropdown: Options       v]           |
+   |  [ Checkbox ] Option text               |
+   |  [Button: Submit]  [Button: Cancel]     |
+   +------------------------------------------+
+   |  [ Data Table                         ] |
+   |  | Column 1 | Column 2 | Actions      | |
+   |  | Value A  | Value B  | [Edit][Del]  | |
+   +------------------------------------------+
+   ```
+
+   **Component Props/Interface:**
+   - Component name and type
+   - Props (inputs, outputs, state)
+   - Event handlers
+   - Example:
+     ```typescript
+     interface UserFormProps {
+       initialData?: User;
+       onSubmit: (user: User) => void;
+       onCancel: () => void;
+       isLoading: boolean;
+     }
+     ```
+
+   **User Interaction Flows:**
+   - Step-by-step interaction sequences
+   - State changes per action
+   - Navigation flow
+   - Example:
+     1. User clicks "Add User" button
+     2. Modal opens with empty form
+     3. User fills fields, validation shows inline
+     4. User clicks "Submit"
+     5. Loading state displays
+     6. Success: Modal closes, table refreshes
+     7. Error: Error message displays, form remains
+
+   **Accessibility Requirements:**
+   - Keyboard navigation support
+   - Screen reader labels (aria-label, aria-describedby)
+   - Focus management
+   - Color contrast requirements (WCAG AA)
+   - Error message announcements
+
+4. **Responsive behavior (if applicable)**
+   - Mobile breakpoints
+   - Layout adjustments
+   - Touch interactions
+
+**Output:**
+- Component list with descriptions
+- ASCII layout mockup
+- Component interfaces
+- Interaction flows
+- Accessibility requirements
+
+---
+
+### Phase 5: Story File Creation
+
+**Objective:** Generate complete story document
+
+**Steps:**
+
+1. **Construct YAML frontmatter**
+   ```yaml
+   ---
+   id: STORY-XXX
+   title: [Brief title]
+   epic: [EPIC-ID or null]
+   sprint: [SPRINT-ID or "Backlog"]
+   status: Backlog
+   priority: [Critical|High|Medium|Low]
+   points: [1|2|3|5|8|13|21]
+   created: [YYYY-MM-DD]
+   updated: [YYYY-MM-DD]
+   assigned_to: null
+   tags: []
+   ---
+   ```
+
+2. **Write story sections**
+
+   **Section 1: User Story**
+   ```markdown
+   ## User Story
+
+   As a [role],
+   I want [feature],
+   So that [benefit].
+   ```
+
+   **Section 2: Acceptance Criteria**
+   ```markdown
+   ## Acceptance Criteria
+
+   ### AC1: [Criterion title]
+   **Given** [context/precondition]
+   **When** [action/trigger]
+   **Then** [expected outcome]
+
+   ### AC2: [Criterion title]
+   ...
+   ```
+
+   **Section 3: Technical Specification**
+   ```markdown
+   ## Technical Specification
+
+   ### API Contracts (if applicable)
+
+   #### Endpoint: [METHOD] /api/path
+
+   **Request:**
+   ```json
+   {
+     "field": "value"
+   }
+   ```
+
+   **Response (200):**
+   ```json
+   {
+     "result": "success"
+   }
+   ```
+
+   **Response (400):**
+   ```json
+   {
+     "error": "message"
+   }
+   ```
+
+   ### Data Models
+
+   #### Model: EntityName
+   | Field | Type | Constraints | Description |
+   |-------|------|-------------|-------------|
+   | id | UUID | Required, PK | Unique identifier |
+   | field | String | Required | Description |
+
+   ### Business Rules
+
+   1. Rule description
+   2. Validation logic
+   3. Calculation formulas
+
+   ### Dependencies
+
+   - External service: Purpose
+   - Database: Requirements
+   ```
+
+   **Section 4: UI Specification (if applicable)**
+   ```markdown
+   ## UI Specification
+
+   ### Components
+
+   #### Component: ComponentName
+   **Type:** [Form|Table|Modal|Card]
+   **Purpose:** Description
+   **Data Bindings:** Fields bound to state
+
+   ### Layout Mockup
+
+   ```
+   [ASCII mockup]
+   ```
+
+   ### Component Interface
+
+   ```typescript
+   interface ComponentProps {
+     // props
+   }
+   ```
+
+   ### User Interactions
+
+   1. Step-by-step flow
+   2. State changes
+   3. Navigation
+
+   ### Accessibility
+
+   - Keyboard: Tab navigation, Enter/Space actions
+   - Screen reader: aria-label, role attributes
+   - Focus: Visual indicators, focus trap in modals
+   - Contrast: WCAG AA compliant (4.5:1 text, 3:1 UI)
+   ```
+
+   **Section 5: Non-Functional Requirements**
+   ```markdown
+   ## Non-Functional Requirements
+
+   ### Performance
+   - Response time < [X]ms
+   - Throughput: [X] requests/second
+
+   ### Security
+   - Authentication required
+   - Input validation rules
+   - Data encryption
+
+   ### Usability
+   - Intuitive interface
+   - Clear error messages
+   - Help text/tooltips
+
+   ### Scalability
+   - Concurrent users: [X]
+   - Data volume: [X] records
+   ```
+
+   **Section 6: Edge Cases**
+   ```markdown
+   ## Edge Cases & Error Handling
+
+   1. **Case:** Description
+      **Expected:** Behavior
+
+   2. **Case:** Description
+      **Expected:** Behavior
+   ```
+
+   **Section 7: Workflow History**
+   ```markdown
+   ## Workflow History
+
+   - **[YYYY-MM-DD HH:MM]** - Status changed to Backlog
+   ```
+
+3. **Write file to disk**
+   ```
+   Write(
+     file_path="C:\\Projects\\DevForgeAI2\\.ai_docs\\Stories\\{STORY-ID}.story.md",
+     content={constructed-markdown}
+   )
+   ```
+
+4. **Verify file creation**
+   - Use Read to confirm file exists
+   - Validate YAML frontmatter parses correctly
+
+**Output:**
+- Story file created at `devforgeai/specs/Stories/{STORY-ID}.story.md`
+
+---
+
+### Phase 6: Linking & Integration
+
+**Objective:** Link story to epic and sprint
+
+**Steps:**
+
+1. **Update epic file (if associated)**
+   - Read epic file: `devforgeai/specs/Epics/{EPIC-ID}.md`
+   - Use Edit to add story reference to "Stories" section
+   - Format: `- [{STORY-ID}] {Story Title} - {Status} ({Points} points)`
+
+2. **Update sprint file (if associated)**
+   - Read sprint file: `devforgeai/specs/Sprints/{SPRINT-ID}.md`
+   - Use Edit to add story to "Sprint Backlog" section
+   - Update sprint statistics (total points)
+
+3. **Create story directory structure (if needed)**
+   - Ensure `devforgeai/specs/Stories/` exists
+   - Ensure `devforgeai/qa/reports/` exists (for future QA)
+
+**Output:**
+- Epic updated with story reference
+- Sprint updated with story reference
+- Directory structure validated
+
+---
+
+## Success Criteria
+
+- [ ] Story ID generated sequentially (STORY-XXX)
+- [ ] User story follows "As a/I want/So that" format
+- [ ] Minimum 3 acceptance criteria in Given/When/Then format
+- [ ] Technical specification complete (API contracts if applicable)
+- [ ] UI specification included (if UI story)
+- [ ] Non-functional requirements defined
+- [ ] Edge cases documented
+- [ ] File created at `devforgeai/specs/Stories/{STORY-ID}.story.md`
+- [ ] YAML frontmatter valid
+- [ ] Status set to "Backlog"
+- [ ] Epic reference added (if applicable)
+- [ ] Sprint reference added (if applicable)
+- [ ] Workflow history initialized
+
+## Quality Gates
+
+**Gate 1: Requirements Complete**
+- User story clearly states role, feature, benefit
+- Acceptance criteria are testable (no vague terms)
+- Edge cases cover error conditions
+- NFRs are measurable (no "should be fast")
+
+**Gate 2: Technical Specification**
+- API contracts include all CRUD operations
+- Data models have constraints defined
+- Business rules are explicit (no ambiguity)
+- Dependencies listed with purpose
+
+**Gate 3: UI Specification (if applicable)**
+- All interactive elements documented
+- Layout mockup shows component arrangement
+- Accessibility requirements specific (not generic)
+- Interaction flows complete (happy + error paths)
+
+**Gate 4: File Structure**
+- File saved in correct directory
+- YAML frontmatter parsable
+- Markdown syntax valid
+- Links to epic/sprint functional
+
+## Error Handling
+
+**Error 1: No feature description provided**
+- Action: Use AskUserQuestion("Provide feature description")
+- Do not proceed until description provided
+
+**Error 2: Story ID conflict (file exists)**
+- Action: Increment ID and retry
+- Check for gaps in sequence (e.g., STORY-001, STORY-003)
+- Use next available ID
+
+**Error 3: Epic/Sprint not found**
+- Action: Use AskUserQuestion with updated list
+- Option to proceed without epic/sprint association
+
+**Error 4: Subagent output incomplete**
+- Action: Re-invoke subagent with specific prompt
+- Use AskUserQuestion to fill gaps
+- Do not proceed with incomplete specification
+
+**Error 5: UI specification ambiguous**
+- Action: Use AskUserQuestion for clarification
+- Request mockup details, interaction flows
+- Do not use placeholder content (e.g., "TBD")
+
+## Token Efficiency
+
+**Target:** < 40,000 tokens per invocation
+
+**Optimization Strategies:**
+
+1. **Use native tools**
+   - Glob for file discovery (not Bash find)
+   - Read for file content (not cat)
+   - Edit for updates (not sed/awk)
+
+2. **Parallel operations**
+   - Read epic/sprint files simultaneously
+   - Invoke multiple Glob patterns in one call
+
+3. **Subagent focus**
+   - Provide specific prompts to subagents
+   - Request structured output (JSON/YAML)
+   - Avoid open-ended generation
+
+4. **Conditional processing**
+   - Skip API design if no endpoints
+   - Skip UI spec if no interface
+   - Only read context files when needed
+
+5. **Caching**
+   - Load epic/sprint list once
+   - Reuse story template structure
+   - Cache file paths in memory
+
+## Example Output
+
+**File:** `devforgeai/specs/Stories/STORY-042.story.md`
+
+```markdown
+---
+id: STORY-042
+title: User registration with email verification
+epic: EPIC-003
+sprint: SPRINT-005
+status: Backlog
+priority: High
+points: 5
+created: 2025-10-31
+updated: 2025-10-31
+assigned_to: null
+tags: [authentication, security]
+---
+
+## User Story
+
+As a new user,
+I want to register with my email and verify it,
+So that I can access the platform securely and receive important notifications.
+
+## Acceptance Criteria
+
+### AC1: User submits registration form
+**Given** I am on the registration page
+**When** I submit valid email, password, and name
+**Then** I receive a success message and verification email
+
+### AC2: Email verification link
+**Given** I received a verification email
+**When** I click the verification link
+**Then** My account is activated and I am redirected to login
+
+### AC3: Password strength validation
+**Given** I am filling the registration form
+**When** I enter a password
+**Then** Real-time feedback shows strength (weak/medium/strong)
+
+### AC4: Duplicate email handling
+**Given** An account exists with my email
+**When** I try to register with the same email
+**Then** I see an error "Email already registered"
+
+## Technical Specification
+
+### API Contracts
+
+#### Endpoint: POST /api/auth/register
+
+**Request:**
+```json
+{
+  "email": "user@example.com",
+  "password": "SecurePass123!",
+  "name": "John Doe"
+}
+```
+
+**Response (201):**
+```json
+{
+  "user_id": "uuid",
+  "email": "user@example.com",
+  "verification_sent": true,
+  "message": "Verification email sent"
+}
+```
+
+**Response (400):**
+```json
+{
+  "error": "Validation failed",
+  "details": ["Password must be at least 8 characters"]
+}
+```
+
+#### Endpoint: GET /api/auth/verify-email?token={token}
+
+**Response (200):**
+```json
+{
+  "verified": true,
+  "redirect_url": "/login"
+}
+```
+
+**Response (400):**
+```json
+{
+  "error": "Invalid or expired token"
+}
+```
+
+### Data Models
+
+#### Model: User
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| id | UUID | Required, PK | Unique identifier |
+| email | String | Required, Unique, Email format | User email |
+| password_hash | String | Required | Bcrypt hashed password |
+| name | String | Required, 2-100 chars | Full name |
+| verified | Boolean | Default: false | Email verification status |
+| verification_token | String | Nullable | Email verification token |
+| token_expires_at | DateTime | Nullable | Token expiration time |
+| created_at | DateTime | Auto | Account creation timestamp |
+
+### Business Rules
+
+1. Password must be 8+ characters with uppercase, lowercase, number, special char
+2. Verification token expires after 24 hours
+3. Verification email sent asynchronously (background job)
+4. Unverified users cannot log in
+5. Email is case-insensitive (stored lowercase)
+
+### Dependencies
+
+- Email service: SendGrid or SMTP
+- Background job queue: Redis/Bull or similar
+- Password hashing: Bcrypt library
+
+## UI Specification
+
+### Components
+
+#### Component: RegistrationForm
+**Type:** Form
+**Purpose:** Collect user registration details
+**Data Bindings:** email, password, name, passwordStrength
+
+#### Component: PasswordStrengthIndicator
+**Type:** Visual feedback
+**Purpose:** Show real-time password strength
+**Data Bindings:** password (input), strength (computed)
+
+### Layout Mockup
+
+```
++------------------------------------------+
+|           Create Your Account            |
++------------------------------------------+
+| Email Address                            |
+| [ user@example.com                    ]  |
+|                                          |
+| Full Name                                |
+| [ John Doe                            ]  |
+|                                          |
+| Password                                 |
+| [ ••••••••••                          ]  |
+| [####--------] Medium strength           |
+| Must be 8+ chars with uppercase, number  |
+|                                          |
+| [ ] I agree to Terms of Service          |
+|                                          |
+| [        Create Account       ]          |
+|                                          |
+| Already have an account? [Log in]        |
++------------------------------------------+
+```
+
+### Component Interface
+
+```typescript
+interface RegistrationFormProps {
+  onSubmit: (data: RegistrationData) => Promise<void>;
+  isLoading: boolean;
+  error: string | null;
+}
+
+interface RegistrationData {
+  email: string;
+  password: string;
+  name: string;
+  agreedToTerms: boolean;
+}
+
+interface PasswordStrengthIndicatorProps {
+  password: string;
+  onChange?: (strength: 'weak' | 'medium' | 'strong') => void;
+}
+```
+
+### User Interactions
+
+1. User navigates to /register
+2. Form displays with empty fields
+3. User types email → Real-time validation (email format)
+4. User types password → Strength indicator updates
+5. User types name → Validation (2+ chars)
+6. User checks "Terms" checkbox
+7. User clicks "Create Account"
+8. Loading state: Button shows spinner, form disabled
+9. Success: Redirect to /verify-email-sent page
+10. Error: Error message displays above form, form remains editable
+
+### Accessibility
+
+- **Keyboard:** Tab through fields, Enter to submit
+- **Screen reader:**
+  - aria-label="Email address" on email input
+  - aria-describedby="password-requirements" on password field
+  - aria-live="polite" on error messages
+- **Focus:** Blue outline on focused field (3px solid)
+- **Contrast:** Error text #D32F2F on #FFFFFF (7:1 ratio)
+- **Error announcements:** Screen reader announces validation errors
+
+## Non-Functional Requirements
+
+### Performance
+- Registration API response < 200ms (excluding email send)
+- Email delivery within 30 seconds
+- Password strength calculation < 50ms
+
+### Security
+- HTTPS required for registration endpoint
+- Password hashed with Bcrypt (cost factor 10)
+- Verification tokens cryptographically random (32 bytes)
+- Rate limiting: 5 registration attempts per IP per hour
+- CSRF protection enabled
+
+### Usability
+- Clear password requirements shown upfront
+- Real-time validation feedback (not just on submit)
+- Success message confirms email sent
+- Verify-email-sent page includes resend option
+
+### Scalability
+- Support 1,000 concurrent registrations
+- Email queue handles 10,000 messages/hour
+- Database indexes on email (unique) and verification_token
+
+## Edge Cases & Error Handling
+
+1. **Case:** User closes browser before verification
+   **Expected:** Token remains valid for 24 hours, resend option available
+
+2. **Case:** Verification link clicked twice
+   **Expected:** Second click shows "Already verified" message
+
+3. **Case:** Email service is down
+   **Expected:** Registration succeeds, email queued for retry (max 3 attempts)
+
+4. **Case:** Token expired
+   **Expected:** User can request new verification email from login page
+
+5. **Case:** SQL injection attempt in email field
+   **Expected:** Parameterized queries prevent injection, validation rejects
+
+## Workflow History
+
+- **2025-10-31 14:32** - Story created, status: Backlog
+```
+
+---
+
+## Integration with DevForgeAI
+
+**Triggers next:**
+- devforgeai-orchestration (add story to sprint)
+- devforgeai-architecture (if context files missing)
+- devforgeai-development (when status → Ready for Dev)
+
+**Context files used:**
+- None directly (story creation is pre-architecture)
+- Story informs architecture skill if invoked
+
+**Quality validation:**
+- Not validated until development begins
+- devforgeai-qa validates against story acceptance criteria
+
+---
+
+## References
+
+- `.claude/skills/devforgeai-orchestration/SKILL.md` - Workflow states
+- `.claude/skills/devforgeai-orchestration/references/story-management.md` - Story structure
+- `devforgeai/specs/Stories/` - Story storage location
+- `devforgeai/specs/Epics/` - Epic files
+- `devforgeai/specs/Sprints/` - Sprint files
+
+**Token Budget:** < 40,000 tokens
+**Priority:** HIGH
+**Model:** Sonnet (structured reasoning)

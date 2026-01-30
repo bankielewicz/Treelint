@@ -1,0 +1,527 @@
+---
+description: Implement user story using TDD workflow
+argument-hint: [STORY-ID]
+model: opus
+allowed-tools: Read, Skill, Bash(git:*)
+---
+
+# /dev - TDD Development Workflow
+
+Execute full Test-Driven Development cycle for a user story.
+
+---
+
+## Pre-execution Context
+
+**Story File:** @devforgeai/specs/Stories/$1.story.md
+
+**Note:** The `devforgeai-development` skill handles all implementation logic including:
+- Git validation and workflow adaptation (with user consent for operations affecting >10 files - RCA-008)
+- Technology detection and validation
+- Context file validation
+- Complete TDD cycle (Red → Green → Refactor)
+- Three-layer DoD validation
+- QA failure recovery
+- Git commits and story updates
+
+This command is a **thin orchestration layer** that:
+- Phase 0: Shows pre-flight checklist and gets user confirmation
+- Phase 1-2: Validates arguments and invokes skill
+- Phase 3-4: Verifies completion and reports results
+
+**RCA-008 Safeguards:** User consent required before any git operation that hides/modifies files. See Critical Rule #11 in CLAUDE.md.
+
+---
+
+## Workflow
+
+### Phase 0: Pre-Flight Checklist (RCA-008)
+
+**Display brief checklist and get user confirmation before proceeding.**
+
+```
+Display: ""
+Display: "📋 Pre-Flight Checklist for /dev $1"
+Display: ""
+Display: "Prerequisites to be checked:"
+Display: "  • Git repository status"
+Display: "  • Context files (devforgeai/specs/context/)"
+Display: "  • Story file existence"
+Display: "  • Working tree cleanliness"
+Display: ""
+Display: "⚠️  Important: If uncommitted changes detected, you'll be asked"
+Display: "    how to handle them (commit, stash, or continue)."
+Display: ""
+Display: "All files stay visible unless you explicitly choose to stash."
+Display: ""
+
+AskUserQuestion(
+    questions=[{
+        question: "Ready to proceed with development workflow?",
+        header: "Start Dev",
+        multiSelect: false,
+        options: [
+            {
+                label: "Yes, proceed",
+                description: "Start TDD workflow. I'll be asked about uncommitted changes if any exist."
+            },
+            {
+                label: "Show git status first",
+                description: "Review uncommitted changes before deciding."
+            },
+            {
+                label: "Cancel",
+                description: "Exit. I'll prepare manually before re-running /dev."
+            }
+        ]
+    }]
+)
+
+IF user selects "Show git status first":
+    Display: ""
+    Bash(command="git status", description="Show git status")
+    Display: ""
+
+    # Ask again
+    AskUserQuestion(
+        questions=[{
+            question: "Proceed with /dev $1?",
+            header: "Start Dev",
+            options: [
+                {label: "Yes, proceed", description: "Start workflow."},
+                {label: "Cancel", description: "Exit and prepare manually."}
+            ]
+        }]
+    )
+
+IF user selects "Cancel":
+    Display: "Development cancelled."
+    HALT execution
+    Exit command
+
+# Otherwise continue to Phase 1
+Display: "✅ Proceeding to argument validation..."
+Display: ""
+```
+
+---
+
+### Phase 1: Argument Validation
+
+#### Step 1.1: Validate Story ID Format
+
+**Extract story ID from argument:**
+```
+STORY_ID = $1
+```
+
+**Validate format:**
+```
+IF $1 is empty OR does NOT match pattern "STORY-[0-9]+":
+    Display: "❌ ERROR: Invalid story ID format"
+    Display: ""
+    Display: "Expected: STORY-NNN (e.g., STORY-001, STORY-042)"
+    Display: "Received: '$1'"
+    Display: ""
+    Display: "Usage: /dev [STORY-ID]"
+    Display: ""
+    Display: "Examples:"
+    Display: "  /dev STORY-001"
+    Display: "  /dev STORY-042"
+    Display: ""
+    Display: "To list available stories:"
+    Display: "  /orchestrate list-stories"
+
+    HALT execution
+    Exit command
+```
+
+---
+
+#### Step 1.2: Validate Story File Exists
+
+**Check if story file exists:**
+```
+Glob(pattern="devforgeai/specs/Stories/${STORY_ID}*.story.md")
+
+IF no matches found:
+    Display: "❌ ERROR: Story file not found"
+    Display: ""
+    Display: "Looking for: devforgeai/specs/Stories/${STORY_ID}*.story.md"
+    Display: ""
+    Display: "Available stories:"
+
+    # List all stories
+    Glob(pattern="devforgeai/specs/Stories/*.story.md")
+    Display: "{list each found story}"
+
+    Display: ""
+    Display: "To create this story:"
+    Display: "  /create-story [description]"
+
+    HALT execution
+    Exit command
+
+ELIF multiple matches found:
+    Display: "⚠️ WARNING: Multiple files match '${STORY_ID}'"
+    Display: ""
+    Display: "Matches found:"
+    FOR each matched_file in matches:
+        Display: "  - {matched_file}"
+
+    Display: ""
+    Display: "Using first match: {matches[0]}"
+    Display: ""
+
+    STORY_FILE = matches[0]
+
+ELSE:
+    # Single match (expected case)
+    STORY_FILE = matches[0]
+    Display: "✓ Story file loaded: {STORY_FILE}"
+```
+
+---
+
+#### Step 1.3: Validate Story Status
+
+**Read story file to check status:**
+```
+# Story already loaded via @file reference above
+# Extract YAML frontmatter from loaded story content
+
+Look for YAML frontmatter in conversation:
+  ---
+  id: STORY-XXX
+  status: [current-status]
+  ---
+
+Extract: status field
+```
+
+**Check if status allows development:**
+```
+ALLOWED_STATUSES = ["Backlog", "Ready for Dev", "In Development", "Dev Complete", "QA Failed"]
+
+IF status NOT IN ALLOWED_STATUSES:
+    Display: "❌ ERROR: Story status does not allow development"
+    Display: ""
+    Display: "Story ID: ${STORY_ID}"
+    Display: "Current status: {status}"
+    Display: ""
+    Display: "Development allowed for statuses:"
+    Display: "  - Backlog (new work)"
+    Display: "  - Ready for Dev (approved for development)"
+    Display: "  - In Development (continue existing work)"
+    Display: "  - Dev Complete (refinement or bug fix)"
+    Display: "  - QA Failed (fix QA issues)"
+    Display: ""
+    Display: "To check story workflow state:"
+    Display: "  /orchestrate status ${STORY_ID}"
+
+    HALT execution
+    Exit command
+
+ELSE:
+    Display: "✓ Story status: {status} (development allowed)"
+```
+
+---
+
+### Phase 2: Set Context and Invoke Skill
+
+#### Step 2.1: Set Context Markers
+
+**Provide context for skill (Skills extract info from conversation):**
+
+```
+Display: ""
+Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+Display: "  DevForgeAI Development Workflow"
+Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+Display: ""
+Display: "**Story ID:** ${STORY_ID}"
+Display: "**Story File:** {STORY_FILE}"
+Display: "**Current Status:** {status}"
+Display: ""
+Display: "Delegating to devforgeai-development skill..."
+Display: ""
+```
+
+---
+
+#### Step 2.2: Invoke Development Skill
+
+**Invoke skill and execute its expanded instructions:**
+
+```
+Skill(command="devforgeai-development")
+```
+
+**After skill invocation:**
+- Skill's SKILL.md content expands inline in conversation
+- **YOU execute the skill's workflow phases** (not waiting for external result)
+- Follow the skill's instructions phase by phase
+- Produce output as skill instructs
+
+**The skill instructs you to:**
+1. Extract story ID from conversation context (YAML frontmatter or explicit marker)
+2. Execute Phase 0 (Pre-Flight Validation):
+   - Validate Git status (git-validator subagent)
+   - Validate context files (6 required files)
+   - Validate story specification
+   - Detect and validate technology stack (tech-stack-detector subagent)
+   - Check for previous QA failures
+3. Execute TDD Cycle (Phases 1-4):
+   - Phase 1 (Red): Write failing tests
+   - Phase 2 (Green): Implement code to pass tests
+   - Phase 3 (Refactor): Improve code quality
+   - Phase 4 (Integration): Run full test suite
+4. Execute Git Workflow or File-Based Tracking (Phase 5):
+   - Three-layer DoD validation (Python validator + User interaction + AI subagent)
+   - Create git commit OR file-based change manifest
+   - Update story status to "Dev Complete"
+5. **Execute Phase 6: Invoke Feedback Hook (NEW - STORY-023)**
+   - Determine STATUS based on Phase 5 outcome (completed/failed)
+   - Call: `devforgeai check-hooks --operation=dev --status=$STATUS`
+   - If exit code 0: Call: `devforgeai invoke-hooks --operation=dev --story=$STORY_ID`
+   - Hook failures are non-blocking (|| true prevents errors)
+   - Optional feedback conversation triggered if hooks configured
+6. Handle any failures gracefully with clear error messages
+
+---
+
+### Phase 2.3: Phase 6 Implementation (NEW - STORY-023)
+
+**Where Phase 6 executes:**
+
+The actual Phase 6 hook integration code is added to the `devforgeai-development` skill (not this command). This command documents it for transparency.
+
+**Phase 6 Code (in skill, after Phase 5 completion):**
+
+```bash
+### Phase 6: Invoke Feedback Hook
+
+# Determine status based on command outcome
+if [ "$TESTS_PASSED" = "true" ]; then
+  STATUS="completed"
+else
+  STATUS="failed"
+fi
+
+# Check if hooks should trigger (respects configuration)
+devforgeai check-hooks --operation=dev --status=$STATUS
+if [ $? -eq 0 ]; then
+  # Invoke feedback hook (errors logged, not thrown)
+  devforgeai invoke-hooks --operation=dev --story=$STORY_ID || {
+    echo "⚠️ Feedback hook failed, continuing..."
+  }
+fi
+
+# Phase 6 complete - /dev continues successfully regardless of hook outcome
+```
+
+**Key Characteristics:**
+- **Non-blocking:** Hook failures don't break /dev command
+- **Configuration-aware:** Respects hooks.yaml (enabled/disabled, trigger_on mode)
+- **Optional feedback:** User may see context-aware retrospective questions
+- **Persistent:** User responses saved to devforgeai/feedback/sessions/
+- **Lightweight:** <5 second overhead per CLI test invocation
+
+**Test Coverage:**
+- 18 integration tests (pytest + Bash harness)
+- All 7 acceptance criteria covered
+- Performance baseline validated (<5s)
+- Edge cases tested (timeout, circular invocation, failures)
+
+**See Also:**
+- `STORY-023-wire-hooks-into-dev-command-pilot.story.md` (full requirements)
+- `.claude/skills/devforgeai-development/SKILL.md` (Phase 6 implementation)
+- `tests/integration/test_phase6_hooks_integration.py` (test suite)
+
+---
+
+### Phase 3: Verify Completion
+
+**After skill completes, verify results:**
+
+#### Step 3.1: Check Story Status Updated
+
+```
+Read(file_path="{STORY_FILE}")
+
+# Extract status from YAML frontmatter
+Look for:
+  status: [new-status]
+
+IF status == "Dev Complete":
+    DEVELOPMENT_SUCCEEDED = true
+    Display: ""
+    Display: "✅ Development workflow completed successfully"
+    Display: ""
+
+ELIF status == "In Development":
+    # Skill may have halted due to blocking issue
+    DEVELOPMENT_INCOMPLETE = true
+    Display: ""
+    Display: "⚠️ Development workflow incomplete"
+    Display: ""
+    Display: "Story status: In Development (not yet complete)"
+    Display: "Review skill output above for details on why development halted."
+
+ELSE:
+    # Unexpected status
+    DEVELOPMENT_FAILED = true
+    Display: ""
+    Display: "❌ Development workflow may have failed"
+    Display: ""
+    Display: "Story status: {status} (expected 'Dev Complete')"
+    Display: "Review skill output above for errors."
+```
+
+---
+
+#### Step 3.2: Verify Tests Passing (Optional Check)
+
+**This step is optional - the skill already validated tests.**
+
+**If you want to double-check:**
+```
+# Extract TEST_COMMAND from story Implementation Notes
+# (skill documented this in the story file)
+
+Read(file_path="{STORY_FILE}")
+
+Look for "Test command:" in Implementation Notes section
+Extract: command
+
+IF command found:
+    Display: "Running final test verification..."
+    Bash(command="{command}")
+
+    IF tests pass:
+        Display: "✓ Tests verified passing"
+    ELSE:
+        Display: "⚠️ Tests failing (unexpected - skill should have caught this)"
+ELSE:
+    # Can't determine test command, skip check
+    Display: "Test verification skipped (command not found in story)"
+```
+
+**Note:** This step is rarely needed. The skill already validates tests pass before marking story complete.
+
+---
+
+### Phase 4: Report Results
+
+#### Success Report
+
+**IF DEVELOPMENT_SUCCEEDED:**
+
+```
+Display: ""
+Display: "╔═══════════════════════════════════════════════════════════════╗"
+Display: "║                 DEVELOPMENT COMPLETE ✅                       ║"
+Display: "╚═══════════════════════════════════════════════════════════════╝"
+Display: ""
+Display: "Story: ${STORY_ID}"
+Display: "Status: Dev Complete"
+Display: ""
+Display: "Completed Phases:"
+Display: "  ✅ Phase 0: Pre-Flight Validation"
+Display: "  ✅ Phase 1: Test-First Design (Red)"
+Display: "  ✅ Phase 2: Implementation (Green)"
+Display: "  ✅ Phase 3: Refactoring"
+Display: "  ✅ Phase 4: Integration Testing"
+Display: "  ✅ Phase 5: Git Workflow / Change Tracking"
+Display: ""
+Display: "Next Steps:"
+Display: ""
+Display: "  1. Run QA validation:"
+Display: "     /qa ${STORY_ID}"
+Display: ""
+Display: "  2. Or run full orchestration (dev → qa → release):"
+Display: "     /orchestrate ${STORY_ID}"
+Display: ""
+Display: "  3. Review implementation:"
+Display: "     Read story file for Implementation Notes section"
+Display: ""
+
+IF CAN_COMMIT == true:
+    Display: "  4. Review git changes:"
+    Display: "     git log -1"
+    Display: "     git show HEAD"
+    Display: ""
+
+Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+```
+
+---
+
+#### Incomplete Report
+
+**IF DEVELOPMENT_INCOMPLETE:**
+
+```
+Display: ""
+Display: "╔═══════════════════════════════════════════════════════════════╗"
+Display: "║              DEVELOPMENT INCOMPLETE ⚠️                        ║"
+Display: "╚═══════════════════════════════════════════════════════════════╝"
+Display: ""
+Display: "Story: ${STORY_ID}"
+Display: "Status: In Development (not complete)"
+Display: ""
+Display: "The workflow was halted before completion."
+Display: "Review skill output above for the blocking issue."
+Display: ""
+Display: "Common reasons:"
+Display: "  • Context files missing → Run /create-context"
+Display: "  • Technology conflicts → Resolve via skill guidance"
+Display: "  • Test failures → Review and fix"
+Display: "  • User intervention required → Answer AskUserQuestion prompts"
+Display: ""
+Display: "Fix issue and re-run: /dev ${STORY_ID}"
+Display: ""
+Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+```
+
+---
+
+#### Failure Report
+
+**IF DEVELOPMENT_FAILED:**
+
+```
+Display: ""
+Display: "╔═══════════════════════════════════════════════════════════════╗"
+Display: "║               DEVELOPMENT FAILED ❌                           ║"
+Display: "╚═══════════════════════════════════════════════════════════════╝"
+Display: ""
+Display: "Story: ${STORY_ID}"
+Display: "Current Status: {status}"
+Display: ""
+Display: "The development workflow encountered an error."
+Display: "Review the skill output above for detailed error information."
+Display: ""
+Display: "Common Issues:"
+Display: "  • Context files missing → Run /create-context"
+Display: "  • Tests failing → Review output, fix tests, re-run"
+Display: "  • Technology conflicts → Resolve via tech-stack.md"
+Display: "  • Git issues → Initialize or use file-based workflow"
+Display: "  • Deferral blocked → Complete work or create follow-ups"
+Display: ""
+Display: "Fix issue and re-run: /dev ${STORY_ID}"
+Display: ""
+Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+```
+
+---
+
+[//]: # (For architecture details, token optimization metrics, and design rationale, see .claude/memory/commands-reference.md)
+
+---
+
+**Token Budget:** <5,000 tokens
+**Priority:** CRITICAL
+**Model:** sonnet (can handle complex skill orchestration)
+**Status:** Production Ready (Refactored from 860 → ~250 lines)

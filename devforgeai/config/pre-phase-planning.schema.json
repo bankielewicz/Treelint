@@ -1,0 +1,161 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Pre-Phase Planning Configuration Schema",
+  "description": "Schema for DevForgeAI pre-phase planning configuration (YAML-based). Validates configuration for optional planning steps before TDD phases.",
+  "type": "object",
+  "properties": {
+    "enabled": {
+      "type": "boolean",
+      "description": "Master enable/disable switch for pre-phase planning",
+      "default": true
+    },
+    "defaults": {
+      "type": "object",
+      "description": "Default settings for all pre-phases",
+      "properties": {
+        "model": {
+          "type": "string",
+          "enum": ["haiku", "sonnet", "opus"],
+          "description": "Model to use for pre-phase planning",
+          "default": "haiku"
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "minimum": 10000,
+          "maximum": 300000,
+          "description": "Maximum time allowed for pre-phase execution (milliseconds)",
+          "default": 60000
+        },
+        "output_format": {
+          "type": "string",
+          "enum": ["json", "yaml", "markdown"],
+          "description": "Output format for pre-phase artifacts",
+          "default": "json"
+        },
+        "storage_path": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9/_-]+/$",
+          "description": "Storage path for pre-phase outputs (relative to project root, must end with /)",
+          "default": "devforgeai/feedback/ai-analysis/"
+        }
+      },
+      "additionalProperties": false,
+      "default": {
+        "model": "haiku",
+        "timeout_ms": 60000,
+        "output_format": "json",
+        "storage_path": "devforgeai/feedback/ai-analysis/"
+      }
+    },
+    "phases": {
+      "type": "object",
+      "description": "Per-phase configuration",
+      "properties": {
+        "02": {
+          "$ref": "#/definitions/phaseConfig",
+          "description": "Pre-Phase 02: API Specification Planning"
+        },
+        "03": {
+          "$ref": "#/definitions/phaseConfig",
+          "description": "Pre-Phase 03: Implementation Planning"
+        },
+        "04": {
+          "$ref": "#/definitions/phaseConfig",
+          "description": "Pre-Phase 04: Refactoring Planning"
+        },
+        "05": {
+          "$ref": "#/definitions/phaseConfig",
+          "description": "Pre-Phase 05: Integration Planning"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "definitions": {
+    "phaseConfig": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether this pre-phase is enabled",
+          "default": false
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Human-readable description of the pre-phase purpose"
+        },
+        "phase_file": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9/_.-]+\\.md$",
+          "description": "Path to the pre-phase workflow file"
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of inputs this pre-phase reads from prior phases"
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of outputs this pre-phase produces"
+        },
+        "output_file": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9/_.-]+\\.json$",
+          "description": "Filename for the pre-phase output (stored in storage_path/{STORY_ID}/)"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "required": [],
+  "default": {
+    "enabled": true,
+    "defaults": {
+      "model": "haiku",
+      "timeout_ms": 60000,
+      "output_format": "json",
+      "storage_path": "devforgeai/feedback/ai-analysis/"
+    },
+    "phases": {
+      "02": {
+        "enabled": false,
+        "description": "Create API specification before test generation",
+        "phase_file": ".claude/skills/devforgeai-development/phases/pre-02-planning.md",
+        "inputs": [],
+        "outputs": ["api_contract", "test_patterns"],
+        "output_file": "pre-02-api-spec.json"
+      },
+      "03": {
+        "enabled": false,
+        "description": "Create implementation plan from API spec and test observations",
+        "phase_file": ".claude/skills/devforgeai-development/phases/pre-03-planning.md",
+        "inputs": ["api_contract", "phase_02_observations"],
+        "outputs": ["implementation_guidance"],
+        "output_file": "pre-03-impl-plan.json"
+      },
+      "04": {
+        "enabled": false,
+        "description": "Create refactoring plan from implementation observations",
+        "phase_file": ".claude/skills/devforgeai-development/phases/pre-04-planning.md",
+        "inputs": ["phase_03_observations"],
+        "outputs": ["refactoring_targets"],
+        "output_file": "pre-04-refactor-plan.json"
+      },
+      "05": {
+        "enabled": false,
+        "description": "Create integration test plan from refactoring observations",
+        "phase_file": ".claude/skills/devforgeai-development/phases/pre-05-planning.md",
+        "inputs": ["phase_04_observations"],
+        "outputs": ["integration_scope"],
+        "output_file": "pre-05-integration-plan.json"
+      }
+    }
+  }
+}

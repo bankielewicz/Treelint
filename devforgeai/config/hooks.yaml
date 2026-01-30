@@ -224,6 +224,174 @@ hooks:
       purpose: "Systematize manual post-workflow architectural advice prompts"
 
 # ============================================================================
+# Context Preservation Hooks (STORY-300 / EPIC-049)
+# ============================================================================
+
+  # Pre-Epic-Create Context Validation
+  # Triggers before /create-epic to validate brainstorm and extract context
+  - id: pre-epic-create
+    name: "Pre-Epic-Create Context Validation"
+    operation_type: command
+    operation_pattern: "^create-epic$"
+    trigger_status: [success]
+    trigger_conditions:
+      phase: pre  # Triggers before epic creation
+      user_approval_required: false  # Automatic - context extraction
+    feedback_type: context_validation
+    feedback_config:
+      mode: "pre-creation"
+      extract_fields: ["problem_statement", "stakeholder_goals", "hypotheses"]
+      generate_provenance: true
+    script: src/claude/hooks/pre-epic-create.sh
+    exit_codes:
+      0: proceed  # Brainstorm validated OR greenfield mode
+      1: warn     # Brainstorm issues (non-blocking per BR-001)
+      2: halt     # Critical error
+    max_duration_ms: 10000
+    enabled: true
+    tags: [epic, context-preservation, epic-049, story-300]
+    metadata:
+      story_id: "STORY-300"
+      epic_id: "EPIC-049"
+      implementation_date: "2026-01-23"
+      components: ["COMP-001", "COMP-002"]
+      description: "Validate brainstorm file and extract context for provenance population"
+
+  # Post-Epic-Create Linkage Validation
+  # Triggers after /create-epic to validate epic-to-brainstorm linkage
+  - id: post-epic-create
+    name: "Post-Epic-Create Linkage Validation"
+    operation_type: command
+    operation_pattern: "^create-epic$"
+    trigger_status: [success]
+    trigger_conditions:
+      phase: post  # Triggers after epic creation
+      user_approval_required: false  # Automatic - non-blocking validation
+    feedback_type: context_validation
+    feedback_config:
+      mode: "post-creation"
+      validate_linkage: true
+      invoke_subagent: "context-preservation-validator"
+    script: src/claude/hooks/post-epic-create.sh
+    exit_codes:
+      0: proceed  # Validation passed OR greenfield mode
+      1: warn     # Validation issues (non-blocking per BR-002)
+    max_duration_ms: 15000
+    enabled: true
+    tags: [epic, context-preservation, epic-049, story-300]
+    metadata:
+      story_id: "STORY-300"
+      epic_id: "EPIC-049"
+      implementation_date: "2026-01-23"
+      components: ["COMP-003"]
+      description: "Invoke context-preservation-validator to validate epic-to-brainstorm linkage"
+
+# ============================================================================
+# Context Preservation Hooks - Story Creation (STORY-302 / EPIC-049)
+# ============================================================================
+
+  # Pre-Story-Create Context Validation
+  # Triggers before /create-story to validate epic and extract context
+  - id: pre-story-create
+    name: "Pre-Story-Create Context Validation"
+    operation_type: command
+    operation_pattern: "^create-story$"
+    trigger_status: [success]
+    trigger_conditions:
+      phase: pre  # Triggers before story creation
+      user_approval_required: false  # Automatic - context extraction
+    feedback_type: context_validation
+    feedback_config:
+      mode: "pre-creation"
+      extract_fields: ["business_goal", "success_metrics", "feature_description", "stakeholder_goals", "hypotheses", "problem_statement"]
+      generate_provenance: true
+      chain_traversal: true  # epic -> brainstorm chain
+      max_chain_depth: 5  # BR-004
+    script: src/claude/hooks/pre-story-create.sh
+    exit_codes:
+      0: proceed  # Epic validated OR greenfield mode
+      1: warn     # Epic issues (non-blocking per BR-001)
+    max_duration_ms: 10000
+    enabled: true
+    tags: [story, context-preservation, epic-049, story-302]
+    metadata:
+      story_id: "STORY-302"
+      epic_id: "EPIC-049"
+      implementation_date: "2026-01-23"
+      components: ["COMP-001", "COMP-002", "COMP-003", "COMP-005"]
+      description: "Validate epic file and extract context for story provenance population"
+
+  # Post-Story-Create Linkage Validation
+  # Triggers after /create-story to validate story-to-epic-to-brainstorm linkage
+  - id: post-story-create
+    name: "Post-Story-Create Linkage Validation"
+    operation_type: command
+    operation_pattern: "^create-story$"
+    trigger_status: [success]
+    trigger_conditions:
+      phase: post  # Triggers after story creation
+      user_approval_required: false  # Automatic - non-blocking validation
+      batch_mode: true  # COMP-007: Support batch mode deferral
+    feedback_type: context_validation
+    feedback_config:
+      mode: "post-creation"
+      validate_linkage: true
+      invoke_subagent: "context-preservation-validator"
+      chain_status_values: ["intact", "partial", "broken", "greenfield"]
+      aggregate_batch: true  # COMP-007: Single validation call for batch
+    script: src/claude/hooks/post-story-create.sh
+    exit_codes:
+      0: proceed  # Validation passed OR greenfield mode
+      1: warn     # Validation issues (non-blocking per BR-002)
+    max_duration_ms: 15000
+    enabled: true
+    tags: [story, context-preservation, epic-049, story-302]
+    metadata:
+      story_id: "STORY-302"
+      epic_id: "EPIC-049"
+      implementation_date: "2026-01-23"
+      components: ["COMP-004", "COMP-007"]
+      description: "Invoke context-preservation-validator to validate story-to-epic-to-brainstorm linkage"
+
+# ============================================================================
+# Technical Debt Detection Hooks (STORY-287 / EPIC-048)
+# ============================================================================
+
+  # Post-QA Technical Debt Detection
+  # Triggers after /qa Phase 3 to detect AC verification gaps
+  - id: post-qa-debt-detection
+    name: "Post-QA Technical Debt Detection"
+    operation_type: command
+    operation_pattern: "^qa$"
+    trigger_status: [success, partial]
+    trigger_conditions:
+      phase: 3  # Only during Phase 3 (Report Generation)
+      user_approval_required: true  # Single batch prompt for all gaps
+    feedback_type: debt_detection
+    feedback_config:
+      mode: "batch"  # Single prompt for all gaps (BR-002)
+      status_filter: ["PARTIAL", "NOT_IMPLEMENTED"]  # BR-001
+      priority_mapping:
+        NOT_IMPLEMENTED: "High"
+        PARTIAL: "Medium"
+      max_display_gaps: 10  # COMP-003: Overflow handling
+      source_tag: "qa_discovery"  # COMP-005: Hardcoded source
+    script: src/claude/hooks/post-qa-debt-detection.sh
+    exit_codes:
+      0: proceed  # No gaps or user declined
+      1: warn     # Gaps added to register
+      2: halt     # Error (malformed YAML, write failure)
+    max_duration_ms: 30000
+    enabled: true
+    tags: [qa, debt-detection, epic-048, story-287]
+    metadata:
+      story_id: "STORY-287"
+      epic_id: "EPIC-048"
+      implementation_date: "2026-01-20"
+      components: ["COMP-001", "COMP-002", "COMP-003", "COMP-004", "COMP-005", "COMP-006"]
+      description: "Detect AC verification gaps and prompt for technical debt register addition"
+
+# ============================================================================
 # Post Tool Call Hooks (STORY-151)
 # ============================================================================
 

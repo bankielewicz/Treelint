@@ -432,8 +432,8 @@ Load these on-demand during workflow execution.
 - **rollback-procedures.md** (178 lines) - Rollback execution procedures and recovery strategies
 - **smoke-testing-guide.md** (389 lines) - Post-deployment test procedures and validation
 
-**Total: 20 reference files, ~5,400 lines of comprehensive deployment guidance.**
-- 14 workflow files (phases 0.1-0.3 + phase 0.5 + phases 1-6 + 2 hook phases + 1 parallel pattern)
+**Total: 19 reference files, ~5,200 lines of comprehensive deployment guidance.**
+- 13 workflow files (phases 0.1-0.2 + phases 1-6 + 2 hook phases + 1 parallel pattern)
 - 6 guide files (strategies, monitoring, platforms, checklists, rollback, smoke testing)
 
 **Progressive loading ensures only needed references consume tokens during execution.**

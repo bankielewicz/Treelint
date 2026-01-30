@@ -8,14 +8,14 @@ description: |
   hooks/automation, CI/CD integration, troubleshooting issues, or any Claude Code
   Terminal questions. Provides authoritative guidance on all terminal features
   including the Agent Skills specification for creating compliant skills.
-model: claude-model: opus-4-5-20251001
+model: claude-opus-4-5-20251101
 license: MIT
-compatibility: "Claude Code v2.0+ (tested on v2.1.12)"
+compatibility: "Claude Code v2.1.x (tested on v2.1.23)"
 metadata:
   author: DevForgeAI
-  version: "3.0.0"
+  version: "3.1.0"
   category: knowledge-infrastructure
-  last-updated: "2026-01-17"
+  last-updated: "2026-01-29"
   agent-skills-spec-version: "1.0"
   topics:
     - subagents
@@ -27,7 +27,14 @@ metadata:
     - configuration
     - ci-cd
     - agent-skills-specification
-allowed-tools: Read Grep Glob WebFetch WebSearch
+    - task-management
+    - keybindings
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - WebFetch
+  - WebSearch
 ---
 
 # Claude Code Terminal Expert
@@ -637,6 +644,19 @@ Read(file_path=".claude/skills/claude-code-terminal-expert/assets/comparison-mat
 
 ---
 
+## Success Criteria
+
+This skill succeeds when:
+
+- [ ] User question correctly categorized (feature discovery, configuration, integration, troubleshooting)
+- [ ] Appropriate reference file(s) loaded based on question category
+- [ ] Response includes authoritative documentation references
+- [ ] Code examples from reference files provided when applicable
+- [ ] Related topics suggested for follow-up exploration
+- [ ] Token efficiency maintained (<3K discovery + <5K per reference)
+
+---
+
 ## Maintenance Protocol
 
 **Quarterly Review (Every 3 months):**
@@ -652,6 +672,7 @@ Read(file_path=".claude/skills/claude-code-terminal-expert/assets/comparison-mat
 4. Confirm update with user
 
 **Version History:**
+- v3.1 (2026-01-29): Claude Code 2.1.23 update - task management system (2.1.16), customizable keybindings (2.1.18), history-based autocomplete (2.1.14), PR review status (2.1.20), --add-dir flag, spinnerVerbs setting, indexed argument syntax change ($ARGUMENTS[0]), Success Criteria section added
 - v3.0 (2026-01-18): Agent Skills Specification compliance - updated YAML frontmatter, new agent-skills-spec.md reference, DevForgeAI integration sections
 - v2.0 (2025-12-20): Major update with December 2025 features - background tasks, checkpoints, sessions, Opus 4.5, model switching, remote MCP, plugins enhancement
 - v1.1 (2025-12-09): Added rules system, new CLI flags, hook events, subagent enhancements, DevForgeAI integration

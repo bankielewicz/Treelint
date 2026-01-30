@@ -1108,6 +1108,57 @@ observations:
 
 ---
 
+## Observation Capture (MANDATORY - Final Step)
+
+**IMPORTANT: This subagent is READ-ONLY and cannot write files directly.**
+
+Instead of writing to disk, include observations in your response JSON for the orchestrator to persist.
+
+### Step 1: Construct Observation JSON
+
+Include observations in your verification result:
+
+```json
+{
+  "story_id": "STORY-XXX",
+  "verification_timestamp": "...",
+  "results": { ... },
+  "observations_for_persistence": {
+    "subagent": "ac-compliance-verifier",
+    "phase": "${PHASE_NUMBER}",
+    "story_id": "${STORY_ID}",
+    "timestamp": "${START_TIMESTAMP}",
+    "duration_ms": ${EXECUTION_TIME},
+    "observations": [
+      {
+        "id": "obs-${PHASE}-001",
+        "category": "friction|success|pattern|gap|idea|bug|warning",
+        "note": "Description (max 200 chars)",
+        "severity": "low|medium|high",
+        "files": ["optional/paths.md"]
+      }
+    ],
+    "metadata": {
+      "version": "1.0",
+      "write_timestamp": "${WRITE_TIMESTAMP}"
+    }
+  }
+}
+```
+
+### Step 2: Return in Response
+
+The orchestrator (Phase 4.5/5.5) will extract `observations_for_persistence` and write to:
+```
+devforgeai/feedback/ai-analysis/${STORY_ID}/phase-${PHASE}-ac-compliance-verifier.json
+```
+
+**Note:** This design preserves the read-only principle while enabling observation capture.
+
+**Protocol Reference:** `.claude/skills/devforgeai-development/references/observation-write-protocol.md`
+
+---
+
 **Version:** 1.4
 **Created:** 2026-01-19
 **Updated:** 2026-01-26

@@ -1,0 +1,154 @@
+# DevForgeAI Pre-Phase Planning Configuration
+# Version: 1.0
+# Documentation: devforgeai/config/README.md
+# Schema: devforgeai/config/pre-phase-planning.schema.json
+#
+# Purpose: Configure optional pre-phase planning steps that execute before
+# main TDD phases (02-05) to create specifications and plans that guide
+# implementation. Pre-phases enable course correction based on observations
+# from previous phases.
+#
+# Key Features:
+# - Disabled by default (manual enable only, no auto-enable)
+# - Per-phase granular control
+# - Story-level frontmatter override support
+# - Immediate disk-write for crash resilience
+#
+# STORY: STORY-FEEDBACK-001
+# Implementation Date: 2026-01-29
+
+# Master enable/disable switch for pre-phase planning
+# When false, no pre-phase planning steps execute regardless of per-phase settings
+enabled: true
+
+# Default settings for all pre-phases
+defaults:
+  # Model to use for pre-phase planning (lighter model for speed/cost)
+  model: haiku
+
+  # Maximum time allowed for pre-phase execution (milliseconds)
+  timeout_ms: 60000
+
+  # Output format for pre-phase artifacts
+  output_format: json
+
+  # Storage path for pre-phase outputs (relative to project root)
+  storage_path: "devforgeai/feedback/ai-analysis/"
+
+# Per-phase configuration
+# Each phase can be independently enabled/disabled
+phases:
+  # Pre-Phase 02: API Specification Planning
+  # Executes before Phase 02 (Test-First / Red)
+  # Creates API specification to guide test generation
+  "02":
+    enabled: false  # Default disabled - enable explicitly
+    description: "Create API specification before test generation"
+    phase_file: ".claude/skills/devforgeai-development/phases/pre-02-planning.md"
+    inputs: []  # No prior phases
+    outputs:
+      - api_contract    # Types, methods, errors
+      - test_patterns   # Recommended test types
+    output_file: "pre-02-api-spec.json"
+
+  # Pre-Phase 03: Implementation Planning
+  # Executes before Phase 03 (Implementation / Green)
+  # Creates implementation plan from API spec and Phase 02 observations
+  "03":
+    enabled: false  # Default disabled - enable explicitly
+    description: "Create implementation plan from API spec and test observations"
+    phase_file: ".claude/skills/devforgeai-development/phases/pre-03-planning.md"
+    inputs:
+      - api_contract        # From pre-02 (if exists)
+      - phase_02_observations  # From test-automator
+    outputs:
+      - implementation_guidance  # Files to create, patterns to follow
+    output_file: "pre-03-impl-plan.json"
+
+  # Pre-Phase 04: Refactoring Planning
+  # Executes before Phase 04 (Refactor)
+  # Creates refactoring plan from Phase 03 observations
+  "04":
+    enabled: false  # Default disabled - enable explicitly
+    description: "Create refactoring plan from implementation observations"
+    phase_file: ".claude/skills/devforgeai-development/phases/pre-04-planning.md"
+    inputs:
+      - phase_03_observations  # From backend-architect
+    outputs:
+      - refactoring_targets  # Code smells, complexity issues
+    output_file: "pre-04-refactor-plan.json"
+
+  # Pre-Phase 05: Integration Planning
+  # Executes before Phase 05 (Integration)
+  # Creates integration test plan from Phase 04 observations
+  "05":
+    enabled: false  # Default disabled - enable explicitly
+    description: "Create integration test plan from refactoring observations"
+    phase_file: ".claude/skills/devforgeai-development/phases/pre-05-planning.md"
+    inputs:
+      - phase_04_observations  # From code-reviewer, refactoring-specialist
+    outputs:
+      - integration_scope  # Cross-component test targets
+    output_file: "pre-05-integration-plan.json"
+
+# Story-level override documentation
+# Stories can override pre-phase settings via frontmatter:
+#
+# ```yaml
+# ---
+# title: "STORY-XXX: Feature Implementation"
+# pre_phase_planning:
+#   enabled: true
+#   phases:
+#     02:
+#       enabled: true
+#     03:
+#       enabled: true
+# ---
+# ```
+#
+# Merge behavior:
+# - Story settings OVERRIDE config settings (not merge)
+# - If story has pre_phase_planning key, it replaces corresponding config values
+# - Unspecified keys use config defaults
+
+# ============================================================================
+# Configuration Guidelines
+# ============================================================================
+
+# When to Enable Pre-Phase Planning:
+# - Complex features with unclear API boundaries
+# - New subsystems requiring upfront design
+# - Critical path code where mistakes are costly
+# - When previous attempts failed due to misalignment
+
+# When to Keep Disabled:
+# - Simple bug fixes
+# - Well-understood feature patterns
+# - Time-sensitive hotfixes
+# - Stories with clear, complete technical specifications
+
+# Performance Impact:
+# - Each pre-phase adds ~30-60 seconds (haiku model)
+# - Token cost: ~1000-3000 tokens per pre-phase
+# - Disk writes: One JSON file per pre-phase
+
+# ============================================================================
+# Troubleshooting
+# ============================================================================
+
+# Pre-phase not executing:
+#   1. Check `enabled: true` at root level
+#   2. Check `phases.XX.enabled: true` for specific phase
+#   3. Check story frontmatter doesn't override with enabled: false
+#   4. Verify phase_file exists
+
+# Pre-phase timeout:
+#   1. Increase timeout_ms (max 120000 recommended)
+#   2. Simplify inputs (reduce context size)
+#   3. Check for slow network/API issues
+
+# Output file not created:
+#   1. Check storage_path is writable
+#   2. Check for JSON serialization errors in logs
+#   3. Verify pre-phase workflow completed (no early exit)

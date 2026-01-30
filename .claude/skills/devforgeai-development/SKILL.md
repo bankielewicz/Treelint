@@ -514,13 +514,96 @@ FOR phase_num in range(CURRENT_PHASE, 11):
         "10": "phase-10-result.md"
     }
 
-    # 2. Load phase file (progressive loading)
+    # 2. Check for pre-phase planning (STORY-FEEDBACK-005)
+    IF phase_id in ["02", "03", "04", "05"] AND $PRE_PHASE_CONFIG.enabled:
+        IF $PRE_PHASE_CONFIG.phases[phase_id].enabled:
+            Display: "Executing Pre-Phase {phase_id} planning..."
+            Read(file_path=f".claude/skills/devforgeai-development/phases/pre-{phase_id}-planning.md")
+            Execute pre-phase workflow
+            $PRE_PHASE_OUTPUT = result
+
+    # 3. Load phase file (progressive loading)
     Read(file_path=f".claude/skills/devforgeai-development/phases/{phase_files[phase_id]}")
 
-    # 3-7. Execute phase content, gates, and record subagents
+    # 4-8. Execute phase content with pre-phase context, gates, and record subagents
+    # Pass $PRE_PHASE_OUTPUT to phase execution if available
     # See phase files for details
     Read(file_path=".claude/skills/devforgeai-development/references/dod-update-workflow.md")
 ```
+
+---
+
+## Pre-Phase Planning Integration (STORY-FEEDBACK-005)
+
+**Purpose:** Execute optional planning steps before phases 02-05 to enable course correction based on prior phase observations.
+
+### Config Loading (Phase 01)
+
+**Add to Phase 01 preflight (after context file loading):**
+
+```
+# Load pre-phase planning config
+Glob(pattern="devforgeai/config/pre-phase-planning.yaml")
+
+IF file exists:
+    Read(file_path="devforgeai/config/pre-phase-planning.yaml")
+    $PRE_PHASE_CONFIG = parse_yaml(content)
+    Display: "Pre-phase planning config loaded (enabled={$PRE_PHASE_CONFIG.enabled})"
+ELSE:
+    $PRE_PHASE_CONFIG = {enabled: false}
+    Display: "Pre-phase planning config not found - disabled"
+```
+
+### Story Override Check
+
+**Check story frontmatter for pre-phase overrides:**
+
+```
+IF story_frontmatter contains pre_phase_planning:
+    $PRE_PHASE_CONFIG = merge($PRE_PHASE_CONFIG, story_frontmatter.pre_phase_planning)
+    Display: "Story-level pre-phase override applied"
+```
+
+### Pre-Phase Execution Pattern
+
+**Before each phase (02, 03, 04, 05):**
+
+```
+IF $PRE_PHASE_CONFIG.enabled AND $PRE_PHASE_CONFIG.phases[phase_id].enabled:
+    # 1. Display pre-phase banner
+    Display: "━━━ Pre-Phase {phase_id}: {description} ━━━"
+
+    # 2. Load pre-phase file
+    pre_phase_file = $PRE_PHASE_CONFIG.phases[phase_id].phase_file
+    Read(file_path=pre_phase_file)
+
+    # 3. Execute pre-phase workflow (writes to disk)
+    # Pre-phase outputs are saved to: devforgeai/feedback/ai-analysis/${STORY_ID}/
+
+    # 4. Capture output for main phase context
+    $PRE_PHASE_OUTPUT = {
+        output_file: pre_phase_output_path,
+        summary: pre_phase_summary
+    }
+
+    # 5. Display completion
+    Display: "Pre-Phase {phase_id} complete → {output_file}"
+```
+
+### Pre-Phase Files Reference
+
+| Phase | Pre-Phase File | Output File |
+|-------|---------------|-------------|
+| 02 | pre-02-planning.md | pre-02-api-spec.json |
+| 03 | pre-03-planning.md | pre-03-impl-plan.json |
+| 04 | pre-04-planning.md | pre-04-refactor-plan.json |
+| 05 | pre-05-planning.md | pre-05-integration-plan.json |
+
+### Config Reference
+
+**Full config at:** `devforgeai/config/pre-phase-planning.yaml`
+
+**Schema at:** `devforgeai/config/pre-phase-planning.schema.json`
 
 ---
 

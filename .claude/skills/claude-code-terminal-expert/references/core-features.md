@@ -2639,6 +2639,213 @@ Checkpoint retention is tied to session cleanup (default: 30 days). Configure vi
 
 ---
 
+## Section 6: New Features in Claude Code 2.1.x (2.1.12-2.1.23)
+
+This section documents features added between Claude Code 2.1.12 and 2.1.23.
+
+### 6.1 Task Management System (2.1.16+)
+
+**Availability:** Claude Code 2.1.16+
+**Category:** Core
+
+New task management system with dependency tracking. Tasks can have dependencies on other tasks, enabling complex workflow orchestration.
+
+**Key Tools:**
+- `TaskCreate` - Create new tasks with subject, description, activeForm
+- `TaskUpdate` - Update task status, add dependencies, or delete tasks (delete added in 2.1.20)
+- `TaskList` - View all tasks with dependency information
+- `TaskGet` - Get detailed task information by ID
+
+**Task Properties:**
+```
+- id: Unique task identifier
+- subject: Brief task title
+- description: Detailed requirements
+- status: pending → in_progress → completed
+- activeForm: Present continuous form for spinner (e.g., "Running tests")
+- blockedBy: Array of task IDs that must complete first
+- blocks: Array of task IDs waiting on this task
+```
+
+**Example Usage:**
+```javascript
+// Create a task
+TaskCreate({
+  subject: "Implement user authentication",
+  description: "Add JWT-based auth with login/logout",
+  activeForm: "Implementing authentication"
+})
+
+// Set dependencies
+TaskUpdate({
+  taskId: "2",
+  addBlockedBy: ["1"]  // Task 2 waits for Task 1
+})
+
+// Mark complete
+TaskUpdate({
+  taskId: "1",
+  status: "completed"
+})
+
+// Delete a task (2.1.20+)
+TaskUpdate({
+  taskId: "3",
+  status: "deleted"
+})
+```
+
+**Environment Variable:**
+- `CLAUDE_CODE_ENABLE_TASKS=false` - Temporarily disable new task system (2.1.19+)
+
+**Reference:** https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md#2116
+
+---
+
+### 6.2 Customizable Keyboard Shortcuts (2.1.18+)
+
+**Availability:** Claude Code 2.1.18+
+**Category:** Configuration
+
+Customize keyboard shortcuts via the `/keybindings` command.
+
+**Command:**
+```bash
+/keybindings
+```
+
+**Configuration File:** `~/.claude/keybindings.json`
+
+**Documentation:** https://code.claude.com/docs/en/keybindings
+
+**Key Points:**
+- Remap any default shortcuts
+- Add chord bindings (multi-key sequences)
+- Configure per-project or globally
+- Export/import keybinding configurations
+
+---
+
+### 6.3 History-Based Bash Autocomplete (2.1.14+)
+
+**Availability:** Claude Code 2.1.14+
+**Category:** Input
+
+In bash mode (`!`), type a partial command and press Tab to autocomplete from your bash history.
+
+**Usage:**
+```bash
+# In bash mode:
+!git pu<Tab>  # Completes to previous git push command
+!npm ru<Tab>  # Completes to previous npm run command
+```
+
+**Key Points:**
+- Works only in bash mode (prefix with `!`)
+- Searches through command history
+- Tab key triggers autocomplete
+- Shell completion cache stored locally
+
+---
+
+### 6.4 PR Review Status Indicator (2.1.20+)
+
+**Availability:** Claude Code 2.1.20+
+**Category:** UI
+
+The prompt footer now shows the PR state for your current branch.
+
+**Status Colors:**
+- Purple: Merged PR
+- Other colors indicate open, draft, or closed states
+
+**Key Points:**
+- Automatically detects current branch
+- Shows PR status without running git commands
+- Helps track PR workflow progress
+
+---
+
+### 6.5 Additional CLAUDE.md Directories (2.1.20+)
+
+**Availability:** Claude Code 2.1.20+
+**Category:** Configuration
+
+Load `CLAUDE.md` files from additional directories using the `--add-dir` flag.
+
+**Environment Variable (Required):**
+```bash
+export CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=1
+```
+
+**Usage:**
+```bash
+claude --add-dir /path/to/shared/project
+claude --add-dir ../common-configs --add-dir ../team-standards
+```
+
+**Key Points:**
+- Must enable environment variable first
+- Supports multiple `--add-dir` flags
+- Merges CLAUDE.md content from all directories
+- Useful for monorepos and shared team configurations
+
+---
+
+### 6.6 Customizable Spinner Verbs (2.1.23+)
+
+**Availability:** Claude Code 2.1.23+
+**Category:** Configuration
+
+Customize the spinner text shown during operations.
+
+**Setting:** `spinnerVerbs`
+
+**Configuration:**
+```json
+{
+  "spinnerVerbs": ["Processing", "Working on", "Handling"]
+}
+```
+
+---
+
+### 6.7 Breaking Changes in 2.1.x
+
+#### Indexed Argument Syntax (2.1.19)
+
+**Previous (deprecated):**
+```
+$ARGUMENTS.0
+$ARGUMENTS.1
+```
+
+**Current (2.1.19+):**
+```
+$ARGUMENTS[0]
+$ARGUMENTS[1]
+
+# Or shorthand:
+$0, $1, $2, etc.
+```
+
+**Migration:** Update custom commands using old `.N` syntax to `[N]` or shorthand.
+
+#### npm Installation Deprecated (2.1.15)
+
+**Previous:**
+```bash
+npm install -g @anthropic/claude-code
+```
+
+**Current:**
+```bash
+claude install
+# Or see: https://docs.anthropic.com/en/docs/claude-code/getting-started
+```
+
+---
+
 ## Cross-Reference Guide
 
 This section provides navigation between related topics across the five core features.

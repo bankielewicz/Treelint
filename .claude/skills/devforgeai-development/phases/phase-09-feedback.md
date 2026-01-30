@@ -40,13 +40,56 @@ Examples (--project-root applies to phase-* commands only, not check-hooks/invok
 
 ### Step 2: AI Analysis (Subagent Delegation)
 
-**2.1 Read Observations from Phase State**
+**2.1 Read Observations from Disk (STORY-FEEDBACK-006)**
+
+**Read all observation files from story feedback directory:**
 
 ```
-Read(file_path="devforgeai/workflows/${STORY_ID}-phase-state.json")
+Glob(pattern="devforgeai/feedback/ai-analysis/${STORY_ID}/*.json")
 ```
 
-Extract the `observations` array captured during phases 01-08.
+**For each file found, aggregate observations:**
+
+```
+$CONSOLIDATED_OBSERVATIONS = []
+
+FOR file in glob_results:
+    # Skip consolidated file if re-running
+    IF file != "consolidated-analysis.json":
+        Read(file_path=file)
+
+        # Parse observation file
+        file_content = parse_json(content)
+
+        # Aggregate observations
+        IF file_content.observations:
+            FOR obs in file_content.observations:
+                $CONSOLIDATED_OBSERVATIONS.append({
+                    ...obs,
+                    source_file: file,
+                    source_subagent: file_content.subagent,
+                    source_phase: file_content.phase
+                })
+
+# Sort by observation ID for consistent ordering
+$CONSOLIDATED_OBSERVATIONS = sorted($CONSOLIDATED_OBSERVATIONS, key=lambda x: x.id)
+
+# Log observation count
+Display: "Consolidated {len($CONSOLIDATED_OBSERVATIONS)} observations from {len(glob_results)} files"
+```
+
+**Fallback to phase-state.json (backward compatibility):**
+
+```
+IF len($CONSOLIDATED_OBSERVATIONS) == 0:
+    # No disk observations found, try phase-state.json (legacy)
+    Read(file_path="devforgeai/workflows/${STORY_ID}-phase-state.json")
+    IF phase_state.observations:
+        $CONSOLIDATED_OBSERVATIONS = phase_state.observations
+        Display: "Using legacy observations from phase-state.json"
+```
+
+**Pass consolidated observations to framework-analyst.**
 
 **2.2 Invoke Framework Analyst Subagent**
 
@@ -58,11 +101,12 @@ Task(
 INPUT:
 - Story ID: ${STORY_ID}
 - Workflow Type: dev
-- Phase State Path: devforgeai/workflows/${STORY_ID}-phase-state.json
-- Observations: [observations from phase-state.json]
+- Observation Directory: devforgeai/feedback/ai-analysis/${STORY_ID}/
+- Consolidated Observations: ${CONSOLIDATED_OBSERVATIONS}
+- Observation Count: {len($CONSOLIDATED_OBSERVATIONS)}
 
 INSTRUCTIONS:
-1. Read phase-state.json and extract observations array
+1. Use the provided consolidated observations (already read from disk)
 2. Read each file mentioned in observations to gather context
 3. Check recommendations-queue.json for duplicates
 4. Check recent git commits for already-implemented items
@@ -143,7 +187,41 @@ Content structure:
 }
 ```
 
-**2.6 Update Aggregated Queue (if HIGH priority recommendations)**
+**2.6 Write Consolidated Analysis (STORY-FEEDBACK-006)**
+
+Write the consolidated observations and analysis to a single file for future reference:
+
+```
+Write(
+  file_path="devforgeai/feedback/ai-analysis/${STORY_ID}/consolidated-analysis.json",
+  content={
+    "story_id": "${STORY_ID}",
+    "timestamp": "${TIMESTAMP}",
+    "observations_consolidated": {
+      "total_count": len($CONSOLIDATED_OBSERVATIONS),
+      "by_phase": {
+        "02": count(obs where phase == "02"),
+        "03": count(obs where phase == "03"),
+        "04": count(obs where phase == "04"),
+        "05": count(obs where phase == "05")
+      },
+      "by_category": {
+        "friction": count(obs where category == "friction"),
+        "success": count(obs where category == "success"),
+        "pattern": count(obs where category == "pattern"),
+        "gap": count(obs where category == "gap"),
+        "idea": count(obs where category == "idea"),
+        "bug": count(obs where category == "bug"),
+        "warning": count(obs where category == "warning")
+      },
+      "observations": $CONSOLIDATED_OBSERVATIONS
+    },
+    "ai_analysis": {validated analysis from step 2.5}
+  }
+)
+```
+
+**2.7 Update Aggregated Queue (if HIGH priority recommendations)**
 
 If any recommendation has `priority: "HIGH"`:
 ```
@@ -195,11 +273,13 @@ Display at start of Phase 09:
 
 - [ ] check-hooks command executed (user feedback)
 - [ ] invoke-hooks command executed (if user hooks enabled)
-- [ ] Phase-state.json observations array read
-- [ ] framework-analyst subagent invoked
+- [ ] Observation files read from disk (`devforgeai/feedback/ai-analysis/${STORY_ID}/*.json`)
+- [ ] Observations consolidated from all phase observation files
+- [ ] framework-analyst subagent invoked with consolidated observations
 - [ ] Subagent output validated (JSON, aspirational check, evidence, effort, feasibility)
 - [ ] Merit filter applied (duplicates, already-implemented)
 - [ ] Results stored in `devforgeai/feedback/ai-analysis/${STORY_ID}/` (if validation passed)
+- [ ] consolidated-analysis.json written with aggregated observations and analysis
 
 **Note:** This checkpoint is NON-BLOCKING - validation failures are logged but don't halt workflow
 

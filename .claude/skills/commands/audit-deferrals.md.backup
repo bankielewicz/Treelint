@@ -1,0 +1,909 @@
+---
+description: Audit all QA Approved stories for invalid deferrals and deferral chains
+model: opus
+---
+
+# Audit Deferrals Command
+
+Audit all QA Approved and Released stories for invalid deferrals, multi-level deferral chains, and missing ADR documentation.
+
+**Purpose:** Identify systemic deferral issues across all completed stories to catch protocol violations and technical debt.
+
+**Created:** RCA-007 Recommendation 4
+
+---
+
+## Workflow
+
+### Phase 1: Discover QA Approved Stories
+
+**Find all story files:**
+
+```
+Glob(pattern="devforgeai/specs/Stories/*.story.md")
+```
+
+**Filter to QA Approved or Released status:**
+
+```
+audit_list = []
+
+FOR each story file:
+    Read YAML frontmatter only (first 20 lines)
+    Extract: id, status
+
+    IF status == "QA Approved" OR status == "Released":
+        Add to audit_list: {id, path, status}
+
+Display: "Found {count} QA Approved/Released stories to audit"
+```
+
+---
+
+### Phase 2: Scan for Deferrals
+
+**Check each story for incomplete DoD items:**
+
+```
+deferred_stories = []
+
+FOR each story in audit_list:
+    Read full story content
+    Search for "## Implementation Notes"
+
+    IF "Implementation Notes" found:
+        Search for "### Definition of Done Status"
+
+        IF DoD Status found:
+            Parse items (lines starting with "- [ ]" or "- [x]")
+
+            FOR each item:
+                IF item starts with "- [ ]" (incomplete):
+                    Extract: item_description, deferral_reason
+                    Record deferral: {
+                        story_id: {id},
+                        item: {item_description},
+                        reason: {deferral_reason}
+                    }
+
+                    Add story to deferred_stories (if not already added)
+
+Display: "Found {count} stories with deferrals"
+```
+
+---
+
+### Phase 2.5: Blocker Validation (RCA-006 Phase 2 - NEW)
+
+**Purpose:** Identify deferrals that can be resolved NOW vs deferrals with valid blockers
+
+**For each story with deferrals:**
+
+```
+FOR each story in deferred_stories:
+    FOR each deferral in story.deferrals:
+
+        # Extract deferral details
+        IF "Deferred to STORY-" in deferral.reason:
+            target_story = extract STORY-ID from reason
+            blocker_type = "dependency"
+
+        ELIF "Blocked by:" in deferral.reason:
+            blocker_description = extract text after "Blocked by:"
+            blocker_type = "external"
+
+        ELIF "Out of scope: ADR-" in deferral.reason:
+            adr_reference = extract ADR-XXX
+            blocker_type = "scope_change"
+
+        # Validate blocker is still valid
+        SWITCH blocker_type:
+
+        CASE "dependency":
+            # Check if dependency story is complete
+            Bash(command="git log --grep='${target_story}' --oneline")
+
+            IF git log shows commits:
+                blocker_status = "RESOLVED (story committed)"
+                action = "Re-run /dev ${story.id} to attempt item"
+                resolvable = true
+
+            ELSE:
+                # Check story file status
+                Glob(pattern="devforgeai/specs/Stories/${target_story}*.story.md")
+
+                IF file found:
+                    Read YAML frontmatter
+                    Extract: status
+
+                    IF status in ["Released", "QA Approved", "Dev Complete"]:
+                        blocker_status = "RESOLVED (story ${status})"
+                        action = "Re-run /dev ${story.id} to attempt item"
+                        resolvable = true
+
+                    ELSE:
+                        blocker_status = "VALID (story ${status})"
+                        action = "Wait for ${target_story} completion"
+                        resolvable = false
+
+                ELSE:
+                    blocker_status = "INVALID (story not found)"
+                    action = "Create ${target_story} OR remove deferral"
+                    violation = "HIGH"
+
+        CASE "external":
+            # Check if blocker mentions toolchain
+            IF "toolchain" in blocker_description.lower() OR "nightly" in blocker_description.lower():
+                # Detect language and check toolchain
+                IF blocker_description contains "Rust" OR "nightly":
+                    Bash(command="rustup toolchain list 2>/dev/null || echo 'not installed'")
+
+                    IF output contains "nightly":
+                        blocker_status = "RESOLVED (nightly installed)"
+                        action = "cargo +nightly [command]"
+                        resolvable = true
+                    ELSE:
+                        blocker_status = "VALID (nightly not installed)"
+                        action = "rustup toolchain install nightly"
+                        resolvable = false
+
+                ELIF blocker_description contains "Node" OR "npm":
+                    Bash(command="npm --version 2>/dev/null || echo 'not installed'")
+
+                    IF output shows version:
+                        blocker_status = "RESOLVED (npm available)"
+                        action = "npm install [packages]"
+                        resolvable = true
+                    ELSE:
+                        blocker_status = "VALID (npm not installed)"
+                        action = "Install Node.js"
+                        resolvable = false
+
+                ELIF blocker_description contains ".NET" OR "dotnet":
+                    Bash(command="dotnet --list-sdks 2>/dev/null || echo 'not installed'")
+
+                    IF output shows SDKs:
+                        blocker_status = "RESOLVED (dotnet available)"
+                        action = "dotnet [command]"
+                        resolvable = true
+                    ELSE:
+                        blocker_status = "VALID (dotnet not installed)"
+                        action = "Install .NET SDK"
+                        resolvable = false
+
+            # Check if blocker mentions artifacts
+            ELIF "artifact" in blocker_description.lower() OR "cache" in blocker_description.lower():
+                # Extract expected paths from blocker description
+                # Common patterns: "~/.cache/", "/var/lib/", "~/.local/share/"
+
+                IF blocker_description contains path pattern:
+                    artifact_path = extract path
+
+                    Bash(command="ls -la ${artifact_path} 2>/dev/null || echo 'not found'")
+
+                    IF output != "not found" AND output has files:
+                        blocker_status = "RESOLVED (artifacts exist)"
+                        action = "Re-run /dev ${story.id}"
+                        resolvable = true
+                    ELSE:
+                        blocker_status = "VALID (artifacts missing)"
+                        action = "Generate artifacts first"
+                        resolvable = false
+
+            ELSE:
+                # Generic external blocker
+                blocker_status = "UNKNOWN (manual verification needed)"
+                action = "Manually verify: ${blocker_description}"
+                resolvable = "unknown"
+
+        CASE "scope_change":
+            # Check if ADR exists
+            Glob(pattern="devforgeai/specs/adrs/${adr_reference}*.md")
+
+            IF file found:
+                blocker_status = "RESOLVED (ADR documented)"
+                action = "No action needed (scope change documented)"
+                resolvable = false  # Not resolvable, but valid
+
+            ELSE:
+                blocker_status = "INVALID (ADR missing)"
+                action = "Create ${adr_reference} to document scope change"
+                violation = "HIGH"
+                resolvable = false
+
+        # Store blocker validation result
+        deferral.blocker_status = blocker_status
+        deferral.action = action
+        deferral.resolvable = resolvable
+        deferral.age_days = calculate_days_since_deferral(deferral)
+
+# Categorize all deferrals
+resolvable_deferrals = deferrals where resolvable == true
+valid_deferrals = deferrals where resolvable == false AND blocker_status != "INVALID"
+invalid_deferrals = deferrals where blocker_status contains "INVALID"
+
+Display:
+"Blocker Validation Complete:
+- Resolvable deferrals: ${len(resolvable_deferrals)}
+- Valid deferrals: ${len(valid_deferrals)}
+- Invalid deferrals: ${len(invalid_deferrals)}"
+```
+
+---
+
+### Phase 3: Validate Each Deferral
+
+**For each story WITH deferrals, invoke deferral-validator:**
+
+```
+validation_results = {}
+
+FOR each story in deferred_stories:
+    Display: "Validating deferrals for {story_id}..."
+
+    # Load story content into conversation
+    Read(file_path=story.path)
+
+    # Invoke deferral-validator subagent
+    Task(
+        subagent_type="deferral-validator",
+        description="Validate deferrals for audit",
+        prompt="Validate all deferred DoD items for {story_id}.
+
+                Story loaded in conversation.
+
+                Perform comprehensive validation:
+                - Multi-level deferral chain detection (A→B→C) ← RCA-007
+                - Circular deferral detection (A→B→A)
+                - Referenced story validation (exists and includes work)
+                - ADR requirement for scope changes
+                - Technical blocker verification (external dependencies)
+                - Implementation feasibility check
+
+                Return JSON validation report with all violations."
+    )
+
+    Parse validation results
+    Store results: validation_results[story_id] = {violations, summary}
+
+    # Aggregate violations by severity
+    FOR each violation in results:
+        Increment: violations_by_severity[violation.severity]
+```
+
+---
+
+### Phase 4: Aggregate Results
+
+**Categorize findings:**
+
+```
+critical_stories = stories with CRITICAL violations
+high_stories = stories with HIGH violations
+medium_stories = stories with MEDIUM violations
+
+deferral_chains = []
+missing_adrs = []
+invalid_references = []
+
+FOR each story_result in validation_results:
+    FOR each violation in story_result.violations:
+        IF violation.type == "Multi-level deferral chain detected":
+            Add to deferral_chains: {chain, stories_involved}
+
+        IF violation.type == "Circular deferral detected":
+            Add to deferral_chains: {chain, stories_involved}
+
+        IF violation.type == "ADR reference not found":
+            Add to missing_adrs: {story_id, item, expected_adr}
+
+        IF violation.type == "Referenced story doesn't include work":
+            Add to invalid_references: {story_id, referenced_story, item}
+```
+
+---
+
+### Phase 5: Generate Audit Report
+
+**Create comprehensive report:**
+
+```
+report_path = "devforgeai/qa/deferral-audit-{timestamp}.md"
+
+Write(
+    file_path=report_path,
+    content={audit_report_content}
+)
+```
+
+**Report Template:**
+
+```markdown
+# Deferral Audit Report - {timestamp}
+
+**Command:** `/audit-deferrals`
+**Audit Date:** {date and time}
+**Auditor:** DevForgeAI QA System
+**Scope:** All QA Approved and Released stories
+
+---
+
+## Executive Summary
+
+- **Total QA Approved/Released Stories:** {N}
+- **Stories with Deferrals:** {M} ({percentage}%)
+- **Stories with Violations:** {X} ({percentage}%)
+
+**Violations by Severity:**
+- **CRITICAL:** {count} violations in {story_count} stories
+- **HIGH:** {count} violations in {story_count} stories
+- **MEDIUM:** {count} violations in {story_count} stories
+- **LOW:** {count} violations in {story_count} stories
+
+**Audit Result:** {PASS/FAIL} ({fail_criteria})
+
+---
+
+## Critical Issues (Require Immediate Action)
+
+### Multi-Level Deferral Chains ⭐ RCA-007
+
+| Chain | Stories | Work Description | Status | Action Required |
+|-------|---------|------------------|--------|-----------------|
+| STORY-004 → STORY-005 → STORY-006 | 3 stories | Exit code handling | Lost (not in STORY-006) | Create ADR-XXX OR implement in STORY-006 |
+
+**Impact:** Work deferred multiple times creates broken chains where work can be lost
+
+**Remediation:**
+- Implement work in final story (STORY-006)
+- OR create ADR justifying 3-story span
+- OR create new story explicitly for this work
+
+### Circular Deferrals
+
+| Chain | Stories | Work Description | Status | Action Required |
+|-------|---------|------------------|--------|-----------------|
+{List circular chains if any}
+
+**Impact:** Infinite loops where work is never completed
+
+**Remediation:** One story must own the work - break the cycle
+
+---
+
+## High Severity Issues
+
+### Referenced Stories Missing Deferred Work
+
+| Deferring Story | Referenced Story | Missing Work | Validated? | Action Required |
+|-----------------|------------------|--------------|------------|-----------------|
+{List stories where STORY-A defers to STORY-B but STORY-B doesn't include work}
+
+**Impact:** Deferred work not tracked, likely to be forgotten
+
+**Remediation:** Add work to referenced story acceptance criteria OR complete in original story
+
+### Invalid Story References
+
+| Story | Referenced | Issue | Action Required |
+|-------|------------|-------|-----------------|
+{List stories referencing non-existent stories}
+
+**Impact:** Broken references, work untracked
+
+**Remediation:** Create referenced story OR update reference OR complete in original story
+
+---
+
+## Medium Severity Issues
+
+### Scope Changes Without ADR
+
+| Story | Deferred Item | Was in Original Scope? | ADR Missing | Action Required |
+|-------|---------------|------------------------|-------------|-----------------|
+{List scope changes that need ADR documentation}
+
+**Impact:** Scope changes undocumented, no audit trail
+
+**Remediation:** Create ADR-XXX documenting why original scope changed
+
+### External Blockers Missing ETA
+
+| Story | Blocker | Issue | Action Required |
+|-------|---------|-------|-----------------|
+{List external blockers without resolution dates}
+
+**Impact:** Unclear when work can resume
+
+**Remediation:** Add ETA or resolution condition to deferral reason
+
+---
+
+## Stories Requiring Re-Validation
+
+### Priority 1: CRITICAL Violations
+
+1. **STORY-004** (Multi-level chain)
+   - **Issue:** Deferred to STORY-005 → STORY-006 (2-hop chain)
+   - **Work:** Exit code handling
+   - **Status:** Lost (not in STORY-006 scope)
+   - **Action:** Re-run `/qa STORY-004` after creating ADR OR implementing work
+
+2. {Other CRITICAL stories}
+
+### Priority 2: HIGH Violations
+
+{List HIGH violation stories}
+
+### Priority 3: MEDIUM Violations
+
+{List MEDIUM violation stories}
+
+---
+
+## Deferral Statistics
+
+**Overall Metrics:**
+- **Deferral rate:** {M/N} = {percentage}% of QA Approved stories have deferrals
+- **Invalid deferral rate:** {X/M} = {percentage}% of deferrals have violations
+- **Chain detection rate:** {chains_found} deferral chains detected
+
+**Deferral Types:**
+- External blockers: {count} ({percentage}%)
+- Story splits: {count} ({percentage}%)
+- Scope changes: {count} ({percentage}%)
+
+**Deferral Resolution:**
+- Completed in follow-up: {count}
+- Still open: {count}
+- Lost/unknown: {count}
+
+**Most Common Issues:**
+1. {violation_type}: {count} occurrences
+2. {violation_type}: {count} occurrences
+
+---
+
+## Recommended Actions
+
+### Immediate (This Sprint)
+
+1. **Re-validate stories with CRITICAL violations**
+   - Priority: {list story IDs}
+   - Command: `/qa {STORY-ID}` for each
+
+2. **Create missing ADRs**
+   - {count} scope changes need ADR documentation
+   - Template: `.claude/skills/devforgeai-architecture/assets/adr-examples/ADR-EXAMPLE-006-scope-descope.md`
+
+3. **Fix deferral chains**
+   - Break multi-level chains (implement in intermediate story OR create ADR)
+   - Resolve circular chains (assign work to one story)
+
+### Short-term (Next Sprint)
+
+4. **Review deferral policy with team**
+   - Ensure developers understand when ADRs required
+   - Clarify multi-level chain prohibition
+   - Document lessons from audit
+
+5. **Update story DoD validation**
+   - Add ADR requirement reminders to story template
+   - Emphasize no deferral chains policy
+
+### Long-term (Quarterly)
+
+6. **Run regular deferral audits**
+   - Quarterly audits of all QA Approved stories
+   - Track deferral rate trends
+   - Identify systemic issues (poor estimation, scope creep)
+
+7. **Implement deferral budget per epic**
+   - Max N deferrals per epic before architectural review
+   - Prevents "death by a thousand deferrals"
+
+---
+
+## Audit Methodology
+
+**Validation Approach:**
+- Automated via deferral-validator subagent (consistent, thorough)
+- Manual validation prohibited (RCA-007 evidence shows it's insufficient)
+- All stories receive same level of scrutiny
+
+**Coverage:**
+- 100% of QA Approved stories checked
+- 100% of Released stories checked
+- Future: Add to sprint retrospective automation
+
+**Quality Assurance:**
+- deferral-validator performs 7 substep validation
+- Detects issues manual review misses
+- Provides structured violation reports
+
+---
+
+## Phase 6: Display Summary
+
+**Display to user:**
+
+```
+┌────────────────────────────────────────────────────────┐
+│           Deferral Audit Complete                      │
+└────────────────────────────────────────────────────────┘
+
+**Scope:** {N} QA Approved/Released stories
+
+**Findings:**
+- Stories with deferrals: {M} ({percentage}%)
+- Stories with violations: {X}
+
+**Violations Detected:**
+- CRITICAL: {count} (multi-level chains, circular deferrals)
+- HIGH: {count} (invalid references, missing work in target)
+- MEDIUM: {count} (missing ADRs, blocker missing ETA)
+
+**Detailed Report:**
+📄 devforgeai/qa/deferral-audit-{timestamp}.md
+
+{IF violations found}
+**Action Required:**
+- Re-validate {critical_count} stories with CRITICAL issues
+- Create {adr_count} missing ADRs for scope changes
+- Fix {chain_count} deferral chains
+
+---
+
+## Actionable Insights (RCA-006 Phase 2 - NEW)
+
+### 🟡 Resolvable Deferrals: {len(resolvable_deferrals)}
+
+**These deferrals can be resolved NOW:**
+
+{FOR each deferral in resolvable_deferrals}:
+  **{deferral.story_id}:** {deferral.item}
+  - Age: {deferral.age_days} days
+  - Blocker: {deferral.original_blocker}
+  - Status: ✅ {deferral.blocker_status}
+  - Action: {deferral.action}
+
+**Recommended Actions:**
+1. Re-run /dev for stories with resolvable deferrals:
+   {FOR each story with resolvable deferrals}:
+     /dev {story_id}
+
+2. During Phase 4.5, select "Attempt now" for resolved items
+
+---
+
+### 🟢 Valid Deferrals: {len(valid_deferrals)}
+
+**These deferrals have confirmed valid blockers:**
+
+{FOR each deferral in valid_deferrals}:
+  **{deferral.story_id}:** {deferral.item}
+  - Age: {deferral.age_days} days
+  - Blocker: {deferral.blocker_description}
+  - Status: ⏸️ {deferral.blocker_status}
+  - Action: {deferral.action}
+
+**No immediate action required** - blockers are still valid
+
+{IF any deferral.age_days > 30}:
+  ⚠️  **Stale Deferrals Detected:**
+  {FOR each stale in deferrals where age_days > 30}:
+    - {stale.story_id}: {stale.item} ({stale.age_days} days old)
+
+  **Recommendation:** Review stale deferrals (>30 days). Consider:
+  - Is blocker still relevant?
+  - Can we find alternative approach?
+  - Should we create debt reduction sprint?
+
+---
+
+### 🔴 Invalid Deferrals: {len(invalid_deferrals)}
+
+**These deferrals have invalid blockers (MUST FIX):**
+
+{FOR each deferral in invalid_deferrals}:
+  **{deferral.story_id}:** {deferral.item}
+  - Blocker: {deferral.blocker_description}
+  - Status: ❌ {deferral.blocker_status}
+  - Severity: HIGH
+  - Action: {deferral.action}
+
+**Required Actions:**
+{FOR each invalid in invalid_deferrals}:
+  1. {invalid.action}
+  2. Re-run /dev {invalid.story_id}
+
+---
+
+### Technical Debt Metrics
+
+**Total Debt Age:** {sum of all deferral.age_days} days
+**Average Deferral Age:** {total_debt_age / total_deferrals} days
+**Oldest Deferral:** {max age_days} days (Story {story_id})
+
+**Debt Trend:**
+{IF average age > 14 days}:
+  ⚠️  Deferrals aging beyond 2 weeks. Consider debt reduction sprint.
+{ELIF average age > 7 days}:
+  ℹ️  Deferrals at reasonable age. Monitor for growth.
+{ELSE}:
+  ✅ Deferrals are fresh. Good debt management.
+
+---
+
+**Next Steps:**
+1. Review detailed report above
+2. Prioritize corrective actions by severity:
+   - CRITICAL violations (chains, circular) - Fix immediately
+   - Resolvable deferrals ({count}) - Re-run /dev to attempt
+   - Invalid deferrals ({count}) - Create missing stories/ADRs
+3. Re-run `/qa {STORY-ID}` for affected stories after fixes
+4. Create ADRs for scope changes
+5. Create debt reduction sprint if {resolvable_count} ≥ 3
+
+{ELSE}
+✅ **All deferrals validated successfully**
+
+No violations detected. All deferred DoD items have:
+- Valid technical justification
+- Proper story references (exist and include work)
+- ADR approval where required
+- No deferral chains detected
+
+Deferral quality: EXCELLENT
+```
+
+---
+
+### Phase 6: Invoke Feedback Hooks (NEW - STORY-033)
+
+**After audit report generation (Phase 5), invoke feedback hooks to capture insights about audit findings.**
+
+**Purpose:** Capture user insights about deferral patterns, debt reduction strategies, and process improvements while analysis is fresh.
+
+**Pattern:** Follows STORY-023 (/dev pilot) pattern - eligibility check → conditional invocation → graceful degradation (non-blocking)
+
+#### Step 6.1: Check Hook Eligibility
+
+```bash
+# Determine if feedback hooks should be triggered
+# Use optimized bash version for <100ms latency requirement (13ms P95 vs 164ms Python CLI)
+.claude/scripts/check-hooks-fast.sh audit-deferrals success
+
+IF exit_code == 0:
+  # Hooks are eligible, proceed to Step 6.2
+  ELIGIBLE = true
+ELSE:
+  # Hooks not eligible (disabled, config issue, etc.)
+  ELIGIBLE = false
+```
+
+#### Step 6.2: Prepare Audit Context (Conditional - Executable Bash)
+
+**IF ELIGIBLE is true, extract audit_summary from generated audit report:**
+
+```bash
+# Get the most recent audit report (Phase 5 just created it)
+audit_report=$(ls -t devforgeai/qa/deferral-audit-*.md | head -1)
+
+if [ ! -f "$audit_report" ]; then
+  echo "⚠️ Audit report not found, skipping feedback" >&2
+  exit 0
+fi
+
+# Extract counts from audit report using grep
+resolvable_count=$(grep -c "🟡 Resolvable:" "$audit_report" || echo "0")
+valid_count=$(grep -c "🟢 Valid:" "$audit_report" || echo "0")
+invalid_count=$(grep -c "🔴 Invalid:" "$audit_report" || echo "0")
+
+# Extract oldest deferral age (search for "**Oldest Deferral:** N days")
+oldest_age=$(grep -oP '(?<=\*\*Oldest Deferral:\*\* )\d+' "$audit_report" | head -1 || echo "null")
+
+# Extract circular chains (search for STORY-IDs in "Circular Deferrals" section)
+circular_chains=$(awk '/## Critical Issues/,/^---/ {print}' "$audit_report" | \
+  grep -oP 'STORY-\d+' | sort -u | paste -sd',' - || echo "")
+
+# Build JSON using jq (proper escaping)
+audit_summary=$(jq -cn \
+  --argjson resolvable "$resolvable_count" \
+  --argjson valid "$valid_count" \
+  --argjson invalid "$invalid_count" \
+  --arg oldest "${oldest_age:-null}" \
+  --arg chains "$circular_chains" \
+  '{
+    resolvable_count: $resolvable,
+    valid_count: $valid,
+    invalid_count: $invalid,
+    oldest_age: (if $oldest == "null" then null else ($oldest | tonumber) end),
+    circular_chains: (if $chains == "" then [] else ($chains | split(",")) end)
+  }')
+
+# Enforce 50KB context size limit
+context_size=$(echo "$audit_summary" | wc -c)
+if [ "$context_size" -gt 51200 ]; then
+  # Truncate to top 20 deferrals by priority:
+  #   1. Circular dependencies (CRITICAL)
+  #   2. Oldest resolvable items (HIGH)
+  #   3. Remaining by age (MEDIUM)
+  # Extract just the critical chains and top resolvable items
+  audit_summary=$(jq -c \
+    --argjson resolvable "$resolvable_count" \
+    --argjson valid "$valid_count" \
+    --argjson invalid "$invalid_count" \
+    --arg oldest "${oldest_age:-null}" \
+    --arg chains_limited "$(echo "$circular_chains" | cut -d',' -f1-5)" \
+    '{
+      resolvable_count: $resolvable,
+      valid_count: $valid,
+      invalid_count: $invalid,
+      oldest_age: (if $oldest == "null" then null else ($oldest | tonumber) end),
+      circular_chains: (if $chains_limited == "" then [] else ($chains_limited | split(",")) end),
+      note: "Truncated to top 20 by priority (full report available on disk)"
+    }')
+fi
+# Full report remains at $audit_report for reference
+```
+
+#### Step 6.3: Sanitize Sensitive Data (Executable Bash)
+
+**Remove credentials from audit_summary JSON before passing to hooks:**
+
+```bash
+# Sanitize sensitive patterns in the JSON payload
+# Supports: api_key, API_KEY, secret, password, token, bearer, auth_code, etc.
+audit_summary=$(echo "$audit_summary" | \
+  sed -E 's/(api_?key|secret|password|token|bearer|auth_?code|refresh_?token|access_?token)["\s:=]+[^ ",}]+/\1=[REDACTED]/gi')
+
+# Verify sanitization worked (should contain [REDACTED] if credentials were present)
+# This is defensive - ensures no secrets leak to feedback system
+```
+
+#### Step 6.4: Invoke Feedback Hooks (Executable Bash)
+
+**IF ELIGIBLE is true, invoke hooks with sanitized audit context:**
+
+```bash
+# Extract affected story IDs from audit report
+affected_stories=$(grep -oP 'STORY-\d+' "$audit_report" | sort -u | paste -sd',' -)
+
+# Build context summary string
+context_msg="Audit complete. Found: ${resolvable_count} resolvable, ${valid_count} valid, ${invalid_count} invalid deferrals."
+if [ "$oldest_age" != "null" ]; then
+  context_msg="$context_msg Oldest: ${oldest_age} days."
+fi
+
+# Invoke feedback hooks with structured metadata
+devforgeai invoke-hooks \
+  --operation=audit-deferrals \
+  --operation_metadata="$audit_summary" \
+  --story_ids="$affected_stories" \
+  --context="$context_msg"
+
+# Expected: Feedback conversation launches with audit-specific context
+# Questions adapt to reference audit findings (e.g., "You found X resolvable deferrals...")
+# Hook failures are non-blocking (handled in Step 6.6)
+```
+
+#### Step 6.5: Log Hook Invocation
+
+**Log all hook operations to `devforgeai/feedback/logs/hook-invocations.log`:**
+
+```bash
+# Create log directory if doesn't exist
+mkdir -p devforgeai/feedback/logs
+
+# Append structured log entry with file locking
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+LOG_ENTRY="$TIMESTAMP | operation=audit-deferrals | status=completed | exit_code=$? | session_id=$(uuidgen) | resolvable=$resolvable_count | valid=$valid_count | invalid=$invalid_count"
+
+# Use file locking to prevent write conflicts in concurrent audits
+(flock -x 200
+echo "$LOG_ENTRY" >> devforgeai/feedback/logs/hook-invocations.log
+) 200>devforgeai/feedback/logs/hook-invocations.log.lock
+```
+
+#### Step 6.6: Error Handling & Graceful Degradation (Executable Bash)
+
+**Hook invocation is non-blocking. All errors logged, command succeeds (exit 0):**
+
+```bash
+# Wrap entire hook invocation in error handling
+if ! command -v .claude/scripts/check-hooks-fast.sh &>/dev/null; then
+  echo "⚠️ Feedback system unavailable (check-hooks-fast.sh not found). Install hooks infrastructure." >&2
+  # Continue without hooks - exit code 0
+elif ! command -v devforgeai &>/dev/null; then
+  echo "⚠️ Feedback system unavailable (devforgeai CLI not found). Install with: pip install --break-system-packages -e .claude/scripts/" >&2
+  # Continue without hooks - exit code 0
+elif ! .claude/scripts/check-hooks-fast.sh audit-deferrals success; then
+  echo "ℹ️ Feedback hooks not enabled or not eligible for this audit." >&2
+  # Continue without hooks - exit code 0
+else
+  # Hooks are eligible - attempt invocation with error handling
+  if ! devforgeai invoke-hooks \
+    --operation=audit-deferrals \
+    --operation_metadata="$audit_summary" \
+    --story_ids="$affected_stories" \
+    --context="$context_msg" 2>/tmp/hook-error.log; then
+
+    # Invocation failed - log error and continue
+    error_msg=$(cat /tmp/hook-error.log | head -1)
+    echo "⚠️ Feedback invocation failed: $error_msg. Audit report available at $audit_report" >&2
+    rm -f /tmp/hook-error.log
+    # Continue without hooks - exit code 0
+  else
+    # Success - feedback conversation completed or user cancelled gracefully
+    echo "✅ Feedback conversation completed or skipped by user." >&2
+  fi
+fi
+
+# In all cases: Command completes successfully (exit 0) with audit report created at $audit_report
+```
+
+#### Step 6.7: Circular Invocation Prevention (Executable Bash)
+
+**Prevent theoretical recursive invocation (feedback → audit-deferrals → feedback):**
+
+```bash
+# Check environment variable set by invoke-hooks to detect nesting
+if [ -n "${DEVFORGEAI_HOOK_ACTIVE:-}" ]; then
+  echo "⚠️ Circular hook invocation detected (audit-deferrals → feedback → audit-deferrals). Skipping nested feedback to prevent infinite loop." >&2
+  exit 0
+fi
+
+# Also checked by check-hooks-fast.sh in Step 6.1
+# This is defensive double-check before invoke-hooks call
+```
+
+---
+
+## Usage
+
+**Manual Invocation:**
+```
+> /audit-deferrals
+```
+
+**Recommended Schedule:**
+- After implementing RCA-007 fixes (audit baseline)
+- End of each sprint (retrospective)
+- Quarterly (comprehensive audit)
+- After major quality gate changes
+
+**Expected Duration:**
+- Small projects (<10 stories): 2-3 minutes
+- Medium projects (10-50 stories): 5-10 minutes
+- Large projects (50+ stories): 15-20 minutes
+- Plus Phase 6 overhead: <2 seconds (with skip_all:true configuration)
+
+---
+
+## Integration
+
+**Invokes:**
+- deferral-validator subagent (for each story with deferrals)
+
+**Phase 6 (NEW - STORY-033):**
+- devforgeai check-hooks (eligibility determination)
+- devforgeai invoke-hooks (feedback conversation - if eligible)
+
+**Generates:**
+- Audit report in `devforgeai/qa/deferral-audit-{timestamp}.md`
+- Violation summary by severity
+- Recommended corrective actions
+- Hook invocation log in `devforgeai/feedback/logs/hook-invocations.log` (if hooks enabled)
+
+**Updates:**
+- None (read-only audit, doesn't modify stories)
+
+**Feedback Integration (Phase 6 - NEW):**
+- Captures insights about deferral patterns discovered
+- Documents user's perspective on debt reduction strategies
+- Session data saved to `devforgeai/feedback/sessions/` (if user accepts feedback)
+
+---
+
+**Note:** This command performs comprehensive audit of deferral quality across all completed stories. Phase 6 (NEW - STORY-033) integrates feedback hooks following the /dev pilot pattern (STORY-023), capturing actionable insights about technical debt management while analysis is fresh. Run regularly to ensure deferral validation protocol is being followed consistently.

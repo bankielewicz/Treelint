@@ -1702,6 +1702,56 @@ observations:
 
 ---
 
+## Observation Capture (MANDATORY - Final Step)
+
+**Before returning, you MUST write observations to disk.**
+
+### Step 1: Construct Observation JSON
+
+Build observation JSON with insights captured during execution:
+
+```json
+{
+  "subagent": "test-automator",
+  "phase": "${PHASE_NUMBER}",
+  "story_id": "${STORY_ID}",
+  "timestamp": "${START_TIMESTAMP}",
+  "duration_ms": ${EXECUTION_TIME},
+  "observations": [
+    {
+      "id": "obs-${PHASE}-001",
+      "category": "friction|success|pattern|gap|idea|bug|warning",
+      "note": "Description (max 200 chars)",
+      "severity": "low|medium|high",
+      "files": ["optional/paths.md"]
+    }
+  ],
+  "metadata": {
+    "version": "1.0",
+    "write_timestamp": "${WRITE_TIMESTAMP}"
+  }
+}
+```
+
+### Step 2: Write to Disk
+
+```
+Write(
+  file_path="devforgeai/feedback/ai-analysis/${STORY_ID}/phase-${PHASE}-test-automator.json",
+  content=${observation_json}
+)
+```
+
+### Step 3: Verify Write
+
+Confirm file was created. If write fails, log error but continue (non-blocking).
+
+**This write MUST happen even if the main task fails.**
+
+**Protocol Reference:** `.claude/skills/devforgeai-development/references/observation-write-protocol.md`
+
+---
+
 ## References
 
 - **Story Files**: `devforgeai/specs/Stories/*.story.md` (acceptance criteria source)

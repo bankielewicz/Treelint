@@ -1,0 +1,526 @@
+---
+description: Create epic with feature breakdown
+argument-hint: [epic-name]
+model: opus
+allowed-tools: Read, Write, Edit, Glob, Grep, Task, AskUserQuestion
+---
+
+# Create Epic Command
+
+Creates a new epic with feature breakdown and scope definition.
+
+## Arguments
+
+- `epic-name` (required): Name of the epic (e.g., "User Authentication System")
+
+## Workflow
+
+### Phase 1: Epic Discovery
+
+**Find existing epics:**
+
+```bash
+Glob(pattern="devforgeai/specs/Epics/*.epic.md")
+```
+
+**Determine next epic ID:**
+- If no epics exist: Start with EPIC-001
+- If epics exist: Read highest ID, increment (EPIC-002, EPIC-003, etc.)
+
+**Check for existing epic with same name:**
+
+```bash
+Grep(pattern="title: .*[epic-name]", path="devforgeai/specs/Epics/", output_mode="files_with_matches", -i=true)
+```
+
+**If duplicate name found:**
+- Use `AskUserQuestion` with options:
+  - Create new epic with same name (append to ID)
+  - Edit existing epic instead
+  - Cancel and provide different name
+
+### Phase 2: Epic Context Gathering
+
+**Gather business context:**
+
+```
+AskUserQuestion:
+  Question: "What is the primary goal of this epic?"
+  Header: "Epic Goal"
+  Options:
+    - "New feature development"
+    - "Technical improvement/refactoring"
+    - "Bug fix/technical debt resolution"
+    - "Infrastructure/DevOps enhancement"
+    - "Migration/modernization"
+    - "Performance optimization"
+```
+
+**Gather scope and constraints:**
+
+```
+AskUserQuestion:
+  Question: "What is the expected timeline and priority?"
+  Header: "Epic Planning"
+  Multi-part:
+    - Timeline: (1-2 sprints, 3-4 sprints, 5+ sprints, Unknown)
+    - Priority: (Critical, High, Medium, Low)
+    - Business value: (High, Medium, Low)
+```
+
+**Gather stakeholder information:**
+
+```
+AskUserQuestion:
+  Question: "Who are the key stakeholders?"
+  Header: "Stakeholders"
+  Free-form: "List stakeholders (comma-separated): Product owner, end users, etc."
+```
+
+**Gather success criteria:**
+
+```
+AskUserQuestion:
+  Question: "What defines success for this epic?"
+  Header: "Success Criteria"
+  Free-form: "Describe measurable outcomes (e.g., 'Reduce login time by 50%', 'Support 10K concurrent users')"
+```
+
+### Phase 3: Feature Decomposition
+
+**Invoke requirements analyst:**
+
+```bash
+Task(
+  subagent_type="requirements-analyst",
+  prompt="Decompose the epic '[epic-name]' into high-level features.
+
+Epic Context:
+- Goal: [epic goal from Phase 2]
+- Timeline: [timeline]
+- Priority: [priority]
+- Success Criteria: [success criteria]
+
+Analyze and break down into 3-8 features that:
+1. Represent significant functional units
+2. Can be implemented independently (or with minimal dependencies)
+3. Deliver incremental value
+4. Are testable and demonstrable
+
+For each feature provide:
+- Feature name (clear, action-oriented)
+- Description (1-2 sentences)
+- Estimated complexity (Simple, Moderate, Complex)
+- Dependencies (which features must be done first)
+- User value (what benefit does this provide)
+
+Format as structured list ready for epic document."
+)
+```
+
+**Review generated features:**
+- Display feature list to user
+- Use `AskUserQuestion` to confirm or request changes:
+  - Accept all features
+  - Remove specific features
+  - Add additional features
+  - Modify feature descriptions
+
+**If modifications requested:**
+- Iterate with Task tool using updated requirements
+- Re-present for confirmation
+
+### Phase 4: Technical Assessment
+
+**Assess technical complexity:**
+
+```bash
+Task(
+  subagent_type="technical-assessor",
+  prompt="Assess technical complexity for epic '[epic-name]' with features:
+
+[Feature list from Phase 3]
+
+Analyze:
+1. **Technology Stack Impact** - New technologies required? Learning curve?
+2. **Architecture Changes** - New layers, services, or infrastructure?
+3. **Integration Complexity** - External systems, APIs, third-party services?
+4. **Data Complexity** - Schema changes, migrations, data modeling?
+5. **Testing Complexity** - New test types, test infrastructure, automation?
+6. **Security Considerations** - Authentication, authorization, data protection?
+7. **Performance Requirements** - Scalability, latency, throughput targets?
+
+Provide:
+- Overall complexity score (0-10)
+- Key technical risks
+- Recommended approach (architecture patterns, technologies)
+- Prerequisites (skills, tools, infrastructure)"
+)
+```
+
+**Check for context files:**
+
+```bash
+Glob(pattern="devforgeai/specs/context/*.md")
+```
+
+**If context files exist:**
+- Read tech-stack.md, architecture-constraints.md
+- Validate technical assessment against existing constraints
+- Flag any conflicts (e.g., new technology not in tech-stack.md)
+
+**If conflicts found:**
+```
+AskUserQuestion:
+  Question: "Technical assessment suggests [new technology], but tech-stack.md specifies [existing technology]. How should we proceed?"
+  Options:
+    - Update tech-stack.md to allow new technology (requires ADR)
+    - Adjust epic scope to use existing technology
+    - Mark as technical debt to resolve later
+```
+
+### Phase 5: Epic File Creation
+
+**Generate epic document:**
+
+```markdown
+---
+id: [EPIC-ID]
+title: [epic-name]
+status: Planning
+priority: [priority from Phase 2]
+business_value: [business value]
+timeline: [timeline estimate]
+created: [YYYY-MM-DD]
+updated: [YYYY-MM-DD]
+stakeholders:
+  - [stakeholder 1]
+  - [stakeholder 2]
+---
+
+# [EPIC-ID]: [epic-name]
+
+## Overview
+
+[Business context and epic goal from Phase 2]
+
+## Business Value
+
+[Business value description]
+
+## Success Criteria
+
+[Success criteria from Phase 2]
+
+### Measurable Outcomes
+
+- [ ] [Outcome 1]
+- [ ] [Outcome 2]
+- [ ] [Outcome 3]
+
+## Features
+
+### Feature 1: [Feature Name]
+
+**Description:** [Feature description]
+
+**Complexity:** [Simple/Moderate/Complex]
+
+**Dependencies:** [None or list dependencies]
+
+**User Value:** [User benefit description]
+
+**Estimated Story Points:** [TBD during sprint planning]
+
+### Feature 2: [Feature Name]
+
+[... repeat for all features ...]
+
+## Technical Assessment
+
+**Overall Complexity:** [Complexity score]/10
+
+**Technology Stack:**
+- [Technology 1]: [Purpose]
+- [Technology 2]: [Purpose]
+
+**Architecture Impact:**
+[Description of architectural changes]
+
+**Key Technical Risks:**
+1. [Risk 1] - Mitigation: [approach]
+2. [Risk 2] - Mitigation: [approach]
+
+**Prerequisites:**
+- [Prerequisite 1]
+- [Prerequisite 2]
+
+## Timeline Estimate
+
+**Target Duration:** [timeline from Phase 2]
+
+**Estimated Sprints:** [sprint count]
+
+**Dependencies:** [External dependencies, prerequisite epics]
+
+## Stakeholders
+
+| Role | Name | Responsibility |
+|------|------|----------------|
+| Product Owner | [Name] | Requirements, prioritization |
+| Tech Lead | [Name] | Architecture, implementation |
+| QA Lead | [Name] | Testing strategy |
+| [Other roles] | [Names] | [Responsibilities] |
+
+## Related Documentation
+
+- Requirements Spec: `devforgeai/specs/requirements/[EPIC-ID]-requirements.md` (to be created)
+- ADRs: (to be created during architecture phase)
+- User Stories: (to be created during sprint planning)
+
+## Status History
+
+- [YYYY-MM-DD]: Created - Epic defined and scoped
+```
+
+**Write epic file:**
+
+```bash
+Write(
+  file_path="devforgeai/specs/Epics/[EPIC-ID].epic.md",
+  content="[Generated epic document]"
+)
+```
+
+### Phase 6: Requirements Specification (Optional)
+
+**Ask if detailed requirements needed:**
+
+```
+AskUserQuestion:
+  Question: "Would you like to create a detailed requirements specification for this epic?"
+  Header: "Requirements Documentation"
+  Options:
+    - "Yes - Create full requirements spec (functional, non-functional, data models)"
+    - "No - Epic document is sufficient for now"
+    - "Later - I'll create requirements during sprint planning"
+```
+
+**If "Yes" selected:**
+
+```bash
+Task(
+  subagent_type="requirements-writer",
+  prompt="Create detailed requirements specification for epic '[epic-name]'.
+
+Based on features:
+[Feature list]
+
+Generate comprehensive requirements document including:
+1. **Functional Requirements** - Detailed use cases, user flows
+2. **Non-Functional Requirements** - Performance, security, scalability
+3. **Data Models** - Entities, attributes, relationships
+4. **API Contracts** - Endpoints, request/response formats (if applicable)
+5. **Business Rules** - Validation, workflows, constraints
+6. **Integration Requirements** - External systems, APIs, services
+
+Format as structured markdown suitable for `devforgeai/specs/requirements/`"
+)
+```
+
+**Write requirements spec:**
+
+```bash
+Write(
+  file_path="devforgeai/specs/requirements/[EPIC-ID]-requirements.md",
+  content="[Generated requirements specification]"
+)
+```
+
+**Update epic with requirements link:**
+
+```bash
+Edit(
+  file_path="devforgeai/specs/Epics/[EPIC-ID].epic.md",
+  old_string="- Requirements Spec: `devforgeai/specs/requirements/[EPIC-ID]-requirements.md` (to be created)",
+  new_string="- Requirements Spec: `devforgeai/specs/requirements/[EPIC-ID]-requirements.md`"
+)
+```
+
+### Phase 7: Success Report
+
+**Display epic summary:**
+
+```
+✅ Epic Created Successfully
+
+Epic Details:
+  📋 ID: [EPIC-ID]
+  🎯 Title: [epic-name]
+  🏆 Priority: [priority]
+  📊 Business Value: [business value]
+  📅 Timeline: [timeline estimate]
+
+Features: [feature count] features identified
+  ✨ [Feature 1 name] - [complexity]
+  ✨ [Feature 2 name] - [complexity]
+  [... list all features ...]
+
+Technical Assessment:
+  🔧 Complexity Score: [score]/10
+  ⚠️ Key Risks: [risk count] identified
+  📦 Prerequisites: [prerequisite count]
+
+Files Created:
+  📁 devforgeai/specs/Epics/[EPIC-ID].epic.md
+  [If requirements created]
+  📁 devforgeai/specs/requirements/[EPIC-ID]-requirements.md
+
+Next Steps:
+  1. Review epic document and features
+  2. Create sprint with: /plan-sprint --epic=[EPIC-ID]
+  3. Break features into user stories during sprint planning
+  4. Implement stories with: /implement
+```
+
+## Error Handling
+
+### Error: Invalid Epic Name
+
+**Condition:** Epic name is empty, too short, or contains invalid characters
+
+**Action:**
+1. Validate epic name:
+   - Minimum 10 characters
+   - Maximum 100 characters
+   - No special characters except spaces, hyphens, underscores
+2. If invalid:
+   ```
+   ❌ Invalid epic name: [reason]
+
+   Epic names must:
+     - Be 10-100 characters
+     - Use alphanumeric characters, spaces, hyphens, underscores only
+     - Be descriptive and action-oriented
+
+   Example: "User Authentication System", "Payment Processing Overhaul"
+
+   Please provide a valid epic name.
+   ```
+
+### Error: Feature Decomposition Failed
+
+**Condition:** Task tool unable to generate features
+
+**Recovery:**
+1. Fall back to manual feature entry:
+   ```
+   AskUserQuestion:
+     Question: "Unable to auto-generate features. Please list features manually (one per line):"
+     Free-form: "Feature 1: [name]\nFeature 2: [name]\n..."
+   ```
+2. For each feature, gather:
+   - Description
+   - Complexity (Simple/Moderate/Complex)
+   - Dependencies
+3. Construct feature list manually
+
+### Error: Directory Structure Missing
+
+**Condition:** `devforgeai/specs/Epics/` directory does not exist
+
+**Action:**
+1. Create directory structure:
+   ```bash
+   # Using Bash for directory creation
+   mkdir -p devforgeai/specs/Epics
+   ```
+2. Continue with epic creation
+3. Log directory creation in epic status history
+
+## Success Criteria
+
+- [x] Epic ID generated (sequential)
+- [x] Epic file created in `devforgeai/specs/Epics/[EPIC-ID].epic.md`
+- [x] YAML frontmatter complete (all required fields)
+- [x] Features listed with descriptions (3-8 features)
+- [x] Technical assessment included
+- [x] Success criteria defined
+- [x] Stakeholders identified
+- [x] Status set to "Planning"
+- [x] Token usage < 30K
+
+## Token Efficiency
+
+**Target:** < 30K tokens total
+
+**Optimization strategies:**
+1. Use `Glob` for epic discovery (not Bash)
+2. Use `Grep` for duplicate detection (not reading all files)
+3. Task tool for feature decomposition (delegate heavy work)
+4. Single file write operation (construct content in memory)
+5. Parallel reads when checking context files
+6. Cache epic template in memory
+
+**Estimated token breakdown:**
+- Phase 1 (Discovery): ~2K tokens
+- Phase 2 (Context): ~3K tokens
+- Phase 3 (Features): ~8K tokens
+- Phase 4 (Technical): ~7K tokens
+- Phase 5 (Creation): ~3K tokens
+- Phase 6 (Requirements): ~5K tokens (optional)
+- Phase 7 (Report): ~1K tokens
+- **Total: ~29K tokens** (within 30K budget)
+
+## Integration Points
+
+**Invokes:**
+- `requirements-analyst` subagent (Phase 3)
+- `technical-assessor` subagent (Phase 4)
+- `requirements-writer` subagent (Phase 6, optional)
+
+**Prerequisites:**
+- None (can create epics before context files exist)
+
+**Enables:**
+- `/plan-sprint` command (requires epics)
+- `devforgeai-orchestration` skill (epic → sprint → story workflow)
+
+**Related Commands:**
+- `/plan-sprint` - Create sprint from epic
+- `/create-context` - Generate architectural context (recommended before implementation)
+
+## Notes
+
+**Epic lifecycle:**
+- Planning → In Progress → Paused → Completed → Archived
+
+**Status transitions:**
+- Created: Status = "Planning"
+- First story started: Status = "In Progress"
+- All stories complete: Status = "Completed"
+
+**Epic vs Feature vs Story:**
+- **Epic**: Business initiative (multiple sprints)
+- **Feature**: Functional unit within epic (1-2 sprints)
+- **Story**: Atomic work unit (1-5 days)
+
+**Best practices:**
+- Keep epics focused (single business goal)
+- Limit to 3-8 features per epic
+- Define measurable success criteria
+- Identify stakeholders early
+- Document technical risks upfront
+
+**When to create epics:**
+- Starting new major features
+- Planning large initiatives
+- Organizing related work
+- Before sprint planning
+- After requirements discovery (devforgeai-ideation skill)
+
+**When NOT to create epics:**
+- For single user stories (create story directly)
+- For bug fixes (create story or hotfix)
+- For minor improvements (create story)
+- During active sprint (wait for sprint planning)

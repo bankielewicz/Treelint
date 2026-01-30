@@ -475,6 +475,37 @@ Limit agentic iterations:
 | `MAX_THINKING_TOKENS` | Max thinking tokens (default 10000) |
 | `CLAUDE_CODE_IDE_SKIP_AUTO_INSTALL` | Skip IDE auto-install |
 
+### New Environment Variables (2.1.x - January 2026)
+
+| Variable | Description | Version |
+|----------|-------------|---------|
+| `CLAUDE_CODE_ENABLE_TASKS` | Set to `false` to disable new task management system | 2.1.19+ |
+| `CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD` | Set to `1` to enable `--add-dir` flag for loading CLAUDE.md from additional directories | 2.1.20+ |
+
+**Usage Examples:**
+
+```bash
+# Disable new task management system (use old behavior)
+export CLAUDE_CODE_ENABLE_TASKS=false
+
+# Enable additional CLAUDE.md directories
+export CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=1
+claude --add-dir /path/to/shared/project
+```
+
+### New Settings (2.1.x)
+
+| Setting | Description | Version |
+|---------|-------------|---------|
+| `spinnerVerbs` | Customize spinner verb text during operations | 2.1.23+ |
+
+**Example:**
+```json
+{
+  "spinnerVerbs": ["Processing", "Working on", "Handling"]
+}
+```
+
 ### Complete Example
 
 `.claude/settings.json` (project-level, shared):

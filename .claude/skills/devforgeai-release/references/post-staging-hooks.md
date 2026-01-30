@@ -194,8 +194,8 @@ operations:
 
 **Handling:**
 ```bash
-if ! command -v devforgeai-validate &> /dev/null; then
-    echo "⚠️  Note: Post-deployment feedback unavailable (devforgeai-validate CLI not installed)"
+if ! command -v devforgeai &> /dev/null; then
+    echo "⚠️  Note: Post-deployment feedback unavailable (devforgeai CLI not installed)"
     echo "Install: pip install --break-system-packages -e .claude/scripts/"
     # Continue deployment (no hooks, no failure)
 fi

@@ -1,7 +1,7 @@
 ---
 name: code-reviewer
 description: Senior code review specialist ensuring quality, security, maintainability, and standards compliance. Use proactively after code implementation or refactoring to provide comprehensive feedback on code changes.
-tools: Read, Grep, Glob, Bash(git:*)
+tools: Read, Write, Grep, Glob, Bash(git:*)
 model: opus
 color: green
 permissionMode: acceptEdits
@@ -764,6 +764,56 @@ observations:
     severity: high
     files: ["src/payment/processor.py"]
 ```
+
+---
+
+## Observation Capture (MANDATORY - Final Step)
+
+**Before returning, you MUST write observations to disk.**
+
+### Step 1: Construct Observation JSON
+
+Build observation JSON with insights captured during execution:
+
+```json
+{
+  "subagent": "code-reviewer",
+  "phase": "${PHASE_NUMBER}",
+  "story_id": "${STORY_ID}",
+  "timestamp": "${START_TIMESTAMP}",
+  "duration_ms": ${EXECUTION_TIME},
+  "observations": [
+    {
+      "id": "obs-${PHASE}-001",
+      "category": "friction|success|pattern|gap|idea|bug|warning",
+      "note": "Description (max 200 chars)",
+      "severity": "low|medium|high",
+      "files": ["optional/paths.md"]
+    }
+  ],
+  "metadata": {
+    "version": "1.0",
+    "write_timestamp": "${WRITE_TIMESTAMP}"
+  }
+}
+```
+
+### Step 2: Write to Disk
+
+```
+Write(
+  file_path="devforgeai/feedback/ai-analysis/${STORY_ID}/phase-${PHASE}-code-reviewer.json",
+  content=${observation_json}
+)
+```
+
+### Step 3: Verify Write
+
+Confirm file was created. If write fails, log error but continue (non-blocking).
+
+**This write MUST happen even if the main task fails.**
+
+**Protocol Reference:** `.claude/skills/devforgeai-development/references/observation-write-protocol.md`
 
 ---
 

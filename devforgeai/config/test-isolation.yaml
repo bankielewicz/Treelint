@@ -1,0 +1,100 @@
+# DevForgeAI Test Isolation Configuration
+# Version: 1.0
+# Documentation: devforgeai/config/README.md
+# Schema: devforgeai/config/test-isolation.schema.json
+
+# Master enable/disable switch for test isolation
+# When false, test outputs go to default locations (not story-scoped)
+enabled: true
+
+# Path configuration for story-scoped test outputs
+# All paths are relative to project root
+paths:
+  # Base directory for test results (JUnit XML, test logs)
+  # Story outputs: {results_base}/{STORY_ID}/test-results.xml
+  results_base: "tests/results"
+
+  # Base directory for coverage reports
+  # Story outputs: {coverage_base}/{STORY_ID}/coverage.json
+  coverage_base: "tests/coverage"
+
+  # Base directory for test logs (console output capture)
+  # Story outputs: {logs_base}/{STORY_ID}/test-output.log
+  logs_base: "tests/logs"
+
+# Directory creation settings
+directory:
+  # Automatically create story-scoped directories before test execution
+  auto_create: true
+
+  # Unix permissions for created directories (ignored on Windows)
+  # 755 = rwxr-xr-x (owner: all, group/others: read+execute)
+  permissions: 755
+
+  # Create parent directories if they don't exist
+  create_parents: true
+
+# Concurrency settings for parallel story development
+concurrency:
+  # Enable file locking to prevent concurrent writes
+  locking_enabled: true
+
+  # Lock file name pattern (created in story results directory)
+  lock_file_pattern: ".qa-lock"
+
+  # Maximum seconds to wait for lock acquisition
+  lock_timeout_seconds: 300
+
+  # Seconds after which a lock is considered stale and can be removed
+  stale_lock_threshold_seconds: 3600
+
+# Cleanup policy to prevent unbounded growth
+# WARNING: Cleanup deletes old test results permanently
+cleanup:
+  # Enable automatic cleanup of old test results
+  enabled: false
+
+  # Number of days to retain test results
+  # Results older than this are deleted during cleanup
+  retention_days: 30
+
+  # Maximum number of story directories to keep
+  # Oldest directories deleted when limit exceeded
+  max_stories: 100
+
+  # Only cleanup stories in "Released" status
+  # When true, preserves results for stories still in development
+  require_released_status: true
+
+# Language-specific output file patterns
+# Used by test command generator to construct correct output paths
+language_outputs:
+  python:
+    coverage_file: "coverage.json"
+    results_file: "test-results.xml"
+    log_file: "test-output.log"
+
+  javascript:
+    coverage_file: "coverage-summary.json"
+    results_file: "test-results.json"
+    log_file: "test-output.log"
+
+  dotnet:
+    coverage_file: "coverage.cobertura.xml"
+    results_file: "test-results.trx"
+    log_file: "test-output.log"
+
+  go:
+    coverage_file: "coverage.out"
+    results_file: "test-results.json"
+    log_file: "test-output.log"
+
+  java:
+    coverage_file: "jacoco.xml"
+    results_file: "test-results.xml"
+    log_file: "test-output.log"
+
+  rust:
+    coverage_file: "tarpaulin-report.json"
+    results_file: "test-results.json"
+    log_file: "test-output.log"

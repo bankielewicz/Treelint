@@ -2,7 +2,7 @@
 name: devforgeai-documentation
 description: Automated documentation generation integrated into SDLC workflow. Generates README, developer guides, API docs, architecture diagrams, and roadmaps from stories and codebase analysis. Supports greenfield (story-based) and brownfield (codebase analysis) modes. Use when generating project documentation, updating docs after story completion, or analyzing documentation coverage.
 tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion
-model: claude-opus-4-5-20251101
+model: claude-model: opus-4-5-20251001
 ---
 
 # DevForgeAI Documentation Skill

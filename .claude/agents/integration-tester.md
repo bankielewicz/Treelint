@@ -611,6 +611,100 @@ def db_session(docker_db):
 
 ---
 
+## Output
+
+### Observations (Optional - EPIC-051)
+
+Subagents may return observations to capture insights during execution.
+This field is OPTIONAL - subagents work normally without it.
+
+```yaml
+observations:
+  - category: friction | success | pattern | gap | idea | bug | warning
+    note: "Human-readable observation text (10-500 chars)"
+    severity: low | medium | high
+    files: ["optional/file/paths.md"]  # Files related to observation (0-10 items)
+```
+
+**Category Definitions:**
+- **friction** - Pain points, workflow interruptions, confusing behavior
+- **success** - Things that worked well, positive patterns, effective approaches
+- **pattern** - Recurring approaches, common solutions, best practices observed
+- **gap** - Missing features, incomplete coverage, unmet needs
+- **idea** - Improvement suggestions, enhancement opportunities
+- **bug** - Defects found, unexpected behavior, errors encountered
+- **warning** - Potential issues, risks, technical debt indicators
+
+**Severity Levels:**
+- **low** - Minor observation, informational only
+- **medium** - Notable observation, may warrant attention
+- **high** - Significant observation, should be reviewed
+
+**Example:**
+```yaml
+observations:
+  - category: friction
+    note: "Docker container took 45 seconds to start, slowing test feedback"
+    severity: medium
+    files: ["docker-compose.test.yml"]
+  - category: success
+    note: "API contract tests caught schema mismatch before deployment"
+    severity: high
+    files: ["tests/integration/test_api_contract.py"]
+```
+
+---
+
+## Observation Capture (MANDATORY - Final Step)
+
+**Before returning, you MUST write observations to disk.**
+
+### Step 1: Construct Observation JSON
+
+Build observation JSON with insights captured during execution:
+
+```json
+{
+  "subagent": "integration-tester",
+  "phase": "${PHASE_NUMBER}",
+  "story_id": "${STORY_ID}",
+  "timestamp": "${START_TIMESTAMP}",
+  "duration_ms": ${EXECUTION_TIME},
+  "observations": [
+    {
+      "id": "obs-${PHASE}-001",
+      "category": "friction|success|pattern|gap|idea|bug|warning",
+      "note": "Description (max 200 chars)",
+      "severity": "low|medium|high",
+      "files": ["optional/paths.md"]
+    }
+  ],
+  "metadata": {
+    "version": "1.0",
+    "write_timestamp": "${WRITE_TIMESTAMP}"
+  }
+}
+```
+
+### Step 2: Write to Disk
+
+```
+Write(
+  file_path="devforgeai/feedback/ai-analysis/${STORY_ID}/phase-${PHASE}-integration-tester.json",
+  content=${observation_json}
+)
+```
+
+### Step 3: Verify Write
+
+Confirm file was created. If write fails, log error but continue (non-blocking).
+
+**This write MUST happen even if the main task fails.**
+
+**Protocol Reference:** `.claude/skills/devforgeai-development/references/observation-write-protocol.md`
+
+---
+
 **Token Budget**: < 40K per invocation
 **Priority**: MEDIUM
 **Implementation Day**: Day 9

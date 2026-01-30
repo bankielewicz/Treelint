@@ -81,18 +81,20 @@ paths: src/api/**/*.ts
 | `/rewind` | Restore previous code/conversation state (December 2025) |
 | `/rename [name]` | Name current session for later reference (December 2025) |
 | `/resume <n>` | Resume a named session (December 2025) |
-| `/stats` | View usage statistics and streak (December 2025) |
+| `/stats` | View usage statistics with date range filtering (2.1.20+) |
 | `/cost` | Show token usage and cost statistics |
 | `/context` | Show context window usage |
+| `/sandbox` | Show sandbox status with dependency info (improved in 2.1.20+) |
 
 ### Configuration
-| Command | Description |
-|---------|-------------|
-| `/config` | Open Settings interface |
-| `/status` | Show version, model, account, connectivity |
-| `/model <name>` | Change AI model (sonnet, opus, haiku) |
-| `/permissions` | Manage tool permissions |
-| `/output-style [style]` | Change output style (default, explanatory, learning) |
+| Command | Description | Version |
+|---------|-------------|---------|
+| `/config` | Open Settings interface (with search in 2.1.20+) | - |
+| `/status` | Show version, model, account, connectivity | - |
+| `/model <name>` | Change AI model (sonnet, opus, haiku) | - |
+| `/permissions` | Manage tool permissions | - |
+| `/output-style [style]` | Change output style (default, explanatory, learning) | - |
+| `/keybindings` | Customize keyboard shortcuts | 2.1.18+ |
 
 ### Feature Management
 | Command | Description |
@@ -147,15 +149,18 @@ paths: src/api/**/*.ts
 | `Ctrl+J` | Line feed (multiline input) | All |
 
 ### Special Functions
-| Shortcut | Action | Platform |
-|----------|--------|----------|
-| `Tab` | Accept prompt suggestion (December 2025) | All |
-| `Shift+Tab` or `Alt+M` | Cycle permission modes (Auto-Accept/Plan/Normal) | All |
-| `Esc Esc` | Rewind conversation/code (checkpoint restore) | All |
-| `Ctrl+V` (Mac/Linux) or `Alt+V` (Win) | Paste images | All |
-| `Alt+P` | Quick model switching | Windows/Linux |
-| `Option+P` | Quick model switching | macOS |
-| `?` | Show available shortcuts for your terminal | All |
+| Shortcut | Action | Platform | Version |
+|----------|--------|----------|---------|
+| `Tab` | Accept prompt suggestion | All | - |
+| `Tab` (bash mode) | History-based autocomplete | All | 2.1.14+ |
+| `Shift+Tab` or `Alt+M` | Cycle permission modes (Auto-Accept/Plan/Normal) | All | - |
+| `Esc Esc` | Rewind conversation/code (checkpoint restore) | All | - |
+| `Ctrl+V` (Mac/Linux) or `Alt+V` (Win) | Paste images | All | - |
+| `Alt+P` | Quick model switching | Windows/Linux | - |
+| `Option+P` | Quick model switching | macOS | - |
+| `Ctrl+G` | Open external editor | All | 2.1.20+ |
+| `c` | Copy OAuth URL (when browser fails to open) | All | 2.1.10+ |
+| `?` | Show available shortcuts for your terminal | All | - |
 
 ### Vim Mode (after `/vim`)
 | Shortcut | Action |

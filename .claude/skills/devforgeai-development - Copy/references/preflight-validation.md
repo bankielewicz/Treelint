@@ -116,16 +116,16 @@ ELSE:
 **Implementation:**
 
 ```bash
-# Check if devforgeai-validate CLI is available
-if ! command -v devforgeai-validate &> /dev/null; then
+# Check if devforgeai CLI is available
+if ! command -v devforgeai &> /dev/null; then
     CLI_AVAILABLE=false
-    echo "WARN: devforgeai-validate CLI not installed"
+    echo "WARN: devforgeai CLI not installed"
     echo "  - Hook checks will be skipped"
     echo "  - Manual validation required"
 else
     CLI_AVAILABLE=true
-    DEVFORGEAI_VERSION=$(devforgeai-validate --version 2>/dev/null || echo "unknown")
-    echo "✓ devforgeai-validate CLI: $DEVFORGEAI_VERSION"
+    DEVFORGEAI_VERSION=$(devforgeai --version 2>/dev/null || echo "unknown")
+    echo "✓ devforgeai CLI: $DEVFORGEAI_VERSION"
 fi
 
 # Store for downstream use

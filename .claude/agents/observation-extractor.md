@@ -2,7 +2,7 @@
 name: observation-extractor
 description: Extract observations from subagent outputs for framework self-improvement. Mines existing subagent responses to capture friction points, success patterns, coverage gaps, and improvement ideas without requiring schema changes to source subagents.
 tools: Read, Grep, Glob
-model: opus
+model: haiku
 ---
 
 # Observation Extractor

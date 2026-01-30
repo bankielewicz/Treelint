@@ -1,0 +1,860 @@
+---
+description: Implement user story using TDD workflow
+argument-hint: [STORY-ID]
+model: opus
+allowed-tools: Read, Write, Edit, Glob, Grep, Skill, Task, Bash(pytest:*), Bash(npm:test), Bash(dotnet:test), Bash(git:*)
+---
+
+# /dev - TDD Development Workflow
+
+Execute full Test-Driven Development cycle for a user story.
+
+## Pre-execution Context
+
+**Story:** @devforgeai/specs/Stories/$1.story.md
+
+**Note:** Git status will be displayed in Phase 0 after Git availability is confirmed.
+
+## Workflow
+
+### Phase 0: Environment Validation (Pre-Flight Check)
+
+**CRITICAL: Check Git availability BEFORE executing any Git commands**
+
+#### Step 0.1: Git Repository Check
+
+**Check environment context:**
+```
+Examine <env> block from system context:
+  - Look for: "Is directory a git repo: Yes/No"
+  - Extract git availability status
+```
+
+**IF <env> indicates "Is directory a git repo: No":**
+```
+Use AskUserQuestion to provide recovery options:
+
+AskUserQuestion:
+  questions:
+    - question: "This directory is not a Git repository. The /dev command requires Git for version control. How would you like to proceed?"
+      header: "Git Required"
+      options:
+        - label: "Initialize Git now"
+          description: "Run 'git init' and create initial commit automatically (recommended)"
+        - label: "Continue without Git"
+          description: "Proceed with TDD development but use file-based change tracking instead of Git commits"
+        - label: "Use different directory"
+          description: "Cancel and navigate to a directory with Git already initialized"
+      multiSelect: false
+
+Handle user response:
+
+  IF user selected "Initialize Git now":
+    Display: "Initializing Git repository..."
+
+    Bash(command="git init")
+    Display: "✓ Git repository initialized"
+
+    Bash(command="git add .")
+    Display: "✓ Files staged"
+
+    Bash(command="git commit -m 'Initial commit'")
+    Display: "✓ Initial commit created"
+
+    Display: "✓ Git setup complete - proceeding with development workflow"
+
+    Display current status:
+    Bash(command="git status", description="Show Git repository status")
+
+    Continue to Phase 0a
+
+  ELSE IF user selected "Continue without Git":
+    Display: "⚠️  WARNING: Proceeding without Git"
+    Display: "  - File-based change tracking will be used"
+    Display: "  - No commits will be created"
+    Display: "  - Changes documented in devforgeai/stories/{STORY-ID}/changes/"
+    Display: "  - Version history limited"
+    Display: ""
+    Display: "Note: You can initialize Git later with:"
+    Display: "      git init && git add . && git commit -m 'Initial commit'"
+
+    Set context for skill:
+    **Git Mode:** file_based
+
+    Continue to Phase 0a (skill will detect and use file-based workflow)
+
+  ELSE IF user selected "Use different directory":
+    Display: "To use a different directory with Git:"
+    Display: "  1. Navigate to your Git repository:"
+    Display: "     cd /path/to/your/git/repo"
+    Display: "  2. Re-run the command:"
+    Display: "     /dev $1"
+    Display: ""
+    Display: "Git-independent commands you can use:"
+    Display: "  - /ideate (requirements gathering)"
+    Display: "  - /create-context (architecture setup)"
+    Display: "  - /create-story (story generation)"
+
+    HALT execution
+    Exit command
+```
+
+**IF <env> indicates "Is directory a git repo: Yes":**
+```
+✓ Git repository detected
+✓ Proceeding to argument validation...
+
+Display current repository status:
+Bash(command="git status", description="Show Git repository status")
+
+Continue to Phase 0a
+```
+
+**Token cost:** ~500 tokens (one-time check per command invocation)
+
+**Benefits:**
+- Fails before Bash execution (no cryptic errors)
+- Clear, actionable error message with resolution steps
+- Guides user to proper setup or alternative workflows
+- Leverages existing <env> context (no new tools needed)
+
+---
+
+### Phase 0a: Argument Validation
+
+**Extract story ID:**
+```
+STORY_ID = $1
+```
+
+**Validate story ID format:**
+```
+IF $1 is empty OR does NOT match pattern "STORY-[0-9]+":
+  AskUserQuestion:
+  Question: "Story ID '$1' doesn't match format STORY-NNN. What story should I develop?"
+  Header: "Story ID"
+  Options:
+    - "List stories in Ready for Dev status"
+    - "List stories in Backlog status"
+    - "Show correct /dev command syntax"
+  multiSelect: false
+
+  Extract STORY_ID from user response
+```
+
+**Validate story file exists:**
+```
+Glob(pattern="devforgeai/specs/Stories/${STORY_ID}*.story.md")
+
+IF no matches found:
+  AskUserQuestion:
+  Question: "Story ${STORY_ID} not found. What should I do?"
+  Header: "Story not found"
+  Options:
+    - "List all available stories"
+    - "Create ${STORY_ID} (run /create-story first)"
+    - "Cancel command"
+  multiSelect: false
+
+  Handle based on user selection
+
+IF multiple matches found:
+  AskUserQuestion:
+  Question: "Multiple files match ${STORY_ID}. Which one?"
+  Header: "Story selection"
+  Options:
+    [List each matched filename]
+  multiSelect: false
+
+  STORY_FILE = user selection
+```
+
+**Validation summary:**
+```
+✓ Story ID: ${STORY_ID}
+✓ Story file: ${STORY_FILE}
+✓ Proceeding with development...
+```
+
+---
+
+### Phase 0c: Technology Detection & Context Validation
+
+**CRITICAL: Detect project technology before executing any test commands**
+
+**Step 1: Verify context files exist**
+```
+Check: Glob(pattern="devforgeai/specs/context/*.md")
+Expected: 6 files (tech-stack, source-tree, dependencies, coding-standards, architecture-constraints, anti-patterns)
+
+IF context files missing:
+  HALT with error:
+  "Context files not found. This is a greenfield project.
+
+   Run this first:
+   > /create-context [project-name]
+
+   Then retry:
+   > /dev $ARGUMENTS"
+
+  DO NOT PROCEED to development without context files.
+```
+
+**Step 2: Detect technology stack**
+```
+IF tech-stack.md exists:
+  Read tech-stack.md
+  Extract:
+    - Programming language (Node.js, Python, .NET, Go, Java, Rust, etc.)
+    - Test framework (npm test, pytest, dotnet test, go test, etc.)
+    - Build tool (npm, pip, dotnet, go, mvn, etc.)
+
+ELSE IF tech-stack.md missing (but other context files exist):
+  Detect via project markers:
+    - Glob(pattern="package.json") → Node.js → Test: npm test
+    - Glob(pattern="*.csproj") → .NET → Test: dotnet test
+    - Glob(pattern="pyproject.toml") OR Glob(pattern="requirements.txt") → Python → Test: pytest
+    - Glob(pattern="go.mod") → Go → Test: go test ./...
+    - Glob(pattern="pom.xml") → Java/Maven → Test: mvn test
+    - Glob(pattern="build.gradle*") → Java/Gradle → Test: gradle test
+    - Glob(pattern="Cargo.toml") → Rust → Test: cargo test
+
+ELSE IF detection fails:
+  Use AskUserQuestion:
+  "Unable to detect project technology. What command runs tests?"
+  Options:
+    - npm test (Node.js/JavaScript/TypeScript)
+    - pytest (Python)
+    - dotnet test (.NET/C#)
+    - go test ./... (Go)
+    - mvn test (Java/Maven)
+    - cargo test (Rust)
+    - Other (specify custom command)
+```
+
+**Step 3: Store detected test command**
+```
+TEST_COMMAND = [detected command from Step 2]
+
+Example outputs:
+  - Node.js project → TEST_COMMAND = "npm test"
+  - .NET project → TEST_COMMAND = "dotnet test"
+  - Python project → TEST_COMMAND = "pytest"
+```
+
+**Validation:**
+- [ ] Technology detected successfully
+- [ ] Test command identified
+- [ ] Ready to proceed to Phase 0d
+
+---
+
+### Phase 0d: QA Failure Context Detection (NEW - RCA-006)
+
+**Check for previous QA failures:**
+
+```
+Glob(pattern="devforgeai/qa/reports/${STORY_ID}-qa-report*.md")
+
+IF QA report(s) found:
+    Read most recent report
+    Parse status: PASSED or FAILED
+
+    IF status is FAILED:
+        Parse failure type:
+
+        IF "Deferral Validation FAILED" found in report:
+            Extract deferral violations from report
+
+            Display to user:
+            "📋 QA Failure Context Detected
+
+            Previous QA attempt failed due to deferral issues:
+
+            {list deferral violations from report}
+
+            Development will focus on resolving these issues.
+
+            Options:
+            1. Complete deferred work (implement in this story)
+            2. Create proper justifications (follow-up stories, ADRs)
+
+            The skill will guide you through resolution."
+
+            Set context flags:
+            MODE = "deferral_resolution"
+            QA_ISSUES = {list of violations}
+
+        ELSE:
+            # Other QA failures (coverage, anti-patterns)
+            Display: "Previous QA failed due to: {other_issues}"
+            MODE = "normal_development"
+
+ELSE:
+    # No previous QA failures
+    MODE = "normal_development"
+    QA_ISSUES = none
+```
+
+**Pass context to skill:**
+
+The devforgeai-development skill will detect deferral_resolution mode and invoke the "Handling QA Deferral Failures" workflow to guide resolution.
+
+---
+
+### Phase 1: Story Validation
+
+**Read story file:**
+```
+Story file loaded via @ context reference above
+```
+
+**Parse and validate:**
+1. Extract YAML frontmatter (id, status, title, epic, sprint)
+2. Verify status is "Ready for Dev" or "Backlog"
+3. Extract acceptance criteria (Given/When/Then)
+4. Extract technical specification
+5. Extract non-functional requirements
+
+**Status Gate:**
+- ✅ Status = "Ready for Dev" or "Backlog" → Continue
+- ❌ Status = other → HALT with error
+
+**Validation Checks:**
+- [ ] Story ID matches argument
+- [ ] Status allows development
+- [ ] Acceptance criteria defined
+- [ ] Technical spec exists
+
+**Error Handling:**
+
+IF story file not found:
+```
+ERROR: Story file not found at devforgeai/specs/Stories/$ARGUMENTS.story.md
+
+Available stories:
+[List devforgeai/specs/Stories/*.story.md]
+
+HALT: Provide valid story ID
+```
+
+IF status invalid:
+```
+ERROR: Story status is "$STATUS" (expected "Ready for Dev" or "Backlog")
+
+Current workflow state: $STATUS
+Required state: Ready for Dev
+
+HALT: Story must be in correct workflow state
+```
+
+IF acceptance criteria missing:
+```
+ERROR: Story has no acceptance criteria
+
+Stories require testable acceptance criteria in Given/When/Then format.
+
+HALT: Update story with acceptance criteria
+```
+
+### Phase 2: Invoke Development Skill
+
+**Delegate to devforgeai-development skill:**
+
+**Context for skill:**
+- Story content loaded via @file reference above
+- Story ID: ${STORY_ID}
+
+```bash
+Skill(command="devforgeai-development")
+```
+
+**Note:** Skill will extract story ID from conversation context (YAML frontmatter in loaded story file)
+
+**Skill handles complete TDD cycle:**
+
+1. **Context Validation**
+   - Checks 6 context files exist
+   - Auto-invokes devforgeai-architecture if missing
+   - Validates tech stack, source tree, dependencies
+
+2. **Test-First (Red)**
+   - Invokes test-automator subagent
+   - Generates failing tests from acceptance criteria
+   - Validates tests fail as expected
+   - Runs light QA (syntax, build)
+
+3. **Implementation (Green)**
+   - Invokes backend-architect or frontend-developer subagent
+   - Implements minimal code to pass tests
+   - Validates all tests pass
+   - Runs light QA (anti-patterns, compliance)
+
+4. **Refactor**
+   - Invokes refactoring-specialist subagent
+   - Improves code quality while keeping tests green
+   - Invokes code-reviewer for quality check
+   - Runs light QA (complexity, duplication)
+
+5. **Integration**
+   - Invokes integration-tester subagent
+   - Runs full test suite
+   - Validates coverage thresholds
+   - Runs light QA (full validation)
+
+6. **Git Workflow**
+   - Stages changes
+   - Creates commit with TDD message
+   - Pushes to origin
+
+7. **Story Update**
+   - Updates story status to "Dev Complete"
+   - Adds workflow history entry
+   - Records completion timestamp
+
+**Skill execution is comprehensive - no additional work needed in command**
+
+---
+
+### Phase 2.5: Definition of Done Validation (Three-Layer Defense)
+
+<defense_in_depth>
+  <architecture>Three-layer validation: Fast → Interactive → Comprehensive</architecture>
+  <layer_1>Python format validator (~200 tokens, non-blocking warnings)</layer_1>
+  <layer_2>Interactive user approval checkpoint (MANDATORY, blocking)</layer_2>
+  <layer_3>AI subagent comprehensive analysis (MANDATORY, blocking on violations)</layer_3>
+  <enforcement>Git commit BLOCKED until all layers pass</enforcement>
+  <token_cost>~7,700 total (~200 + ~7,000 + ~500 from subagent summary)</token_cost>
+</defense_in_depth>
+
+**Purpose:** Prevent autonomous deferrals through layered validation and mandatory user interaction.
+
+The devforgeai-development skill has completed implementation and updated the story file with Implementation Notes (Phase 5 Step 1b). Before allowing git commit, we execute three validation layers.
+
+---
+
+#### Phase 2.5a: Layer 1 - Quick Format Check (Speed Optimization)
+
+<layer_1_validation>
+  <purpose>Fast feedback - catch 80% of format errors in <100ms</purpose>
+  <blocking>No (warnings only, non-blocking)</blocking>
+  <token_cost>~200 tokens</token_cost>
+  <efficiency>Python stdlib (not Bash file operations) per native tools research</efficiency>
+</layer_1_validation>
+
+**Run lightweight format validator:**
+
+```bash
+# Bash usage compliant: Executing Python script (terminal operation, not file operation)
+# Per native tools research: "Reserve Bash for terminal operations (pytest, npm test)"
+# Python script execution is analogous to test execution
+
+Bash(command="python .claude/scripts/validate_deferrals.py --story-file devforgeai/specs/Stories/${STORY_ID}*.story.md --format-only --quiet")
+```
+
+**Result handling:**
+```
+exit_code = $?
+
+# format-only mode always exits 0 (non-blocking warnings)
+# --quiet suppresses output (minimal tokens)
+
+Display: "✓ Layer 1: Quick format check complete (<100ms)"
+```
+
+**If violations detected:** Script outputs warnings but exits 0 (non-blocking)
+
+**Purpose:** Instant feedback for developers - catches obvious format errors before user interaction
+
+**Always proceed to Layer 2** (checkpoint is authoritative)
+
+---
+
+#### Phase 2.5b: Layer 2 - Interactive User Approval (MANDATORY - BLOCKING)
+
+<layer_2_validation>
+  <purpose>ZERO autonomous deferrals - require user approval for ALL incomplete items</purpose>
+  <blocking>Yes (MANDATORY checkpoint, cannot skip)</blocking>
+  <token_cost>~7,000 tokens (user interaction)</token_cost>
+  <efficiency>Uses native Grep (60% savings) and Edit tools (75% savings)</efficiency>
+</layer_2_validation>
+
+**Execute comprehensive interactive checkpoint:**
+
+See: @.claude/tasks/dod-validation-checkpoint.md
+
+**Context for task:**
+- **STORY_ID:** ${STORY_ID}
+- **STORY_FILE:** devforgeai/specs/Stories/${STORY_ID}*.story.md (already loaded in conversation)
+
+The task file will:
+1. Extract all incomplete DoD items (using native Grep tool)
+2. Require AskUserQuestion for EACH unjustified item (4 options)
+3. Create follow-up stories or ADRs as user directs (via subagents)
+4. Update story file with justifications (using native Edit tool)
+5. Block git commit if any items lack user approval
+
+**This checkpoint CANNOT be skipped.**
+
+**Expected outcomes:**
+- ✅ All incomplete items have user-approved justifications → Proceed to Layer 3
+- ❌ Items lack justification → HALT, user must approve deferrals
+- 🔄 User chose "Complete it now" → Return to skill for implementation
+
+---
+
+#### Phase 2.5c: Layer 3 - AI Comprehensive Validation (Automatic)
+
+<layer_3_validation>
+  <purpose>Deep analysis - feasibility checks, circular detection, reference validation</purpose>
+  <blocking>Yes (blocks on CRITICAL/HIGH violations)</blocking>
+  <token_cost>~500 tokens to main conversation (subagent runs in isolated context)</token_cost>
+  <efficiency>Subagent context isolation - 5K tokens in separate window, only summary affects main</efficiency>
+</layer_3_validation>
+
+**Automatically executed by devforgeai-development skill Phase 5 Step 1.5:**
+
+After Layer 2 (user approval) completes, the skill automatically invokes:
+
+```
+Task(
+    subagent_type="deferral-validator",
+    description="Validate deferral justifications",
+    prompt="Comprehensive validation of all deferred DoD items..."
+)
+```
+
+**The subagent validates:**
+- Implementation feasibility (could be done now?)
+- Circular deferrals (A→B→A chains)
+- Story references exist and include work
+- ADR references exist and document item
+- Technical blockers are truly external
+
+**IF subagent returns CRITICAL or HIGH violations:**
+```
+HALT development
+Display: "❌ Deferral validation FAILED (Layer 3)
+
+         Comprehensive AI analysis detected issues:
+         {list violations}
+
+         Fix violations before git commit allowed."
+
+DO NOT proceed to Phase 3
+User must resolve violations via /dev command re-run
+```
+
+**IF subagent returns only MEDIUM/LOW violations or PASS:**
+```
+Display: "✓ Layer 3: Comprehensive validation complete"
+Proceed to Phase 3 (verify completion)
+```
+
+---
+
+**After all three layers pass: Proceed to Phase 3.**
+
+---
+
+### Phase 3: Verify Completion
+
+**Check skill execution success:**
+
+1. **Verify story status updated:**
+```bash
+Read(file_path="devforgeai/specs/Stories/$1.story.md")
+```
+
+Extract status from frontmatter:
+- ✅ Status = "Dev Complete" → Success
+- ❌ Status = other → Skill failed
+
+2. **Verify git commit created:**
+```bash
+# Check if commits exist by using git log
+# Only check if Git is available (WORKFLOW_MODE was set in Phase 0)
+IF Git was available in Phase 0:
+    Bash(command="git log -1 --oneline", description="Check latest commit")
+
+    Check commit message contains story ID (if commits exist).
+
+ELSE:
+    # File-based workflow - skip Git commit verification
+    Display: "File-based workflow - no Git commits to verify"
+```
+
+3. **Verify tests passing:**
+
+**Execute test command detected in Phase 0c:**
+```bash
+# Use TEST_COMMAND variable from Phase 0c technology detection
+Bash(command=TEST_COMMAND)
+
+# Examples based on detected technology:
+# - Node.js: npm test
+# - Python: pytest --tb=short
+# - .NET: dotnet test
+# - Go: go test ./...
+# - Java: mvn test OR gradle test
+# - Rust: cargo test
+```
+
+**Test Gate:**
+- ✅ All tests pass → Success
+- ❌ Any test fails → Report failure
+- ❌ TEST_COMMAND not set → Error (technology detection failed in Phase 0c)
+
+### Phase 4: Report Results
+
+**Success Report:**
+
+```markdown
+## Development Complete ✅
+
+**Story:** $STORY_ID - $TITLE
+**Status:** Dev Complete
+**Epic:** $EPIC_ID
+**Sprint:** $SPRINT_ID
+
+### Completed Phases
+- [x] Context validation
+- [x] Test generation (Red)
+- [x] Implementation (Green)
+- [x] Refactoring
+- [x] Integration testing
+- [x] Git workflow
+- [x] Story update
+
+### Test Results
+- **Total Tests:** $TOTAL
+- **Passed:** $PASSED
+- **Failed:** $FAILED
+- **Coverage:** $COVERAGE%
+
+### Git Commit
+$COMMIT_HASH: $COMMIT_MESSAGE
+
+### Next Steps
+1. Run deep QA validation:
+   `/qa $STORY_ID --mode=deep`
+
+2. Review changes:
+   `git diff HEAD~1`
+
+3. If QA passes, transition to "QA Approved":
+   `/orchestrate transition $STORY_ID QA-Approved`
+```
+
+**Failure Report:**
+
+```markdown
+## Development Failed ❌
+
+**Story:** $STORY_ID - $TITLE
+**Status:** $CURRENT_STATUS
+**Error:** $ERROR_MESSAGE
+
+### Failed Phase
+$FAILED_PHASE
+
+### Error Details
+$ERROR_DETAILS
+
+### Resolution Steps
+$RESOLUTION_STEPS
+
+### Common Issues
+
+**If context files missing:**
+- Run: `/arch` to create context files
+
+**If tests fail:**
+- Review test output above
+- Check acceptance criteria match implementation
+- Verify dependencies installed
+
+**If light QA blocks:**
+- Fix reported violations
+- Re-run: `/dev $STORY_ID`
+
+**If git conflicts:**
+- Resolve conflicts: `git status`
+- Re-run: `/dev $STORY_ID`
+```
+
+## Success Criteria
+
+- [ ] Story status = "Dev Complete"
+- [ ] All tests passing (100% pass rate)
+- [ ] Light QA passed (no blocking violations)
+- [ ] Code coverage meets thresholds (95%/85%/80%)
+- [ ] Git commit created and pushed
+- [ ] Workflow history updated in story file
+- [ ] No anti-pattern violations
+- [ ] Spec compliance validated
+
+## Error Handling
+
+### Story Not Found
+```
+ERROR: Story file not found
+
+Path: devforgeai/specs/Stories/$ARGUMENTS.story.md
+
+Actions:
+1. List available stories: `ls devforgeai/specs/Stories/`
+2. Check story ID spelling
+3. Verify story created: `/orchestrate create-story`
+```
+
+### Invalid Status
+```
+ERROR: Story not ready for development
+
+Current status: $STATUS
+Required: "Ready for Dev" or "Backlog"
+
+Actions:
+1. Check workflow state: `/orchestrate status $STORY_ID`
+2. Transition if needed: `/orchestrate transition $STORY_ID Ready-for-Dev`
+3. Ensure context files exist: `/arch`
+```
+
+### Skill Execution Failed
+```
+ERROR: Development skill failed
+
+Phase: $FAILED_PHASE
+Error: $ERROR_MESSAGE
+
+Actions:
+1. Review error details above
+2. Fix reported issues
+3. Re-run: `/dev $STORY_ID`
+4. If context missing: `/arch`
+5. If persistent: Report to framework maintainer
+```
+
+### Test Failures
+```
+ERROR: Tests failing after implementation
+
+Failed tests: $FAILED_COUNT
+Passed tests: $PASSED_COUNT
+
+Actions:
+1. Review test output above
+2. Check implementation against acceptance criteria
+3. Fix failing tests or implementation
+4. Re-run: `/dev $STORY_ID`
+```
+
+### Light QA Blocking
+```
+ERROR: Light QA validation failed
+
+Violations: $VIOLATION_COUNT
+Severity: $SEVERITY
+
+Actions:
+1. Review QA report in story file
+2. Fix violations (anti-patterns, complexity, etc.)
+3. Re-run: `/dev $STORY_ID`
+4. Check anti-patterns.md for forbidden patterns
+```
+
+### Git Conflicts
+```
+ERROR: Git merge conflicts detected
+
+Conflicted files: $FILES
+
+Actions:
+1. Resolve conflicts: `git status`
+2. Stage resolved files: `git add $FILES`
+3. Re-run: `/dev $STORY_ID`
+```
+
+### Coverage Below Threshold
+```
+ERROR: Code coverage below threshold
+
+Current: $CURRENT%
+Required: 95% (business logic), 85% (application), 80% (infrastructure)
+
+Actions:
+1. Review coverage report
+2. Add missing tests
+3. Re-run: `/dev $STORY_ID`
+```
+
+## Token Optimization
+
+**Target:** <100K tokens per execution
+
+**Optimization strategies:**
+
+1. **Skill delegation:** Development skill handles all complexity
+2. **Context loading:** Story file loaded once via @ reference
+3. **Native tools:** Use Read/Edit/Grep (not Bash)
+4. **Focused validation:** Only verify completion, not re-execute
+5. **Conditional execution:** Skip phases if already complete
+
+**Token breakdown:**
+- Story validation: ~2K
+- Skill invocation: ~80K (handled by skill)
+- Verification: ~5K
+- Reporting: ~3K
+- Error handling: ~5K (only if errors)
+- **Total:** ~95K tokens
+
+## Integration
+
+**Invokes:**
+- devforgeai-development skill (comprehensive TDD implementation)
+
+**Invoked by:**
+- User (manual story implementation)
+- /orchestrate command (automated workflow)
+
+**Follows:**
+- /arch (creates context files if missing)
+- /story (creates story to develop)
+
+**Precedes:**
+- /qa (validates implementation)
+- /release (deploys after QA approval)
+
+## Notes
+
+**Command is intentionally thin:**
+- Validation and delegation only
+- Heavy lifting done by devforgeai-development skill
+- Achieves 250-350 line target by avoiding duplication
+
+**Development skill handles:**
+- Context validation
+- Test generation (test-automator subagent)
+- Implementation (backend-architect/frontend-developer subagents)
+- Refactoring (refactoring-specialist + code-reviewer subagents)
+- Integration testing (integration-tester subagent)
+- Git workflow
+- Story updates
+- Light QA at every phase
+
+**Command responsibilities:**
+- Parse story file
+- Validate workflow state
+- Invoke skill
+- Verify completion
+- Report results
+
+**No duplication:** All TDD logic lives in skill, not command.
+
+---
+
+**Token Budget:** <100K
+**Priority:** CRITICAL
+**Model:** Sonnet
+**Status:** Production Ready
