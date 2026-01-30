@@ -256,6 +256,57 @@ treelint search main
 # Subsequent searches use existing index (instant)
 ```
 
+### Daemon Commands (STORY-009)
+
+Control the background daemon for instant query performance:
+
+```bash
+# Start the daemon (runs in background)
+treelint daemon start
+# Output: Daemon started (PID: 12345)
+#         Socket: .treelint/daemon.sock
+
+# Stop the daemon
+treelint daemon stop
+# Output: Daemon stopped
+
+# Check daemon status
+treelint daemon status
+# Output: Status: ready
+#         PID: 12345
+#         Uptime: 3600s
+#         Indexed files: 150
+#         Indexed symbols: 2340
+#         Socket: .treelint/daemon.sock
+```
+
+**Daemon behavior:**
+- `start` is idempotent - returns success if already running
+- `stop` is idempotent - returns success if not running
+- `status` exit code: 0 if running, 1 if not running
+
+### Index Command (STORY-009)
+
+Manually build or rebuild the symbol index:
+
+```bash
+# Build/rebuild index
+treelint index
+# Output: Index built successfully
+#         Files indexed: 150
+#         Symbols found: 2340
+#         Duration: 1.23s
+
+# Force full re-index (ignores hash cache)
+treelint index --force
+# Rebuilds all files regardless of changes
+```
+
+**Auto-detection:** When running `treelint search`, the CLI automatically:
+1. Uses daemon if running (~5ms latency)
+2. Falls back to direct index query if daemon not running (~20ms)
+3. Builds index on-demand if no index exists (first search)
+
 ### Exit Codes
 
 | Code | Meaning |

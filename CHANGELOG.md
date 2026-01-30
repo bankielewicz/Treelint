@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-01-30
+
+### Added
+
+- Daemon CLI commands ([STORY-009])
+  - `treelint daemon start` - Start background daemon, reports PID and socket path
+  - `treelint daemon stop` - Stop running daemon with graceful shutdown (5s timeout)
+  - `treelint daemon status` - Show daemon status (PID, uptime, indexed files/symbols)
+  - Idempotent operations: start/stop succeed even if already running/stopped
+  - Status exit codes: 0 if running, 1 if not running
+
+- Index command ([STORY-009])
+  - `treelint index` - Build or rebuild symbol index with progress bar
+  - `treelint index --force` - Force full re-index, bypassing hash cache
+  - Progress bar for repositories with >10 files
+  - Completion summary: files indexed, symbols found, duration
+
+- Auto-detection for search command ([STORY-009])
+  - Automatically routes queries through daemon if running (~5ms latency)
+  - Falls back to direct index query if daemon not running (~20ms)
+  - Builds index on-demand if no index exists (first search)
+  - Transparent to user (same output format regardless of path)
+
+### Technical
+
+- 61 new tests for STORY-009 (daemon commands, index command, auto-detection)
+- Binary size: 7.8 MB (optimized release build)
+- All 520+ tests passing
+
+### Documentation
+
+- Updated README with daemon and index command usage
+- Updated troubleshooting guide with daemon issues
+
 ## [0.8.0] - 2026-01-30
 
 ### Added
@@ -174,3 +208,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [STORY-004]: devforgeai/specs/Stories/archive/STORY-004-search-command-logic.story.md
 [STORY-005]: devforgeai/specs/Stories/archive/STORY-005-json-text-output.story.md
 [STORY-006]: devforgeai/specs/Stories/archive/STORY-006-context-modes.story.md
+[STORY-009]: devforgeai/specs/Stories/archive/STORY-009-daemon-cli-commands.story.md
