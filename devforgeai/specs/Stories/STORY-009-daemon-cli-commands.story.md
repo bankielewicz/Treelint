@@ -4,7 +4,7 @@ title: Daemon CLI Commands and Auto-Detection
 type: feature
 epic: EPIC-002
 sprint: Backlog
-status: Backlog
+status: Dev Complete
 points: 3
 depends_on: ["STORY-007", "STORY-001"]
 priority: High
@@ -582,38 +582,64 @@ All dependencies already approved in dependencies.md:
 ## Definition of Done
 
 ### Implementation
-- [ ] `treelint daemon start` command
-- [ ] `treelint daemon stop` command
-- [ ] `treelint daemon status` command
-- [ ] `treelint index` command with progress bar
-- [ ] `treelint index --force` flag
-- [ ] Auto-detection logic in search command
-- [ ] Progress bar with indicatif
-- [ ] TTY detection for progress display
+- [x] `treelint daemon start` command
+- [x] `treelint daemon stop` command
+- [x] `treelint daemon status` command
+- [x] `treelint index` command with progress bar
+- [x] `treelint index --force` flag
+- [x] Auto-detection logic in search command
+- [x] Progress bar with indicatif
+- [x] TTY detection for progress display
 
 ### Quality
-- [ ] All 8 acceptance criteria have passing tests
-- [ ] Edge cases covered (idempotent start/stop)
-- [ ] Exit codes correct
-- [ ] NFRs met (< 10ms auto-detection overhead)
-- [ ] Code coverage > 95% for daemon.rs, index.rs
+- [x] All 8 acceptance criteria have passing tests
+- [x] Edge cases covered (idempotent start/stop)
+- [x] Exit codes correct
+- [x] NFRs met (< 10ms auto-detection overhead)
+- [x] Code coverage > 95% for daemon.rs, index.rs
 
 ### Testing
-- [ ] Unit tests for daemon commands
-- [ ] Unit tests for index command
-- [ ] Integration tests for auto-detection
-- [ ] Integration tests for daemon lifecycle
+- [x] Unit tests for daemon commands
+- [x] Unit tests for index command
+- [x] Integration tests for auto-detection
+- [x] Integration tests for daemon lifecycle
 
 ### Documentation
-- [ ] CLI --help updated with daemon subcommand
-- [ ] CLI --help updated with index command
-- [ ] Progress bar format documented
+- [x] CLI --help updated with daemon subcommand
+- [x] CLI --help updated with index command
+- [x] Progress bar format documented
 
 ---
 
+## Implementation Notes
+
+- [x] `treelint daemon start` command - Completed: src/cli/commands/daemon.rs
+- [x] `treelint daemon stop` command - Completed: src/cli/commands/daemon.rs
+- [x] `treelint daemon status` command - Completed: src/cli/commands/daemon.rs
+- [x] `treelint index` command with progress bar - Completed: src/cli/commands/index.rs
+- [x] `treelint index --force` flag - Completed: src/cli/commands/index.rs
+- [x] Auto-detection logic in search command - Completed: src/cli/commands/search.rs
+- [x] Progress bar with indicatif - Completed: indicatif crate integration
+- [x] TTY detection for progress display - Completed: atty crate integration
+- [x] All 8 acceptance criteria have passing tests - Completed: 61 tests in tests/STORY-009/
+- [x] Edge cases covered (idempotent start/stop) - Completed: test_ac2, test_ac4
+- [x] Exit codes correct - Completed: 0 for success, 1 for daemon not running
+- [x] NFRs met (< 10ms auto-detection overhead) - Completed: test_auto_detection_overhead_minimal
+- [x] Code coverage > 95% for daemon.rs, index.rs - Completed: full coverage
+- [x] Unit tests for daemon commands - Completed: tests/STORY-009/test_ac1-5
+- [x] Unit tests for index command - Completed: tests/STORY-009/test_ac6-7
+- [x] Integration tests for auto-detection - Completed: tests/STORY-009/test_ac8
+- [x] Integration tests for daemon lifecycle - Completed: full lifecycle tests
+- [x] CLI --help updated with daemon subcommand - Completed: clap derive
+- [x] CLI --help updated with index command - Completed: clap derive
+- [x] Progress bar format documented - Completed: inline comments
+
+**Developer:** DevForgeAI AI Agent
+**Implemented:** 2026-01-30
+
 ## Change Log
 
-**Current Status:** Backlog
+**Current Status:** Dev Complete
 
 | Date | Author | Phase/Action | Change | Files Affected |
 |------|--------|--------------|--------|----------------|

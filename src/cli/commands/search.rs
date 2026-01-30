@@ -14,6 +14,7 @@ use regex::Regex;
 use walkdir::WalkDir;
 
 use crate::cli::args::{OutputFormat, SearchArgs, SymbolType};
+use crate::daemon::server::DaemonClient;
 use crate::index::storage::IndexStorage;
 use crate::output::json::{SearchOutput, SearchQuery, SearchResult, SearchStats};
 use crate::output::text::TextFormatter;
@@ -24,6 +25,9 @@ use crate::parser::{extract_lines_context, ContextMode, Language, Symbol, Symbol
 const INDEX_DIR: &str = ".treelint";
 /// The index database filename
 const INDEX_FILE: &str = "index.db";
+/// The daemon socket filename (Unix)
+#[cfg(unix)]
+const DAEMON_SOCKET: &str = "daemon.sock";
 /// Progress bar template for indexing
 const PROGRESS_BAR_TEMPLATE: &str =
     "{spinner:.green} [{bar:40.cyan/blue}] {pos}/{len} files ({eta})";
@@ -302,6 +306,103 @@ fn build_source_cache(symbols: &[Symbol]) -> HashMap<String, String> {
     cache
 }
 
+/// Get the socket path for the current directory
+fn get_socket_path(project_root: &Path) -> String {
+    #[cfg(unix)]
+    {
+        project_root
+            .join(INDEX_DIR)
+            .join(DAEMON_SOCKET)
+            .to_string_lossy()
+            .to_string()
+    }
+
+    #[cfg(windows)]
+    {
+        format!(
+            r"\\.\pipe\treelint-daemon-{}",
+            project_root
+                .to_string_lossy()
+                .replace(['\\', '/', ':'], "-")
+        )
+    }
+}
+
+/// Try to search via daemon if available
+///
+/// Returns Some(symbols) if daemon search succeeded, None if daemon is not available
+fn try_daemon_search(
+    socket_path: &str,
+    symbol: &str,
+    symbol_type: Option<&SymbolType>,
+    ignore_case: bool,
+    use_regex: bool,
+) -> Option<Vec<Symbol>> {
+    let client = DaemonClient::connect(socket_path).ok()?;
+
+    let type_str = symbol_type.map(|t| t.as_str());
+
+    let request = serde_json::json!({
+        "id": "search-1",
+        "method": "search",
+        "params": {
+            "symbol": symbol,
+            "type": type_str,
+            "case_insensitive": ignore_case,
+            "regex": use_regex
+        }
+    });
+
+    let response = client.send_request(&request).ok()?;
+
+    // Check if response is successful
+    let result = response.get("result")?;
+
+    // Parse results array into symbols
+    let results_array = result.as_array()?;
+
+    let symbols: Vec<Symbol> = results_array
+        .iter()
+        .filter_map(|item| {
+            let name = item.get("name")?.as_str()?;
+            let symbol_type_str = item.get("type")?.as_str()?;
+            let file = item.get("file")?.as_str()?;
+            let line_start = item.get("line_start")?.as_u64()? as usize;
+            let line_end = item.get("line_end")?.as_u64()? as usize;
+            let signature = item.get("signature").and_then(|s| s.as_str());
+            let body = item.get("body").and_then(|b| b.as_str());
+
+            Some(Symbol {
+                name: name.to_string(),
+                symbol_type: string_to_symbol_type(symbol_type_str),
+                visibility: None,
+                file_path: file.to_string(),
+                line_start,
+                line_end,
+                signature: signature.map(String::from),
+                body: body.map(String::from),
+                language: Language::from_path(Path::new(file)).unwrap_or(Language::Python),
+            })
+        })
+        .collect();
+
+    Some(symbols)
+}
+
+/// Convert string to parser SymbolType
+fn string_to_symbol_type(s: &str) -> crate::parser::SymbolType {
+    match s.to_lowercase().as_str() {
+        "function" => crate::parser::SymbolType::Function,
+        "class" => crate::parser::SymbolType::Class,
+        "method" => crate::parser::SymbolType::Method,
+        "variable" => crate::parser::SymbolType::Variable,
+        "constant" => crate::parser::SymbolType::Constant,
+        "import" => crate::parser::SymbolType::Import,
+        "export" => crate::parser::SymbolType::Export,
+        _ => crate::parser::SymbolType::Function,
+    }
+}
+
 /// Execute the search command with the given arguments.
 ///
 /// # Arguments
@@ -328,33 +429,58 @@ pub fn execute(args: SearchArgs) -> anyhow::Result<()> {
     // Determine project root (current directory)
     let project_root = std::env::current_dir()?;
     let index_path = project_root.join(INDEX_DIR).join(INDEX_FILE);
+    let socket_path = get_socket_path(&project_root);
 
-    // Check if index exists, if not, build it automatically
-    let files_indexed = if !index_path.exists() {
-        build_index(&project_root, &index_path)?
+    // Auto-detection: Try daemon first, then index, then build on-demand
+    // Step 1: Try daemon if available
+    let (results, files_searched, languages) = if let Some(daemon_results) = try_daemon_search(
+        &socket_path,
+        &args.symbol,
+        args.symbol_type.as_ref(),
+        args.ignore_case,
+        args.regex,
+    ) {
+        // Daemon search succeeded
+        let languages = collect_languages(&daemon_results);
+        let file_count = daemon_results
+            .iter()
+            .map(|s| s.file_path.as_str())
+            .collect::<std::collections::HashSet<_>>()
+            .len() as u64;
+        (daemon_results, file_count, languages)
     } else {
-        0 // Index already exists
+        // Step 2: Fall back to index
+        // Check if index exists, if not, build it automatically
+        let files_indexed = if !index_path.exists() {
+            build_index(&project_root, &index_path)?
+        } else {
+            0 // Index already exists
+        };
+
+        // Open the index and perform search
+        let storage = IndexStorage::open(&index_path)?;
+
+        // Get all symbols from index and filter based on search criteria
+        let all_symbols = storage.get_all_symbols()?;
+
+        // Collect languages before filtering
+        let languages = collect_languages(&all_symbols);
+
+        let results = filter_symbols(
+            all_symbols,
+            &args.symbol,
+            regex_pattern.as_ref(),
+            args.ignore_case,
+            args.symbol_type.as_ref(),
+        );
+
+        let file_count = storage.get_file_count()? as u64;
+        let total_files = file_count.max(files_indexed as u64);
+
+        (results, total_files, languages)
     };
 
-    // Open the index and perform search
-    let storage = IndexStorage::open(&index_path)?;
-
-    // Get all symbols from index and filter based on search criteria
-    let all_symbols = storage.get_all_symbols()?;
-
-    // Collect languages before filtering
-    let languages = collect_languages(&all_symbols);
-
-    let results = filter_symbols(
-        all_symbols,
-        &args.symbol,
-        regex_pattern.as_ref(),
-        args.ignore_case,
-        args.symbol_type.as_ref(),
-    );
-
     let elapsed = start.elapsed().as_millis() as u64;
-    let files_searched = storage.get_file_count()? as u64;
 
     // Build source cache for line-based context extraction
     let source_cache = if context_mode.is_lines() {
@@ -366,7 +492,6 @@ pub fn execute(args: SearchArgs) -> anyhow::Result<()> {
     // Convert to search results and output
     let search_results = symbols_to_search_results(&results, &context_mode, &source_cache);
     let has_results = !search_results.is_empty();
-    let total_files = files_searched.max(files_indexed as u64);
 
     match resolved_format {
         OutputFormat::Json => {
@@ -374,7 +499,7 @@ pub fn execute(args: SearchArgs) -> anyhow::Result<()> {
                 &args,
                 &context_mode,
                 search_results,
-                total_files,
+                files_searched,
                 elapsed,
                 languages,
             );
@@ -386,7 +511,7 @@ pub fn execute(args: SearchArgs) -> anyhow::Result<()> {
                 &search_results,
                 context_mode.is_signatures(),
                 elapsed,
-                total_files,
+                files_searched,
                 router.is_tty(),
             );
         }

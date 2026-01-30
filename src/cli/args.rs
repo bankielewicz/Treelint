@@ -22,6 +22,41 @@ pub struct Args {
 pub enum Commands {
     /// Search for symbols in the codebase
     Search(SearchArgs),
+    /// Manage the background daemon
+    Daemon(DaemonArgs),
+    /// Build or rebuild the symbol index
+    Index(IndexArgs),
+}
+
+/// Arguments for the daemon command
+#[derive(Parser, Debug)]
+pub struct DaemonArgs {
+    /// Daemon action to perform
+    #[command(subcommand)]
+    pub action: Option<DaemonAction>,
+
+    /// Run the daemon server (internal use only)
+    #[arg(long = "run-server", hide = true)]
+    pub run_server: bool,
+}
+
+/// Available daemon actions
+#[derive(Subcommand, Debug, Clone)]
+pub enum DaemonAction {
+    /// Start the background daemon
+    Start,
+    /// Stop the running daemon
+    Stop,
+    /// Show daemon status
+    Status,
+}
+
+/// Arguments for the index command
+#[derive(Parser, Debug)]
+pub struct IndexArgs {
+    /// Force full re-index, bypassing hash cache
+    #[arg(short, long)]
+    pub force: bool,
 }
 
 /// Arguments for the search command

@@ -14,6 +14,12 @@ fn main() -> anyhow::Result<()> {
         Commands::Search(search_args) => {
             commands::execute_search(search_args)?;
         }
+        Commands::Daemon(daemon_args) => {
+            commands::execute_daemon(daemon_args)?;
+        }
+        Commands::Index(index_args) => {
+            commands::execute_index(index_args)?;
+        }
     }
 
     Ok(())

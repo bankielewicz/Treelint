@@ -87,6 +87,10 @@ path = "tests/story_007.rs"
 name = "story_008"
 path = "tests/story_008.rs"
 
+[[test]]
+name = "story_009"
+path = "tests/story_009.rs"
+
 [profile.release]
 lto = true
 codegen-units = 1
