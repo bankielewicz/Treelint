@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-01-30
+
+### Added
+
+- Dependency graph command with call and import extraction ([STORY-011])
+  - `treelint deps --calls` - Show function call relationships as graph
+  - `treelint deps --imports` - Show import relationships as graph
+  - `treelint deps --format json` - Machine-readable JSON output with nodes and edges
+  - `treelint deps --format mermaid` - Visual Mermaid diagram output
+  - `treelint deps --symbol <name>` - Filter graph to specific symbol's callers/callees
+  - `treelint deps --force` - Force full rebuild of graph data
+
+- Call detection for multiple languages ([STORY-011])
+  - Python: call_expression nodes
+  - TypeScript: call_expression nodes
+  - Rust: call_expression, method_call_expression nodes
+  - Tracks call count per edge (how many times A calls B)
+
+- Import detection for multiple languages ([STORY-011])
+  - Python: import_statement, import_from_statement
+  - TypeScript: import_statement, export_statement
+  - Rust: use_declaration, mod_item
+  - Resolves module paths to actual file paths
+
+- Graph storage in SQLite ([STORY-011])
+  - call_edges table (caller_id, callee_id, call_count)
+  - import_edges table (importer_path, imported_path, import_type)
+  - Incremental updates (only re-analyze changed files)
+
+### Technical
+
+- 72 new tests for STORY-011 (call graph, import graph, JSON/Mermaid output, symbol filtering, call/import detection, graph storage)
+- Binary size: 7.8 MB (optimized release build)
+
 ## [0.10.0] - 2026-01-30
 
 ### Added
