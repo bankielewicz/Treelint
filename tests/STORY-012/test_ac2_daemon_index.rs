@@ -89,7 +89,10 @@ fn start_daemon(temp_dir: &TempDir) -> String {
     {
         format!(
             "\\\\.\\pipe\\treelint-daemon-{}",
-            temp_dir.path().to_string_lossy().replace(['\\', '/', ':'], "-")
+            temp_dir
+                .path()
+                .to_string_lossy()
+                .replace(['\\', '/', ':'], "-")
         )
     }
 }
@@ -453,8 +456,7 @@ class UniqueTestClassABC789:
     let index_request = r#"{"id": "index-7", "method": "index", "params": {}}"#;
     let _index_response = send_daemon_request(&socket_path, index_request);
 
-    let search_request =
-        r#"{"id": "search-7", "method": "search", "params": {"symbol": "unique_test_function_xyz_123"}}"#;
+    let search_request = r#"{"id": "search-7", "method": "search", "params": {"symbol": "unique_test_function_xyz_123"}}"#;
     let search_response = send_daemon_request(&socket_path, search_request);
 
     // Cleanup

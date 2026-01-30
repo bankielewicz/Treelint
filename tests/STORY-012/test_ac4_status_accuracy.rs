@@ -47,8 +47,7 @@ def function_b_{i}():
 "#,
             i = i
         );
-        fs::write(src_dir.join(format!("module_{}.py", i)), content)
-            .expect("Failed to write file");
+        fs::write(src_dir.join(format!("module_{}.py", i)), content).expect("Failed to write file");
         total_symbols += 2;
     }
 
@@ -79,7 +78,10 @@ fn start_daemon(temp_dir: &TempDir) -> String {
     {
         format!(
             "\\\\.\\pipe\\treelint-daemon-{}",
-            temp_dir.path().to_string_lossy().replace(['\\', '/', ':'], "-")
+            temp_dir
+                .path()
+                .to_string_lossy()
+                .replace(['\\', '/', ':'], "-")
         )
     }
 }
@@ -202,9 +204,7 @@ fn test_status_returns_actual_indexed_files_count() {
          Actual: {} files\n\
          Root cause: handle_index is stub - doesn't update counts\n\
          Response: {}",
-        expected_files,
-        indexed_files,
-        response
+        expected_files, indexed_files, response
     );
 }
 
@@ -480,8 +480,11 @@ fn test_status_indexed_files_matches_storage_query() {
 
     // Create exactly 7 files
     for i in 0..7 {
-        fs::write(src_dir.join(format!("file_{}.py", i)), format!("def f{}(): pass", i))
-            .expect("Failed to write");
+        fs::write(
+            src_dir.join(format!("file_{}.py", i)),
+            format!("def f{}(): pass", i),
+        )
+        .expect("Failed to write");
     }
 
     let socket_path = start_daemon(&temp_dir);
@@ -513,8 +516,7 @@ fn test_status_indexed_files_matches_storage_query() {
          Actual: {}\n\
          Root cause: handle_index is stub\n\
          Response: {}",
-        indexed_files,
-        response
+        indexed_files, response
     );
 }
 

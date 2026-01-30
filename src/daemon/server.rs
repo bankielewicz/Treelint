@@ -9,7 +9,7 @@
 //! - Search, status, and index methods
 //! - Graceful shutdown handling
 
-use crate::daemon::protocol::{DaemonRequest, DaemonResponse, ProtocolHandler};
+use crate::daemon::protocol::{DaemonRequest, DaemonResponse};
 use crate::error::TreelintError;
 use crate::index::{IndexStorage, QueryFilters};
 use crate::parser::{SymbolExtractor, SymbolType};
@@ -663,7 +663,7 @@ impl DaemonServer {
                 // Extract search parameters
                 let symbol_name = request.params.get("symbol").and_then(|v| v.as_str());
                 let type_filter = request.params.get("type").and_then(|v| v.as_str());
-                let case_insensitive = request
+                let _case_insensitive = request
                     .params
                     .get("case_insensitive")
                     .and_then(|v| v.as_bool())
@@ -778,7 +778,11 @@ impl DaemonServer {
                         if let Ok(mut state) = ctx.state.write() {
                             *state = DaemonState::Ready;
                         }
-                        return DaemonResponse::error(request.id, "E001", "Index storage not initialized");
+                        return DaemonResponse::error(
+                            request.id,
+                            "E001",
+                            "Index storage not initialized",
+                        );
                     }
                 };
 
@@ -1056,80 +1060,10 @@ impl DaemonServer {
         Ok(())
     }
 
-    /// Handle a status request
-    fn handle_status(&self, id: String) -> DaemonResponse {
-        let status = match self.state() {
-            DaemonState::Starting => "starting",
-            DaemonState::Ready => "ready",
-            DaemonState::Indexing => "indexing",
-            DaemonState::Stopping => "stopping",
-        };
-
-        DaemonResponse::success(
-            id,
-            json!({
-                "status": status,
-                "indexed_files": self.indexed_files(),
-                "indexed_symbols": self.indexed_symbols(),
-                "last_index_time": self.last_index_time(),
-                "uptime_seconds": self.uptime_seconds(),
-                "pid": self.pid(),
-                "socket_path": self.socket_path()
-            }),
-        )
-    }
-
-    /// Handle a search request
-    fn handle_search(&self, id: String, params: Value) -> DaemonResponse {
-        // Check if index is ready
-        if self.state() == DaemonState::Starting {
-            return DaemonResponse::error(id, "E001", "Index not ready");
-        }
-
-        // Extract search parameters
-        let symbol = params.get("symbol").and_then(|v| v.as_str());
-        let _symbol_type = params.get("type").and_then(|v| v.as_str());
-
-        if symbol.is_none() {
-            return DaemonResponse::error(id, "E003", "Missing required param: symbol");
-        }
-
-        // TODO: Integrate with actual index search
-        // For now, return empty results
-        DaemonResponse::success(
-            id,
-            json!({
-                "symbols": [],
-                "total": 0
-            }),
-        )
-    }
-
-    /// Handle an index request
-    fn handle_index(&self, id: String, _params: Value) -> DaemonResponse {
-        // TODO: Implement actual indexing
-        DaemonResponse::success(
-            id,
-            json!({
-                "status": "completed",
-                "files_indexed": 0,
-                "symbols_found": 0
-            }),
-        )
-    }
-}
-
-impl ProtocolHandler for DaemonServer {
-    fn handle_request(&self, request: DaemonRequest) -> DaemonResponse {
-        match request.method.as_str() {
-            "status" => self.handle_status(request.id),
-            "search" => self.handle_search(request.id, request.params),
-            "index" => self.handle_index(request.id, request.params),
-            unknown => {
-                DaemonResponse::error(request.id, "E002", format!("Invalid method: {}", unknown))
-            }
-        }
-    }
+    // Note: Request handling is done via DaemonContext.process_request() in event loop.
+    // The ProtocolHandler trait was removed as it was dead code - the daemon's actual
+    // execution path uses handle_connection() -> process_request() which has the
+    // complete working implementation (see lines 643-878).
 }
 
 impl Drop for DaemonServer {

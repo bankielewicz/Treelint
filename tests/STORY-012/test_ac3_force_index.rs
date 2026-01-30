@@ -101,7 +101,10 @@ fn start_daemon(temp_dir: &TempDir) -> String {
     {
         format!(
             "\\\\.\\pipe\\treelint-daemon-{}",
-            temp_dir.path().to_string_lossy().replace(['\\', '/', ':'], "-")
+            temp_dir
+                .path()
+                .to_string_lossy()
+                .replace(['\\', '/', ':'], "-")
         )
     }
 }
@@ -228,8 +231,7 @@ fn test_force_index_clears_and_rebuilds() {
     let force_response = send_daemon_request(&socket_path, force_index);
 
     // Search for new symbol that was added after modification
-    let search_request =
-        r#"{"id": "search-1", "method": "search", "params": {"symbol": "new_function_after_change"}}"#;
+    let search_request = r#"{"id": "search-1", "method": "search", "params": {"symbol": "new_function_after_change"}}"#;
     let search_response = send_daemon_request(&socket_path, search_request);
 
     // Cleanup
@@ -393,8 +395,7 @@ fn test_force_index_response_has_accurate_file_count() {
          Actual: {} files\n\
          Root cause: handle_index is stub\n\
          Response: {}",
-        files_indexed,
-        response
+        files_indexed, response
     );
 }
 

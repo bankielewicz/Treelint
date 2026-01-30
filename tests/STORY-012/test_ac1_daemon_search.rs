@@ -101,7 +101,10 @@ fn start_daemon(temp_dir: &TempDir) -> String {
     {
         format!(
             "\\\\.\\pipe\\treelint-daemon-{}",
-            temp_dir.path().to_string_lossy().replace(['\\', '/', ':'], "-")
+            temp_dir
+                .path()
+                .to_string_lossy()
+                .replace(['\\', '/', ':'], "-")
         )
     }
 }
@@ -454,10 +457,7 @@ fn test_search_queries_actual_index_storage() {
     );
 
     // Verify we got the expected symbol names
-    let symbol_names: Vec<&str> = symbols
-        .iter()
-        .filter_map(|s| s["name"].as_str())
-        .collect();
+    let symbol_names: Vec<&str> = symbols.iter().filter_map(|s| s["name"].as_str()).collect();
 
     assert!(
         symbol_names.iter().any(|n| n.contains("bar")),
@@ -484,8 +484,7 @@ fn test_search_with_type_filter() {
     index_via_daemon(&socket_path);
 
     // Act: Search for "foo" with type filter "function"
-    let request =
-        r#"{"id": "search-6", "method": "search", "params": {"symbol": "foo", "type": "function"}}"#;
+    let request = r#"{"id": "search-6", "method": "search", "params": {"symbol": "foo", "type": "function"}}"#;
     let response = send_daemon_request(&socket_path, request);
 
     // Cleanup

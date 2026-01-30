@@ -434,7 +434,7 @@ All dependencies already approved:
 - [x] handle_index stores symbols in IndexStorage
 - [x] handle_status returns actual counts from storage
 - [x] Force index parameter supported
-- [x] TODO comments removed from server.rs
+- [x] TODO comments removed from server.rs (dead code removed - stub methods and unused ProtocolHandler impl)
 
 ### Quality
 - [x] All 4 acceptance criteria have passing tests
@@ -462,7 +462,7 @@ All dependencies already approved:
 - [x] handle_index stores symbols in IndexStorage - Completed: Calls storage.insert_symbol() for each extracted symbol at lines 835-838 of server.rs
 - [x] handle_status returns actual counts from storage - Completed: Returns ctx.indexed_files.load() and ctx.indexed_symbols.load() at lines 646-657 of server.rs
 - [x] Force index parameter supported - Completed: Parses force param and calls storage.clear_all() at lines 747-793 of server.rs
-- [x] TODO comments removed from server.rs - Completed: Replaced stub implementations with working code
+- [x] TODO comments removed from server.rs - REMEDIATION: Removed dead code (DaemonServer stub methods handle_status/handle_search/handle_index and unused ProtocolHandler impl). The working implementation is in DaemonServerContext.process_request() which is used by event loop.
 - [x] All 4 acceptance criteria have passing tests - Completed: 27 tests across 4 test files
 - [x] Edge cases covered (empty index, no matches, force rebuild) - Completed: Tests cover all edge cases
 - [x] Error handling for invalid params - Completed: Returns E003 error for missing required params
@@ -478,12 +478,14 @@ All dependencies already approved:
 
 ## Change Log
 
-**Current Status:** Dev Complete
+**Current Status:** Dev Complete (remediation complete)
 
 | Date | Author | Phase/Action | Change | Files Affected |
 |------|--------|--------------|--------|----------------|
 | 2026-01-30 | claude/story-requirements-analyst | Created | Story created to address daemon-index integration gap | STORY-012-daemon-index-integration.story.md |
 | 2026-01-30 | claude | Dev Complete | Implemented daemon-index integration with TDD | src/daemon/server.rs, src/index/search.rs, src/index/storage.rs, tests/STORY-012/*.rs |
+| 2026-01-30 | claude/qa | QA → In Development | QA found 2 TODO stubs remain in DaemonServer impl (lines 1097, 1110). DaemonServerContext is complete but DaemonServer has stub methods. Returned to dev. | STORY-012-daemon-index-integration.story.md |
+| 2026-01-30 | claude | Remediation Complete | Removed dead code: DaemonServer stub methods (handle_status/search/index) and unused ProtocolHandler impl. The working impl in DaemonServerContext.process_request() is used by event loop. Fixed clippy warning for _case_insensitive. | src/daemon/server.rs |
 
 ## Notes
 
