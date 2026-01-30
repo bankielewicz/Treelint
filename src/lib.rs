@@ -7,6 +7,7 @@
 pub mod cli;
 pub mod daemon;
 pub mod error;
+pub mod graph;
 pub mod index;
 pub mod output;
 pub mod parser;

@@ -1,12 +1,14 @@
 //! Output formatting module for Treelint
 //!
 //! This module provides output formatters for search results
-//! in various formats (JSON, text) with automatic TTY detection
+//! in various formats (JSON, text, Mermaid) with automatic TTY detection
 //! for selecting the appropriate format.
 
+pub mod graph;
 pub mod json;
 pub mod text;
 
+pub use graph::{format_call_graph_mermaid, format_import_graph_mermaid};
 pub use json::SearchOutput;
 
 use crate::cli::args::OutputFormat;

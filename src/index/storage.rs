@@ -949,6 +949,115 @@ impl IndexStorage {
     }
 
     // ========================================================================
+    // Graph Edge Operations (STORY-011)
+    // ========================================================================
+
+    /// Ensure the call_edges table exists.
+    pub fn ensure_call_edges_table(&self) -> Result<(), StorageError> {
+        let conn = self.conn()?;
+        conn.execute(
+            r#"
+            CREATE TABLE IF NOT EXISTS call_edges (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                caller_id TEXT NOT NULL,
+                callee_id TEXT NOT NULL,
+                call_count INTEGER NOT NULL DEFAULT 1,
+                UNIQUE(caller_id, callee_id)
+            )
+            "#,
+            [],
+        )
+        .map_err(StorageError::from)?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_call_edges_caller ON call_edges(caller_id)",
+            [],
+        )
+        .map_err(StorageError::from)?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_call_edges_callee ON call_edges(callee_id)",
+            [],
+        )
+        .map_err(StorageError::from)?;
+
+        Ok(())
+    }
+
+    /// Clear all call edges.
+    pub fn clear_call_edges(&self) -> Result<(), StorageError> {
+        let conn = self.conn()?;
+        conn.execute("DELETE FROM call_edges", [])
+            .map_err(StorageError::from)?;
+        Ok(())
+    }
+
+    /// Insert a call edge using parameterized query.
+    pub fn insert_call_edge(
+        &self,
+        caller_id: &str,
+        callee_id: &str,
+        call_count: u32,
+    ) -> Result<(), StorageError> {
+        let conn = self.conn()?;
+        conn.execute(
+            "INSERT INTO call_edges (caller_id, callee_id, call_count) VALUES (?1, ?2, ?3)",
+            params![caller_id, callee_id, call_count as i64],
+        )
+        .map_err(StorageError::from)?;
+        Ok(())
+    }
+
+    /// Ensure the import_edges table exists.
+    pub fn ensure_import_edges_table(&self) -> Result<(), StorageError> {
+        let conn = self.conn()?;
+        conn.execute(
+            r#"
+            CREATE TABLE IF NOT EXISTS import_edges (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                importer_path TEXT NOT NULL,
+                imported_path TEXT NOT NULL,
+                import_type TEXT NOT NULL DEFAULT 'direct',
+                UNIQUE(importer_path, imported_path)
+            )
+            "#,
+            [],
+        )
+        .map_err(StorageError::from)?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_import_edges_importer ON import_edges(importer_path)",
+            [],
+        )
+        .map_err(StorageError::from)?;
+
+        Ok(())
+    }
+
+    /// Clear all import edges.
+    pub fn clear_import_edges(&self) -> Result<(), StorageError> {
+        let conn = self.conn()?;
+        conn.execute("DELETE FROM import_edges", [])
+            .map_err(StorageError::from)?;
+        Ok(())
+    }
+
+    /// Insert an import edge using parameterized query.
+    pub fn insert_import_edge(
+        &self,
+        importer_path: &str,
+        imported_path: &str,
+        import_type: &str,
+    ) -> Result<(), StorageError> {
+        let conn = self.conn()?;
+        conn.execute(
+            "INSERT OR IGNORE INTO import_edges (importer_path, imported_path, import_type) VALUES (?1, ?2, ?3)",
+            params![importer_path, imported_path, import_type],
+        )
+        .map_err(StorageError::from)?;
+        Ok(())
+    }
+
+    // ========================================================================
     // Error Handling / Recovery / Test Helpers
     // ========================================================================
 

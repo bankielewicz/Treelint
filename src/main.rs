@@ -23,6 +23,9 @@ fn main() -> anyhow::Result<()> {
         Commands::Map(map_args) => {
             commands::execute_map(map_args)?;
         }
+        Commands::Deps(deps_args) => {
+            commands::execute_deps(deps_args)?;
+        }
     }
 
     Ok(())

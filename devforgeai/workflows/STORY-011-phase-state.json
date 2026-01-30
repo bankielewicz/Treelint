@@ -1,26 +1,37 @@
 {
   "story_id": "STORY-011",
-  "current_phase": "01",
+  "current_phase": "08",
   "workflow_started": "2026-01-30T17:49:49Z",
   "blocking_status": false,
   "phases": {
     "01": {
-      "status": "pending",
+      "status": "completed",
       "subagents_required": [
         "git-validator",
         "tech-stack-detector"
       ],
-      "subagents_invoked": []
+      "subagents_invoked": [
+        "git-validator",
+        "tech-stack-detector"
+      ],
+      "started_at": "2026-01-30T18:09:40Z",
+      "completed_at": "2026-01-30T18:09:43Z",
+      "checkpoint_passed": true
     },
     "02": {
-      "status": "pending",
+      "status": "completed",
       "subagents_required": [
         "test-automator"
       ],
-      "subagents_invoked": []
+      "subagents_invoked": [
+        "test-automator"
+      ],
+      "started_at": "2026-01-30T18:17:18Z",
+      "completed_at": "2026-01-30T18:17:22Z",
+      "checkpoint_passed": true
     },
     "03": {
-      "status": "pending",
+      "status": "completed",
       "subagents_required": [
         [
           "backend-architect",
@@ -28,46 +39,80 @@
         ],
         "context-validator"
       ],
-      "subagents_invoked": []
+      "subagents_invoked": [
+        "backend-architect",
+        "context-validator"
+      ],
+      "started_at": "2026-01-30T18:42:22Z",
+      "completed_at": "2026-01-30T18:42:25Z",
+      "checkpoint_passed": true
     },
     "04": {
-      "status": "pending",
+      "status": "completed",
       "subagents_required": [
         "refactoring-specialist",
         "code-reviewer"
       ],
-      "subagents_invoked": []
+      "subagents_invoked": [
+        "refactoring-specialist",
+        "code-reviewer"
+      ],
+      "started_at": "2026-01-30T18:53:13Z",
+      "completed_at": "2026-01-30T18:53:17Z",
+      "checkpoint_passed": true
     },
     "4.5": {
-      "status": "pending",
+      "status": "completed",
       "subagents_required": [
         "ac-compliance-verifier"
       ],
-      "subagents_invoked": []
+      "subagents_invoked": [
+        "ac-compliance-verifier"
+      ],
+      "started_at": "2026-01-30T18:55:47Z",
+      "completed_at": "2026-01-30T18:55:51Z",
+      "checkpoint_passed": true
     },
     "05": {
-      "status": "pending",
+      "status": "completed",
       "subagents_required": [
         "integration-tester"
       ],
-      "subagents_invoked": []
+      "subagents_invoked": [
+        "integration-tester"
+      ],
+      "started_at": "2026-01-30T19:10:00Z",
+      "completed_at": "2026-01-30T19:15:00Z",
+      "checkpoint_passed": true
     },
     "5.5": {
-      "status": "pending",
+      "status": "completed",
       "subagents_required": [
         "ac-compliance-verifier"
       ],
-      "subagents_invoked": []
+      "subagents_invoked": [
+        "ac-compliance-verifier"
+      ],
+      "started_at": "2026-01-30T19:16:00Z",
+      "completed_at": "2026-01-30T19:18:00Z",
+      "checkpoint_passed": true
     },
     "06": {
-      "status": "pending",
+      "status": "completed",
       "subagents_required": [],
-      "subagents_invoked": []
+      "subagents_invoked": [],
+      "started_at": "2026-01-30T19:20:00Z",
+      "completed_at": "2026-01-30T19:21:00Z",
+      "checkpoint_passed": true,
+      "notes": "No deferrals detected. All unchecked DoD items are implemented with 72 passing tests. Open question (depth parameter) is v1.1 scope."
     },
     "07": {
-      "status": "pending",
+      "status": "completed",
       "subagents_required": [],
-      "subagents_invoked": []
+      "subagents_invoked": [],
+      "started_at": "2026-01-30T19:22:00Z",
+      "completed_at": "2026-01-30T19:26:00Z",
+      "checkpoint_passed": true
     },
     "08": {
       "status": "pending",

@@ -28,6 +28,8 @@ pub enum Commands {
     Index(IndexArgs),
     /// Generate a repository map of all symbols
     Map(MapArgs),
+    /// Analyze dependency graphs (call/import relationships)
+    Deps(DepsArgs),
 }
 
 /// Arguments for the daemon command
@@ -163,6 +165,42 @@ pub struct MapArgs {
     /// Include relevance scores and sort by relevance
     #[arg(long = "ranked")]
     pub ranked: bool,
+}
+
+/// Arguments for the deps command
+#[derive(Parser, Debug)]
+pub struct DepsArgs {
+    /// Show function call relationships
+    #[arg(long = "calls")]
+    pub calls: bool,
+
+    /// Show import relationships
+    #[arg(long = "imports")]
+    pub imports: bool,
+
+    /// Output format (json or mermaid, default: json)
+    #[arg(long = "format", value_enum)]
+    pub format: Option<GraphFormat>,
+
+    /// Filter graph to specific symbol (shows callers and callees)
+    #[arg(long = "symbol")]
+    pub symbol: Option<String>,
+
+    /// Force full rebuild of graph data
+    #[arg(long = "force")]
+    pub force: bool,
+}
+
+/// Graph output format options
+#[derive(ValueEnum, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum GraphFormat {
+    /// JSON output format
+    #[default]
+    #[value(name = "json")]
+    Json,
+    /// Mermaid diagram format
+    #[value(name = "mermaid")]
+    Mermaid,
 }
 
 /// Validator function to reject empty strings
