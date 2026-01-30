@@ -8,7 +8,7 @@
 
 use colored::Colorize;
 
-use super::json::SearchResult;
+use super::json::{MapOutput, SearchResult};
 
 /// Number of spaces for body indentation in text output.
 const BODY_INDENT: &str = "    ";
@@ -138,4 +138,101 @@ impl TextFormatter {
             }
         }
     }
+}
+
+// ============================================================================
+// Map Text Formatting
+// ============================================================================
+
+/// Format the map output as human-readable text.
+///
+/// Produces a tree-style layout with:
+/// - Header line with total counts
+/// - Files grouped by directory
+/// - Symbols indented under files with type and line range
+/// - Relevance stars shown when ranked
+///
+/// # Arguments
+///
+/// * `map` - The map output structure
+/// * `show_relevance` - Whether to show relevance scores with stars
+///
+/// # Returns
+///
+/// A formatted string containing the repository map.
+pub fn format_map_text(map: &MapOutput, show_relevance: bool) -> String {
+    let mut output = String::new();
+
+    // Header with counts
+    output.push_str(&format!(
+        "Repository Map: {} symbols in {} files\n",
+        map.total_symbols, map.total_files
+    ));
+    output.push_str(&format!("{}\n", "=".repeat(50)));
+
+    // Group files by directory for tree structure
+    let mut dirs: std::collections::BTreeMap<String, Vec<(&String, &super::json::FileSymbols)>> =
+        std::collections::BTreeMap::new();
+
+    for (path, file_symbols) in &map.by_file {
+        let dir = std::path::Path::new(path)
+            .parent()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| ".".to_string());
+        dirs.entry(dir).or_default().push((path, file_symbols));
+    }
+
+    // Output tree structure
+    for (dir, files) in &dirs {
+        output.push_str(&format!("\n{}/\n", dir));
+
+        for (path, file_symbols) in files {
+            // Extract filename
+            let filename = std::path::Path::new(path)
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_else(|| path.to_string());
+
+            output.push_str(&format!("  {}\n", filename));
+
+            // Output symbols indented
+            for symbol in &file_symbols.symbols {
+                let line_range = if symbol.lines.len() >= 2 {
+                    format!("L{}:{}", symbol.lines[0], symbol.lines[1])
+                } else if !symbol.lines.is_empty() {
+                    format!("L{}", symbol.lines[0])
+                } else {
+                    "L?".to_string()
+                };
+
+                if show_relevance {
+                    if let Some(relevance) = symbol.relevance {
+                        output.push_str(&format!(
+                            "    {} {} [{}] * {:.2}\n",
+                            symbol.symbol_type, symbol.name, line_range, relevance
+                        ));
+                    } else {
+                        output.push_str(&format!(
+                            "    {} {} [{}]\n",
+                            symbol.symbol_type, symbol.name, line_range
+                        ));
+                    }
+                } else {
+                    output.push_str(&format!(
+                        "    {} {} [{}]\n",
+                        symbol.symbol_type, symbol.name, line_range
+                    ));
+                }
+            }
+        }
+    }
+
+    // Summary by type
+    output.push_str(&format!("\n{}\n", "=".repeat(50)));
+    output.push_str("By Type:\n");
+    for (type_name, count) in &map.by_type {
+        output.push_str(&format!("  {}: {}\n", type_name, count));
+    }
+
+    output
 }

@@ -7,5 +7,6 @@ pub mod args;
 pub mod commands;
 
 pub use args::{
-    Args, Commands, DaemonAction, DaemonArgs, IndexArgs, OutputFormat, SearchArgs, SymbolType,
+    Args, Commands, DaemonAction, DaemonArgs, IndexArgs, MapArgs, OutputFormat, SearchArgs,
+    SymbolType,
 };

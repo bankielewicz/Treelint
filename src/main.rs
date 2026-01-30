@@ -20,6 +20,9 @@ fn main() -> anyhow::Result<()> {
         Commands::Index(index_args) => {
             commands::execute_index(index_args)?;
         }
+        Commands::Map(map_args) => {
+            commands::execute_map(map_args)?;
+        }
     }
 
     Ok(())

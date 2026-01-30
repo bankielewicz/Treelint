@@ -32,10 +32,12 @@
 //! # Ok::<(), treelint::index::StorageError>(())
 //! ```
 
+pub mod relevance;
 pub mod schema;
 pub mod search;
 pub mod storage;
 
+pub use relevance::{calculate_relevance_scores, Reference, ReferenceType, RelevanceScorer};
 pub use schema::SCHEMA_VERSION;
 pub use search::QueryFilters;
 pub use storage::{FileInfo, IndexStorage, StorageError};

@@ -26,6 +26,8 @@ pub enum Commands {
     Daemon(DaemonArgs),
     /// Build or rebuild the symbol index
     Index(IndexArgs),
+    /// Generate a repository map of all symbols
+    Map(MapArgs),
 }
 
 /// Arguments for the daemon command
@@ -145,6 +147,22 @@ pub enum OutputFormat {
     #[default]
     #[value(name = "text")]
     Text,
+}
+
+/// Arguments for the map command
+#[derive(Parser, Debug)]
+pub struct MapArgs {
+    /// Output format (auto-detected if not specified: TTY=text, pipe=json)
+    #[arg(long = "format", value_enum)]
+    pub format: Option<OutputFormat>,
+
+    /// Filter by symbol type
+    #[arg(long = "type", value_enum)]
+    pub symbol_type: Option<SymbolType>,
+
+    /// Include relevance scores and sort by relevance
+    #[arg(long = "ranked")]
+    pub ranked: bool,
 }
 
 /// Validator function to reject empty strings

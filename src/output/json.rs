@@ -82,6 +82,59 @@ pub struct SearchStats {
     pub languages_searched: Vec<String>,
 }
 
+// ============================================================================
+// Map Output Types
+// ============================================================================
+
+/// Map output structure for the `treelint map` command.
+///
+/// Schema:
+/// ```json
+/// {
+///   "total_symbols": 100,
+///   "total_files": 10,
+///   "by_file": {
+///     "src/main.rs": { "language": "Rust", "symbols": [...] }
+///   },
+///   "by_type": { "function": 50, "class": 30 }
+/// }
+/// ```
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MapOutput {
+    /// Total number of symbols in the map
+    pub total_symbols: usize,
+    /// Total number of files with symbols
+    pub total_files: usize,
+    /// Symbols grouped by file path
+    pub by_file: std::collections::BTreeMap<String, FileSymbols>,
+    /// Symbol counts by type
+    pub by_type: HashMap<String, usize>,
+}
+
+/// Symbols for a single file in the map output.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FileSymbols {
+    /// Programming language of the file
+    pub language: String,
+    /// List of symbols in this file
+    pub symbols: Vec<MapSymbol>,
+}
+
+/// A symbol in the map output.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MapSymbol {
+    /// Symbol name
+    pub name: String,
+    /// Symbol type (function, class, method, etc.)
+    #[serde(rename = "type")]
+    pub symbol_type: String,
+    /// Line range [start, end]
+    pub lines: Vec<usize>,
+    /// Relevance score (only present when --ranked is used)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub relevance: Option<f64>,
+}
+
 impl SearchOutput {
     /// Create a placeholder output for testing/initial implementation.
     ///
